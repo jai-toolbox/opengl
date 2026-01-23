@@ -1,6 +1,9 @@
 #import "GL";
 #import "Basic";
 
+enable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
+disable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
+
 // SHADER_PREFIX : string : "#version 330 core";
 SHADER_PREFIX : string : "";
 
@@ -14,6 +17,7 @@ void main() {
 }
 END
 
+
 BASIC_FRAGMENT_SHADER :: #string END
 #version 330 core
 out vec4 FragColor;
@@ -23,6 +27,16 @@ void main() {
 }
 END
 
+VERTEX_SHADER_WITH_MATRICES :: #string END
+#version 330 core
+layout (location = 0) in vec3 xyz_position;
+uniform mat4 world_to_camera;
+uniform mat4 camera_to_clip;
+
+void main() {
+    gl_Position = camera_to_clip * world_to_camera * vec4(xyz_position, 1.0);
+}
+END
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {
     success : s32;
