@@ -338,7 +338,7 @@ uniform mat4 world_to_camera;
 
 in uint local_to_world_index;
 
-layout(std140) uniform LtwMatrices {
+layout(std140, row_major) uniform LtwMatrices {
     mat4 local_to_world_matrices[1024];
 };
 
