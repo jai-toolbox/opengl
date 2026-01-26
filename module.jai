@@ -42,17 +42,25 @@ We take an itp and find enough contiguous space to store it, and then store its 
 // note: this allocates big buffers and then all objects are put into these buffers, there is no "per object vbo,ibo,vao" thing going on here.
 //
 // 
-Per_Object_Transform_Renderer :: struct { // POTR for short said as "potter"
+
+Absolute_Position_Renderer :: struct {
+
+}
+
+/*
+ this is a "base renderer" struct that you can compose into other structs to make real renderers.
+ this models the idea that in opengl you can only render something with a particular shader
+ this means that the number of draw calls you need to render a scene is at least the number of 
+ shaders required to render the scene, this might be a reason why people make mega shaders.
+*/
+Per_Shader_Renderer :: struct {
 
     MAX_NUM_ELEMENTS_IN_EACH_BUFFER : u32 = 100000;
-
-    NUM_LOCAL_TO_WORLD_MATRICES :: 1024;
-    local_to_world_matrices : [NUM_LOCAL_TO_WORLD_MATRICES] Matrix4; 
 
     shader_program_gl_handle: GLuint;
 
     vertex_attribute_array_gl_handle : GLuint;
-    local_to_world_gl_uniform_buffer_handle : GLuint;
+
 
     // when you use glDrawElements, it takes from the active GL_ELEMENT_ARRAY_BUFFER
     // therefore when we want to render objects, we need to buffer the correct global indices into this 
@@ -60,21 +68,28 @@ Per_Object_Transform_Renderer :: struct { // POTR for short said as "potter"
     // this is because a regular quad has 4 positions, but 6 indices, so indices.count >= positions.count
     index_buffer_gl_handle : GLuint;
 
-
-    position_buffer_gl_handle: GLuint;
-    local_to_world_index_buffer_gl_handle : GLuint;
-    color_buffer_gl_handle: GLuint; // I'm just stuffing this in here so we can render basic things and not get visually confused.
+    object_indices_to_render_this_frame : [..] u32;
+    object_indices_we_rendered_last_frame : [..] u32;
 
     // this is how we manage the memory in all the attribute buffers and index buffer
     first_fit_virtual_allocator : First_Fit_Virtual_Allocator;
 
-    object_indices_to_render_this_frame : [..] u32;
-    object_indices_we_rendered_last_frame : [..] u32;
-
-
     // should this be a map of id to array views?
     buffered_object_index_to_global_indices: Table(u32, [..] u32);
+}
 
+Per_Object_Transform_Renderer :: struct { // POTR for short said as "potter"
+
+    using psr : Per_Shader_Renderer;
+
+    NUM_LOCAL_TO_WORLD_MATRICES :: 1024;
+    local_to_world_matrices : [NUM_LOCAL_TO_WORLD_MATRICES] Matrix4; 
+
+    local_to_world_gl_uniform_buffer_handle : GLuint;
+
+    position_buffer_gl_handle: GLuint;
+    local_to_world_index_buffer_gl_handle : GLuint;
+    color_buffer_gl_handle: GLuint; // I'm just stuffing this in here so we can render basic things and not get visually confused.
 }
 
 // don't buffer the same thing twice? I guess you can if they'res really 2 of them.
@@ -87,7 +102,6 @@ buffer_object :: (
         ) -> object_index: u32, success: bool {
 
     // todo: transform matrix
-
 
     // note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
     // the indices use duplicates sometimes to refer to the same vertex multiple times.
