@@ -21,6 +21,12 @@ disable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
 // SHADER_PREFIX : string : "#version 330 core";
 SHADER_PREFIX : string : "";
 
+/*
+
+The optimal workflow would be that we specify what shaders we want to use and then we can generated the IVPX_Renderable struct for taht specific shader so that we only need to use the ones that we ever have to render rather than thinking about some combinatorial explosion of IVPXYZ's
+
+*/
+
 
 /*
 This is a thing that allows us to render a bunch of things in a game, each of which are their "own object", and can be 
@@ -250,6 +256,7 @@ buffer_local_to_world_matrices :: (using potr : *Per_Object_Transform_Renderer) 
 }
 
 // precond: the shader program is initialize.
+// without initialization the potr has undefined behavior
 init :: (using potr : *Per_Object_Transform_Renderer) { 
 
     for 0..NUM_LOCAL_TO_WORLD_MATRICES-1
