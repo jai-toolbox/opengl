@@ -453,3 +453,8 @@ create_shader_program :: (vertex_source : string, fragment_source : string) -> p
 
 	return result, true;
 }
+
+set_vsync :: (value : bool) {
+    wglSwapIntervalEXT(xx ifx value then 1 else 0);
+}
+
