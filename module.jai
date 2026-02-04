@@ -122,7 +122,7 @@ buffer_object :: (
     for indices 
         array_add(*global_indices_for_object, xx index + it);
 
-    log("just added idx: % to the table", index);
+    // log("just added idx: % to the table", index);
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
     glBindVertexArray(vertex_attribute_array_gl_handle);

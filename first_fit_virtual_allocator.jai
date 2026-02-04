@@ -31,7 +31,7 @@ virtual_alloc :: (using ffva : *First_Fit_Virtual_Allocator, length: u32) -> sta
     last_end : u32 = 0;
 
     for occupied_intervals {                                     
-        log("iterating over occupied interval");
+        // log("iterating over occupied interval");
         start := it[0];
         end := it[1];
 
@@ -45,13 +45,13 @@ virtual_alloc :: (using ffva : *First_Fit_Virtual_Allocator, length: u32) -> sta
 
     // check if there's enough space after the last interval
     if (size - last_end >= length) {
-        log("there was enough space after the last end");
+        // log("there was enough space after the last end");
         interval := u32.[last_end, last_end + length];
         array_add(*occupied_intervals, interval);
         return last_end, true;
     }
 
-    log("not enough space after last end");
+    // log("not enough space after last end");
 
     return 0, false;
 }
