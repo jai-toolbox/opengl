@@ -84,11 +84,34 @@ Per_Shader_Renderer :: struct {
     buffered_object_index_to_global_indices: Table(u32, [..] u32);
 }
 
+/*
+
+Something important to realize about this is what a local_to_world_index is and how that is different from a object index.
+
+A local to world index, is the index which maps into the local to world matrices which tells the renderer where this object should be in space.
+
+The object index a number which represents where we can put this object in the gpu's buffer where there is enough space to fit all the data in.
+
+Because we do SoA style buffers for each attribute, each buffer is just a scaled version of the other depending on the size of the individual elements stored in the buffer. (buffer is just an array of a particular attribute)
+
+Now we can understand the difference between this and the local to world index.
+
+If you were to buffer an object that has 8 vertices, then in each SoA buffer, we would do "virtual allocation" to find a place we can store it, and at the start
+that will be index 0, and we'll take up 8 of the elements in the array. We can assign this object the local_to_world index of 0 as well. 
+
+When we create the second object, then now its object_index is going to be 8, because that was the next space in the buffer where we can put the object. 
+But we can still assign this object the local to world index of 1, because the local to world index is the same along every vertex of the object. 
+
+This means that the local_to_world index can just be the number of objects you've created up until this point (not thinking about removals or anything).
+
+*/
 Per_Object_Transform_Renderer :: struct { // POTR for short said as "potter"
 
     using psr : Per_Shader_Renderer;
 
     NUM_LOCAL_TO_WORLD_MATRICES :: 1024;
+    current_local_to_world_index : u32 = 0;
+
     local_to_world_matrices : [NUM_LOCAL_TO_WORLD_MATRICES] Matrix4; 
 
     local_to_world_gl_uniform_buffer_handle : GLuint;
@@ -98,14 +121,19 @@ Per_Object_Transform_Renderer :: struct { // POTR for short said as "potter"
     color_buffer_gl_handle: GLuint; // I'm just stuffing this in here so we can render basic things and not get visually confused.
 }
 
-// don't buffer the same thing twice? I guess you can if they'res really 2 of them.
+// a templated adaptor to allow buffering of generic things that have the required attributes so we can be lazy.
+// it didn't work because it would recursively select itself, which is not what I want
+// buffer_object_from_renderable :: (potr : *Per_Object_Transform_Renderer, renderable : $T) -> object_index: u32, local_to_world_index: u32, success: bool {
+//     return buffer_object(potr, renderable.indices, renderable.positions, renderable.rgb_colors);
+// }
+
+// todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
-        using potr : Per_Object_Transform_Renderer, 
+        using potr : *Per_Object_Transform_Renderer, 
         indices: [..] u32, 
-        local_to_world_indices: [..] u32,
         positions: [..] Vector3, 
         colors: [..] Vector3
-        ) -> object_index: u32, success: bool {
+        ) -> object_index: u32, local_to_world_index: u32, success: bool {
 
     // todo: transform matrix
 
@@ -115,7 +143,7 @@ buffer_object :: (
     index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
     if (! success) {
         log("ran out of virtual memory");
-        return 0, false;
+        return 0, 0, false;
     }
 
     global_indices_for_object : [..] u32;
@@ -137,12 +165,22 @@ buffer_object :: (
     glBindBuffer(GL_ARRAY_BUFFER, color_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), colors.count * size_of(Vector3), colors.data);
 
+    // local_to_world_indices are an array of the same value which is the local to world index
+    // the alternative to this is binding the uniform per object, which we're trying to avoid because we want to render
+    // everything at once in one big draw call.
+    
+    local_to_world_indices: [..] u32;
+    for 0..positions.count array_add(*local_to_world_indices, current_local_to_world_index);
+
+    ltw_index_we_used := current_local_to_world_index;
+    current_local_to_world_index += 1;
+
     glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
 
     glBindVertexArray(0);
 
-    return index, true;
+    return index, ltw_index_we_used, true;
 }
 
 queue_render :: (using potr : *Per_Object_Transform_Renderer, object_index : u32) { 
