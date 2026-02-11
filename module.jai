@@ -101,7 +101,7 @@ But we can still assign this object the local to world index of 1, because the l
 This means that the local_to_world index can just be the number of objects you've created up until this point (not thinking about removals or anything).
 
 */
-Per_Object_Transform_Renderer :: struct { // POTR for short said as "potter", also this name should say that it uses a camera.
+Per_Object_Transform_Renderer :: struct { // POTR for short said as "potter", also this name should say that it uses a camera and color.
 
     using #as psr : Per_Shader_Renderer;
 
