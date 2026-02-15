@@ -6,6 +6,8 @@
 
 #import "Hash_Table";
 
+#load "renderer_generation_per_shader.jai";
+
 // opengl's coordinate system is only NDC space, everything else is something that you make up
 // and ndc space we have the following, the misconception can be understood here:
 // https://www.gingerbill.org/article/2024/11/10/opengl-is-not-right-handed/
@@ -26,59 +28,6 @@ SHADER_PREFIX : string : "";
 The optimal workflow would be that we specify what shaders we want to use and then we can generated the IVPX_Renderable struct for taht specific shader so that we only need to use the ones that we ever have to render rather than thinking about some combinatorial explosion of IVPXYZ's
 
 */
-
-
-/*
-This is a thing that allows us to render a bunch of things in a game, each of which are their "own object", and can be 
-moved independently in space.
-
-Instead of doing the per object vbo, ibo, vao approach, instead we just make a single grouping of that, which holds everything.
-
-When you create an object, it is usually an itp-like (indexed triangle positions), and its indices use values from 0 to k. 
-
-In this system we'll be holding tons of objects, and so if each object used their own local 0 to k indices, then the rendering would
-fall off the rails due to overlapping indices, instead what happens here is that we have a huge index array, inside this array we know which ones are occupied and which are free.
-
-Therefore we can think about an object in this system as something that holds a collection of global indices into the huge buffer
-
-We take an itp and find enough contiguous space to store it, and then store its "global indices", which might be j to j + k.
-
-*/
-// note that positions are assumed to be part of this because you can't really do anything without positions in rendering
-// note: this allocates big buffers and then all objects are put into these buffers, there is no "per object vbo,ibo,vao" thing going on here.
-//
-// 
-
-/*
- this is a "base renderer" struct that you can compose into other structs to make real renderers.
- this models the idea that in opengl you can only render something with a particular shader
- this means that the number of draw calls you need to render a scene is at least the number of 
- shaders required to render the scene, this might be a reason why people make mega shaders.
-*/
-Per_Shader_Renderer :: struct { // this should be called a per object shader renderer or something better.
-
-    MAX_NUM_ELEMENTS_IN_EACH_BUFFER : u32 = 100000;
-
-    shader_program_gl_handle: GLuint;
-
-    vertex_attribute_array_gl_handle : GLuint;
-
-
-    // when you use glDrawElements, it takes from the active GL_ELEMENT_ARRAY_BUFFER
-    // therefore when we want to render objects, we need to buffer the correct global indices into this 
-    // the size of this index buffer could actually technically be larger than MAX_NUM_ELEMENTS_IN_EACH_BUFFER 
-    // this is because a regular quad has 4 positions, but 6 indices, so indices.count >= positions.count
-    index_buffer_gl_handle : GLuint;
-
-    object_indices_to_render_this_frame : [..] u32;
-    object_indices_we_rendered_last_frame : [..] u32;
-
-    // this is how we manage the memory in all the attribute buffers and index buffer
-    first_fit_virtual_allocator : First_Fit_Virtual_Allocator;
-
-    // should this be a map of id to array views?
-    buffered_object_index_to_global_indices: Table(u32, [..] u32);
-}
 
 /*
 
@@ -232,61 +181,6 @@ render :: (using potr : *Per_Object_Transform_Renderer) {
 //     color_buffer_gl_handle : GLuint;
 // }
 
-GL_Vertex_Attribute_Configuration :: struct { // gl_vac
-
-    var_name_in_shader : string;
-
-    components_per_vertex: GLint;
-    data_type_of_component: GLenum;
-    normalize : GLboolean;
-    stride : GLsizei ;
-    pointer_offset_to_start_of_data : *void;
-}
-
-// this defines the allowed attribute variables that our shaders can have.
-GL_Shader_Attribute_Variable :: enum u32 { // gl_sav
-    POSITION;
-
-    PASSTHROUGH_RGB_COLOR;
-    RGB_COLOR;
-
-    WORLD_TO_CAMERA;
-    CAMERA_TO_CLIP;
-}
-
-POSITION_GL_VAC :: GL_Vertex_Attribute_Configuration.{"position", 3, GL_FLOAT, GL_FALSE, 0, cast (*void) 0};
-PASSTHROUGH_RGB_COLOR_GL_VAC :: GL_Vertex_Attribute_Configuration.{"passthrough_rgb_color", 3, GL_FLOAT, GL_FALSE, 0, cast (*void) 0};
-LOCAL_TO_WORLD_INDEX_GL_VAC :: GL_Vertex_Attribute_Configuration.{"local_to_world_index", 1,  GL_UNSIGNED_INT, GL_FALSE, 0, cast (* void) 0};
-
-init_vertex_attribute :: (
-        shader_program_gl_handle : GLuint, 
-        vertex_attribute_array_gl_handle: GLuint, 
-        attribute_buffer_gl_handle: GLuint, 
-        using glvac : GL_Vertex_Attribute_Configuration
-    ) {
-
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, attribute_buffer_gl_handle);
-
-    s := temp_c_string(var_name_in_shader);
-    x := glGetAttribLocation(shader_program_gl_handle, temp_c_string(var_name_in_shader));
-
-    vertex_attribute_gl_handle : s32 = glGetAttribLocation(shader_program_gl_handle, temp_c_string(var_name_in_shader));
-
-    glEnableVertexAttribArray(xx vertex_attribute_gl_handle);
-
-    // todo: there are probably more integer types right?
-    data_type_is_integer : bool = data_type_of_component == GL_INT || data_type_of_component == GL_UNSIGNED_INT;
-
-    if (data_type_is_integer) { 
-        // doesn't take in the normalize value.
-        glVertexAttribIPointer(xx vertex_attribute_gl_handle, components_per_vertex, data_type_of_component, stride, pointer_offset_to_start_of_data);
-    } else {
-        glVertexAttribPointer(xx vertex_attribute_gl_handle, components_per_vertex, data_type_of_component, normalize, stride, pointer_offset_to_start_of_data);
-    }
-
-    glBindVertexArray(0);
-}
 
 buffer_local_to_world_matrices :: (using potr : *Per_Object_Transform_Renderer) {
     glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_matrices_gl_handle);
@@ -432,165 +326,7 @@ void main() {
 }
 END
 
-// TODO: this is unused so far, but it would be eventually generated per vertex/fragmnt shader pair and used to fill out this struct
-// we can also meta program this out to make a renderer for the shader program which does the big buffer soa approach.
-Shader :: struct {
-
-    attributes : [..] GL_Shader_Attribute_Variable;
-
-    vertex_shader_source : string;
-    fragment_shader_source : string;
-}
-
-// should be autogenerated from a tuple?
-ABSOLUTE_POSITION_COLOR_SHADER :: Shader.{
-    vertex_shader_source = ABSOLUTE_POSITION_COLOR_VERTEX_SHADER,
-    fragment_shader_source = COLOR_FRAGMENT_SHADER
-};
-
-// this should be generated by the meta programming too.
-Absolute_Position_Color_Renderable :: struct {
-    indices : [..] u32;
-    positions : [..] Vector3;
-    rgb_colors : [..] Vector3;
-
-    object_index : u32;
-}
-
-// meta program this by looking at a shader like the one above.
-Per_Object_Absolute_Position_Color_Renderer :: struct {
-    using #as psr : Per_Shader_Renderer;
-
-    // todo meta program this by iterating over the non passthrough vertex attributes in each shader source.
-
-    position_buffer_gl_handle: GLuint;
-    color_buffer_gl_handle: GLuint; 
-}
-
-// precond: the shader program is initialize.
-// without initialization the potr has undefined behavior
-init :: (using apcr : *Per_Object_Absolute_Position_Color_Renderer) { 
-
-    shader_program_handle, success := create_shader_program(ABSOLUTE_POSITION_COLOR_VERTEX_SHADER, COLOR_FRAGMENT_SHADER);
-	if !success
-        log("shader compilation failed");
-		// return false;
-    if success 
-        log("shader compilation succeeded");
-
-    shader_program_gl_handle = shader_program_handle;
-
-    first_fit_virtual_allocator.size = MAX_NUM_ELEMENTS_IN_EACH_BUFFER;
-
-    init_buffers_no_data(apcr);
-}
-
-init_buffers_no_data :: (using apcr : *Per_Object_Absolute_Position_Color_Renderer) {
-
-    glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-
-    glGenBuffers(1, *index_buffer_gl_handle);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // NOTE: it's probably wrong to use  MAX_NUM_ELEMENTS_IN_EACH_BUFFER because as noted before the number of indices
-    // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) *  MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
-    // note: we don't have to init the vertex attribute for indices because they used in the shader program for rendering, they're just used during glDrawElements.
-
-    // this should be meta programmed away, by iterating over a vector of GL_VAC's and #inserting the code here.
-
-    glGenBuffers(1, *position_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, position_buffer_gl_handle);
-    glBufferData(GL_ARRAY_BUFFER, size_of(Vector3) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, position_buffer_gl_handle, POSITION_GL_VAC);
-
-    glGenBuffers(1, *color_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, color_buffer_gl_handle);
-    glBufferData(GL_ARRAY_BUFFER, size_of(Vector3) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, color_buffer_gl_handle, PASSTHROUGH_RGB_COLOR_GL_VAC);
-
-	glBindBuffer (GL_ARRAY_BUFFER, 0);
-}
-
-buffer_object :: (
-        using apcr : *Per_Object_Absolute_Position_Color_Renderer, 
-        renderable : *$T/interface Absolute_Position_Color_Renderable
-        ) -> success: bool {
-    object_index, success := buffer_object(apcr, renderable.indices, renderable.positions, renderable.rgb_colors);
-    if success renderable.object_index = object_index;
-    return success;
-}
-
-buffer_object :: (
-        using apcr : *Per_Object_Absolute_Position_Color_Renderer, 
-        indices: [..] u32, 
-        positions: [..] Vector3, 
-        colors: [..] Vector3
-        ) -> object_index: u32, success: bool {
-
-    // note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
-    // the indices use duplicates sometimes to refer to the same vertex multiple times.
-    length := positions.count;
-    index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
-    if (! success) {
-        log("ran out of virtual memory");
-        return 0, false;
-    }
-
-    global_indices_for_object : [..] u32;
-    for indices 
-        array_add(*global_indices_for_object, xx index + it);
-
-    // log("just added idx: % to the table", index);
-    table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
-
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-
-    // todo meta program this buy looping over attributes to do this.
-        
-    glBindBuffer(GL_ARRAY_BUFFER, position_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
-
-    glBindBuffer(GL_ARRAY_BUFFER, color_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), colors.count * size_of(Vector3), colors.data);
-
-    glBindVertexArray(0);
-
-    return index, true;
-}
-
-// todo this can probably take in the per shader renderer thing.
-render :: (using potr : *Per_Object_Absolute_Position_Color_Renderer) {
-
-    glUseProgram(shader_program_gl_handle);
-
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-    // todo: reserve so we don't get a ton of reallocations in this for loop
-    geom_indices_to_render : [..] u32; 
-    // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
-    for object_indices_to_render_this_frame {
-        geom_indices , success := table_find(*buffered_object_index_to_global_indices, it);
-        if !success log("couldn't find the global indices of object with id: %", it);
-        for geom_indices 
-            array_add(*geom_indices_to_render, it);
-    }
-
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
-    // as we will only access the smaller portion
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
-
-    glDrawElements(GL_TRIANGLES, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
-
-    // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
-
-    array_reset(*object_indices_to_render_this_frame);
-
-    glBindVertexArray(0);
-    glUseProgram(0);
-}
-
+#load "per_object_absolute_position_color_renderer.jai";
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {
     success : s32;
