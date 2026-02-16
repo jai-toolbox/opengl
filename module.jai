@@ -228,20 +228,29 @@ init_buffers_no_data :: (using potr : *Per_Object_Transform_Renderer) {
     // note: we don't have to init the vertex attribute for indices because they used in the shader program for rendering, they're just used during glDrawElements.
 
 
-    glGenBuffers(1, *position_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, position_buffer_gl_handle);
-    glBufferData(GL_ARRAY_BUFFER, size_of(Vector3) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, position_buffer_gl_handle, POSITION_GL_VAC);
+    // glGenBuffers(1, *position_buffer_gl_handle);
+    // glBindBuffer(GL_ARRAY_BUFFER, position_buffer_gl_handle);
+    // glBufferData(GL_ARRAY_BUFFER, size_of(Vector3) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
+    // init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, position_buffer_gl_handle, POSITION_GL_VAC);
 
-    glGenBuffers(1, *color_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, color_buffer_gl_handle);
-    glBufferData(GL_ARRAY_BUFFER, size_of(Vector3) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, color_buffer_gl_handle, PASSTHROUGH_RGB_COLOR_GL_VAC);
+    generate_buffer_for_vertex_attribute(*position_buffer_gl_handle, Vector3, MAX_NUM_ELEMENTS_IN_EACH_BUFFER);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, position_buffer_gl_handle, .POSITION);
 
-    glGenBuffers(1, *local_to_world_index_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    glBufferData(GL_ARRAY_BUFFER, size_of(u32) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_index_buffer_gl_handle, LOCAL_TO_WORLD_INDEX_GL_VAC);
+    // glGenBuffers(1, *color_buffer_gl_handle);
+    // glBindBuffer(GL_ARRAY_BUFFER, color_buffer_gl_handle);
+    // glBufferData(GL_ARRAY_BUFFER, size_of(Vector3) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
+    // init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, color_buffer_gl_handle, PASSTHROUGH_RGB_COLOR_GL_VAC);
+
+    generate_buffer_for_vertex_attribute(*color_buffer_gl_handle, Vector3, MAX_NUM_ELEMENTS_IN_EACH_BUFFER);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, color_buffer_gl_handle, .PASSTHROUGH_RGB_COLOR);
+
+    // glGenBuffers(1, *local_to_world_index_buffer_gl_handle);
+    // glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
+    // glBufferData(GL_ARRAY_BUFFER, size_of(u32) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
+    // init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_index_buffer_gl_handle, LOCAL_TO_WORLD_INDEX_GL_VAC);
+
+    generate_buffer_for_vertex_attribute(*local_to_world_index_buffer_gl_handle, u32, MAX_NUM_ELEMENTS_IN_EACH_BUFFER);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_index_buffer_gl_handle, .LOCAL_TO_WORLD_INDEX);
 
 	glBindBuffer (GL_ARRAY_BUFFER, 0);
 }
