@@ -11,7 +11,7 @@ I want the following:
 
 // TODO: this is unused so far, but it would be eventually generated per vertex/fragmnt shader pair and used to fill out this struct
 // we can also meta program this out to make a renderer for the shader program which does the big buffer soa approach.
-Shader :: struct { // call this Shader_Metadata?
+Shader_Metadata :: struct { // call this Shader_Metadata?
 
     name : string;
 
@@ -245,7 +245,34 @@ generate_buffer_for_vertex_attribute :: (attribute_buffer_gl_handle : *GLuint, $
     glBufferData(GL_ARRAY_BUFFER, size_of(attribute_type) * num_elements, null, GL_DYNAMIC_DRAW);
 }
 
+opengl_code_to_generate_a_buffer_for_a_vertex_attribute :: (gl_vac : GL_Vertex_Attribute_Configuration) -> string {
+    return sprint(#string END
+
+    glGenBuffers(1, *%1_buffer_gl_handle);
+    glBindBuffer(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
+    glBufferData(GL_ARRAY_BUFFER, size_of(%2) * MAX_NUM_ELEMENTS_IN_EACH_BUFFER, null, GL_DYNAMIC_DRAW);
+
+    END, gl_vac.var_name_in_shader, gl_vac.type_in_jai);
+}
+
+// todo I want to actually do these functions and then automate the passing of parameters, much better.
+
+// generate_buffer_for_vertex_attribute
+
+// to be used in buffer object
+opengl_code_to_buffer_vertex_attribute_data_at_index :: (gl_vac : GL_Vertex_Attribute_Configuration) -> string {
+    return sprint(#string END
+
+    glBindBuffer(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(%2), %3.count * size_of(%2), %3.data);
+
+    END, gl_vac.var_name_in_shader, gl_vac.type_in_jai, gl_vac.plural_name);
+}
+
+
 GL_Vertex_Attribute_Configuration :: struct { // gl_vac
+
+    type_in_jai: Type;
 
     var_name_in_shader : string;
 

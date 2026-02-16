@@ -421,6 +421,8 @@ create_shader_program :: (vertex_source : string, fragment_source : string) -> p
 }
 
 set_vsync :: (value : bool) {
-    wglSwapIntervalEXT(xx ifx value then 1 else 0);
+	#if OS == .WINDOWS {
+        wglSwapIntervalEXT(xx ifx value then 1 else 0);
+    }
 }
 
