@@ -1,0 +1,140 @@
+// auto-generated renderer for shader: Absolute_Position_Color
+// do not edit manually.
+
+
+Absolute_Position_Color_Renderable :: struct {
+    indices : [..] u32;
+    object_index : u32;
+
+    positions: [..] Vector3;
+    rgb_colors: [..] Vector3;
+
+}
+
+
+Absolute_Position_Color_Renderer :: struct {
+    using #as psr : Per_Shader_Renderer;
+
+
+
+    positions_buffer_gl_handle: GLuint;
+    passthrough_rgb_colors_buffer_gl_handle: GLuint;
+
+}
+
+
+init :: (using renderer : *Absolute_Position_Color_Renderer) { 
+    vertex_shader_source := read_entire_file("data/shaders/absolute_position_color.vs");
+    fragment_shader_source := read_entire_file("data/shaders/color.fs");
+
+    init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
+    init_buffers_no_data(renderer);
+
+
+
+}
+
+
+
+init_buffers_no_data :: (using apcr : *Absolute_Position_Color_Renderer) { // todo change renderer name
+
+    glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
+    glBindVertexArray(vertex_attribute_array_gl_handle);
+
+
+
+    glGenBuffers(1, *index_buffer_gl_handle);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
+    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) *  max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
+    // note: we don't have to init the vertex attribute for indices because they used in the shader program for rendering, they're just used during glDrawElements.
+
+    generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, positions_buffer_gl_handle, .POSITION);
+
+    generate_buffer_for_vertex_attribute(*passthrough_rgb_colors_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_rgb_colors_buffer_gl_handle, .PASSTHROUGH_RGB_COLOR);
+
+
+
+	glBindBuffer (GL_ARRAY_BUFFER, 0);
+}
+
+// todo ability to specify the transform matrix upon buffering?
+buffer_object :: (
+        using renderer: *Absolute_Position_Color_Renderer,
+        indices : [..] u32,
+        positions : [..] Vector3,
+        rgb_colors : [..] Vector3
+
+        ) -> object_index: u32, success: bool {
+
+    // note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
+    // the indices use duplicates sometimes to refer to the same vertex multiple times.
+    length := positions.count; // TODO: need to metaprogram this out, but it's pretty safe for now.
+    index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
+    if !success {
+        log("ran out of virtual memory");
+        return 0, false;
+    }
+
+    global_indices_for_object : [..] u32;
+    for indices 
+        array_add(*global_indices_for_object, xx index + it);
+
+    table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
+
+    glBindVertexArray(vertex_attribute_array_gl_handle);
+
+    
+    glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
+
+
+    
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgb_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), rgb_colors.count * size_of(Vector3), rgb_colors.data);
+
+
+
+
+    glBindVertexArray(0);
+
+    return index, true;
+}
+render :: (using renderer : *Absolute_Position_Color_Renderer) {
+
+    // todo think about if we should be using temporary storage.
+
+    glUseProgram(shader_program_gl_handle);
+
+
+
+    glBindVertexArray(vertex_attribute_array_gl_handle);
+    // todo: reserve so we don't get a ton of reallocations in this for loop
+    geom_indices_to_render : [..] u32; 
+    // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
+    for object_indices_to_render_this_frame {
+        geom_indices , success := table_find(*buffered_object_index_to_global_indices, it);
+        if !success log("couldn't find the global indices of object with id: ", it);
+        for geom_indices 
+            array_add(*geom_indices_to_render, it);
+    }
+
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
+    // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
+    // as we will only access the smaller portion
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
+
+    glDrawElements(GL_TRIANGLES, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
+
+    // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
+
+    array_reset(*object_indices_to_render_this_frame);
+
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
