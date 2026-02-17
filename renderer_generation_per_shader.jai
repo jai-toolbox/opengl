@@ -24,8 +24,8 @@ ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     uniforms = .[],
     per_object_transforms = false,
     num_elements_in_each_buffer = 100000,
-    vertex_shader_path = "data/shaders/absolute_position_color.vs",
-    fragment_shader_path = "data/shaders/color.fs"
+    vertex_shader_path = "data/shaders/out/absolute_position_color.vert",
+    fragment_shader_path = "data/shaders/out/color.frag"
 };
 
 CAMERA_PER_OBJECT_TRANSFORM_COLOR :: Shader_Metadata.{
@@ -34,8 +34,8 @@ CAMERA_PER_OBJECT_TRANSFORM_COLOR :: Shader_Metadata.{
     uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA],
     per_object_transforms = true,
     num_elements_in_each_buffer = 100000,
-    vertex_shader_path = "data/shaders/camera_per_object_transforms.vs",
-    fragment_shader_path = "data/shaders/color.fs"
+    vertex_shader_path = "data/shaders/out/camera_per_object_transforms.vert",
+    fragment_shader_path = "data/shaders/out/color.frag"
 };
 
 get_renderer_struct_name :: (shader : Shader_Metadata) -> string {
