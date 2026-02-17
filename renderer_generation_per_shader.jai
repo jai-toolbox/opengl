@@ -63,6 +63,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     append(*builder, generate_code_for_uniform_setter_functions(shader));
     append(*builder, generate_code_for_init(shader));
     append(*builder, generate_init_buffers_no_data(shader));
+    append(*builder, generate_code_for_buffer_object_from_renderable(shader));
     append(*builder, generate_buffer_object(shader));
     append(*builder, generate_render(shader));
 
@@ -325,6 +326,7 @@ generate_code_for_final_return :: (shader : Shader_Metadata) -> string {
     return "return index, true;";
 }
 
+
 generate_buffer_object :: (shader : Shader_Metadata) -> string {
 
     return tprint(#string END
@@ -364,6 +366,63 @@ buffer_object :: (
     generate_code_for_final_return(shader)
     );
 
+}
+
+generate_code_for_buffer_object_from_renderable :: (shader : Shader_Metadata) -> string {
+
+    push_allocator(temp); 
+
+    // we're building a the body here.
+    buffer_object_call_code: String_Builder;
+
+    if !shader.per_object_transforms { 
+        print_to_builder(*buffer_object_call_code, #string END
+
+    object_index, success := buffer_object(renderer, 
+            renderable.indices, 
+
+        END);
+    } else {
+        print_to_builder(*buffer_object_call_code, #string END
+
+    object_index, local_to_world_index, success := buffer_object(renderer, 
+            renderable.indices, 
+
+        END);
+    }
+
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*buffer_object_call_code, "            renderable.%", attr_conf.argument_name_in_buffer_object); 
+        if it_index < shader.attributes.count-1 {
+            print_to_builder(*buffer_object_call_code, ",\n");
+        } else {
+            print_to_builder(*buffer_object_call_code, "\n    );");
+        }
+    }
+
+    success_assignment_code : String_Builder;
+    print_to_builder(*success_assignment_code, "        renderable.object_index = object_index;\n");
+    if shader.per_object_transforms print_to_builder(*success_assignment_code, "        renderable.local_to_world_index = local_to_world_index;\n");
+
+    return tprint(#string END
+
+buffer_object :: (using renderer : *%1, renderable : *$T/interface %2) -> success: bool {
+
+%3
+
+    if success {
+%4
+    };
+    return success;
+}
+
+    END, 
+    get_renderer_struct_name(shader), 
+    get_renderable_struct_name(shader),
+    builder_to_string(*buffer_object_call_code),
+    builder_to_string(*success_assignment_code)
+    );
 }
 
 

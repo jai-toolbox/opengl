@@ -93,6 +93,25 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Rendere
 	glBindBuffer (GL_ARRAY_BUFFER, 0);
 }
 
+
+buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Color_Renderable) -> success: bool {
+
+
+    object_index, local_to_world_index, success := buffer_object(renderer, 
+            renderable.indices, 
+
+            renderable.positions,
+            renderable.rgb_colors
+    );
+
+    if success {
+        renderable.object_index = object_index;
+        renderable.local_to_world_index = local_to_world_index;
+
+    };
+    return success;
+}
+
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
         using renderer: *Camera_Per_Object_Transform_Color_Renderer,
