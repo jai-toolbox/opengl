@@ -12,6 +12,27 @@ Absolute_Position_Color_Renderable :: struct {
 }
 
 
+Absolute_Position_Color_Geometry :: struct {
+    indices : [..] u32;
+    positions: [..] Vector3;
+    rgb_colors: [..] Vector3;
+}
+
+assign_geometry :: (renderable: *Absolute_Position_Color_Renderable, geometry: $T/interface Absolute_Position_Color_Geometry) {
+    array_copy(*renderable.indices, geometry.indices);
+    array_copy(*renderable.positions, geometry.positions);
+    array_copy(*renderable.rgb_colors, geometry.rgb_colors);
+}
+
+
+deinit :: (renderable: *Absolute_Position_Color_Renderable, renderer: *Absolute_Position_Color_Renderer) {
+    unbuffer_object(*renderer.psr, renderable.object_index);
+    array_free(renderable.indices);
+    array_free(renderable.positions);
+    array_free(renderable.rgb_colors);
+}
+
+
 Absolute_Position_Color_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 

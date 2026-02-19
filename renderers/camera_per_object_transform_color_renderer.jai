@@ -14,6 +14,28 @@ Camera_Per_Object_Transform_Color_Renderable :: struct {
 }
 
 
+Camera_Per_Object_Transform_Color_Geometry :: struct {
+    indices : [..] u32;
+    positions: [..] Vector3;
+    rgb_colors: [..] Vector3;
+}
+
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Color_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Geometry) {
+    array_copy(*renderable.indices, geometry.indices);
+    array_copy(*renderable.positions, geometry.positions);
+    array_copy(*renderable.rgb_colors, geometry.rgb_colors);
+}
+
+
+deinit :: (renderable: *Camera_Per_Object_Transform_Color_Renderable, renderer: *Camera_Per_Object_Transform_Color_Renderer) {
+    unbuffer_object(*renderer.psr, renderable.object_index);
+    renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;
+    array_free(renderable.indices);
+    array_free(renderable.positions);
+    array_free(renderable.rgb_colors);
+}
+
+
 Camera_Per_Object_Transform_Color_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 

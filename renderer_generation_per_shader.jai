@@ -59,6 +59,8 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     print_to_builder(*builder, "// do not edit manually.\n\n");
 
     append(*builder, generate_renderable_struct_for_given_shader(shader));
+    append(*builder, generate_code_for_constructing_renderable_from_generic_geometry_type(shader));
+    append(*builder, generate_code_for_deinit_renderable(shader));
     append(*builder, generate_renderer_struct_for_given_shader(shader));
     append(*builder, generate_code_for_uniform_setter_functions(shader));
     append(*builder, generate_code_for_init(shader));
@@ -154,6 +156,74 @@ generate_renderable_struct_for_given_shader :: (s : Shader_Metadata) -> string {
 }
 
     END, get_renderable_struct_name(s), generate_renderable_struct_attributes(s));
+}
+
+generate_code_for_constructing_renderable_from_generic_geometry_type :: (shader: Shader_Metadata) -> string {
+    push_allocator(temp);
+
+    geometry_struct_name := tprint("%1_Geometry", shader.name);
+
+    geometry_fields: String_Builder;
+    init_string_builder(*geometry_fields);
+    print_to_builder(*geometry_fields, "    indices : [..] u32;\n");
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*geometry_fields, "    %: [..] %;\n", attr_conf.argument_name_in_buffer_object, attr_conf.type_in_jai);
+    }
+
+    assignments: String_Builder;
+    init_string_builder(*assignments);
+    print_to_builder(*assignments, "    array_copy(*renderable.indices, geometry.indices);\n");
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*assignments, "    array_copy(*renderable.%, geometry.%);\n", attr_conf.argument_name_in_buffer_object, attr_conf.argument_name_in_buffer_object);
+    }
+
+    return tprint(#string END
+
+%1 :: struct {
+%2}
+
+assign_geometry :: (renderable: *%3, geometry: $T/interface %1) {
+%4}
+
+    END,
+    geometry_struct_name,
+    builder_to_string(*geometry_fields),
+    get_renderable_struct_name(shader),
+    builder_to_string(*assignments)
+    );
+}
+
+generate_code_for_deinit_renderable :: (shader: Shader_Metadata) -> string {
+    push_allocator(temp);
+
+    array_frees: String_Builder;
+    init_string_builder(*array_frees);
+
+    print_to_builder(*array_frees, "    array_free(renderable.indices);\n");
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*array_frees, "    array_free(renderable.%);\n", attr_conf.argument_name_in_buffer_object);
+    }
+
+    per_object_transform_cleanup := "";
+    if shader.per_object_transforms {
+        per_object_transform_cleanup = "    renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;\n";
+    }
+
+    return tprint(#string END
+
+deinit :: (renderable: *%1, renderer: *%2) {
+    unbuffer_object(*renderer.psr, renderable.object_index);
+%3%4}
+
+    END,
+    get_renderable_struct_name(shader),
+    get_renderer_struct_name(shader),
+    per_object_transform_cleanup,
+    builder_to_string(*array_frees)
+    );
 }
 
 generate_code_for_initting_matrices :: (s : Shader_Metadata) -> string {
@@ -769,4 +839,31 @@ render :: (using psr : *Per_Shader_Renderer) {
 
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+unbuffer_object :: (using psr: *Per_Shader_Renderer, object_index: u32) {
+
+    // note that we don't actually have to unbuffer it from the gpu arrays, we just have to make "free" in the sense that
+    // now other people can use that place in the metadata that keeps up with ownership
+
+    // todo: we should keep a list of what's used for the local to world indices, as of right now it literally just increments
+    // the value by 1 every time, and that keeps it safe, in shaders that have local to world matrices, then we need to 
+    // create a custom unbuffer object, this unbuffer object function needs to additionally free up local to world matrices, which we don't do here.
+
+    virtual_free(*first_fit_virtual_allocator, object_index);
+
+    global_indices, found := table_find(*buffered_object_index_to_global_indices, object_index);
+    if found {
+        array_free(global_indices);
+        table_remove(*buffered_object_index_to_global_indices, object_index);
+    } else {
+        log("unbuffer_object: couldn't find global indices for object_index %", object_index);
+    }
+
+    for object_indices_to_render_this_frame {
+        if it == object_index {
+            remove it;
+            break;
+        }
+    }
 }
