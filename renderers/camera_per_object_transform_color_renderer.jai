@@ -36,6 +36,11 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Color_Renderable, renderer: 
 }
 
 
+set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Color_Renderer, renderable: Camera_Per_Object_Transform_Color_Renderable, matrix: Matrix4) {
+    renderer.local_to_world_matrices[renderable.local_to_world_index] = matrix;
+}
+
+
 Camera_Per_Object_Transform_Color_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 

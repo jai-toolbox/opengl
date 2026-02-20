@@ -61,6 +61,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     append(*builder, generate_renderable_struct_for_given_shader(shader));
     append(*builder, generate_code_for_constructing_renderable_from_generic_geometry_type(shader));
     append(*builder, generate_code_for_deinit_renderable(shader));
+    if shader.per_object_transforms append(*builder, generate_code_for_set_local_to_world_matrix(shader));
     append(*builder, generate_renderer_struct_for_given_shader(shader));
     append(*builder, generate_code_for_uniform_setter_functions(shader));
     append(*builder, generate_code_for_init(shader));
@@ -192,6 +193,24 @@ assign_geometry :: (renderable: *%3, geometry: $T/interface %1) {
     builder_to_string(*geometry_fields),
     get_renderable_struct_name(shader),
     builder_to_string(*assignments)
+    );
+}
+
+generate_code_for_set_local_to_world_matrix :: (shader: Shader_Metadata) -> string {
+    push_allocator(temp);
+
+    renderable_struct_name := get_renderable_struct_name(shader);
+    renderer_struct_name := get_renderer_struct_name(shader);
+
+    return tprint(#string END
+
+set_local_to_world_matrix :: (renderer: *%1, renderable: %2, matrix: Matrix4) {
+    renderer.local_to_world_matrices[renderable.local_to_world_index] = matrix;
+}
+
+    END,
+    renderer_struct_name,
+    renderable_struct_name
     );
 }
 
