@@ -47,7 +47,8 @@ This means that the local_to_world index can just be the number of objects you'v
 
 // these files needs to be generated first... need a way to do that smartly.
 #load "renderers/absolute_position_color_renderer.jai";
-#load "renderers/camera_per_object_transform_color_renderer.jai";
+// #load "renderers/camera_per_object_transform_color_renderer.jai";
+#load "renderers/camera_per_object_transforms_texture_packed_renderer.jai";
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {
     success : s32;

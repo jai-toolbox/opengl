@@ -28,7 +28,8 @@ ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/color.frag"
 };
 
-CAMERA_PER_OBJECT_TRANSFORM_COLOR :: Shader_Metadata.{
+CAMERA_PER_OBJECT_TRANSFORMS_COLOR :: Shader_Metadata.{
+    // todo one day rename Transform to Transforms here, will have to update the using code too. hence why I'm not doing it now.
     name = "Camera_Per_Object_Transform_Color", 
     attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
     uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA],
@@ -36,6 +37,39 @@ CAMERA_PER_OBJECT_TRANSFORM_COLOR :: Shader_Metadata.{
     num_elements_in_each_buffer = 100000,
     vertex_shader_path = "data/shaders/out/camera_per_object_transforms.vert",
     fragment_shader_path = "data/shaders/out/color.frag"
+};
+
+/*
+ in opengl3.3 we can batch our objects together but then we run into the problem
+ of how do we bind the right texture if we draw all our objects at once, this shader
+ solves it by making a bunch of texture atlases of all the textures we are using 
+ then we use indices to determine which atlas to go into and then which bounding box is used
+ for a particular texture.
+
+ We abbreivate all the above as a shader being "texture packed". 
+
+ I'm pretty sure that in later versions of opengl 4.6 you can just use bindless textures, but I'm
+ still keeping this in-case there's a context where 3.3 is important.
+*/
+
+CAMERA_PER_OBJECT_TRANSFORMS_TEXTURE_PACKED :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transforms_Texture_Packed", 
+    attributes = .[
+        .POSITION,
+        .PASSTHROUGH_PACKED_TEXTURE_INDEX, 
+        .PASSTHROUGH_TEXTURE_COORDINATE,
+        .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX,
+    ],
+    uniforms = .[
+        .CAMERA_TO_CLIP, 
+        .WORLD_TO_CAMERA,
+        .PACKED_TEXTURES,
+        .PACKED_TEXTURE_BOUNDING_BOXES
+    ],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_per_object_transforms_texture_packed.vert",
+    fragment_shader_path = "data/shaders/out/texture_packed.frag"
 };
 
 get_renderer_struct_name :: (shader : Shader_Metadata) -> string {
@@ -47,7 +81,8 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 }
 
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
-#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_COLOR);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_TEXTURE_PACKED);
 
 create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     push_allocator(temp);
@@ -576,12 +611,17 @@ GL_Vertex_Attribute_Configuration :: struct { // gl_vac
 
     type_in_jai: Type;
 
+    // I'm pretty sure this is just the enum name right? can I remove this?
     var_name_in_shader : string;
 
+    // the plural name can be automated as well, index -> indices everything else trivial add exceptions when needed.
     // this is actually what we call something in the code or something.
     plural_name : string;
 
     argument_name_in_buffer_object : string;
+
+    // when a value is constant across an object, then you only have to pass in a single value into buffer object rather than an array of them
+    constant_across_object : bool;  
 
     // value_is_constant_per_object : bool; // as of right now only local to world index has this property, when there are other ones that have this we could think about doing this.
 
@@ -639,50 +679,100 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     POSITION;
     LOCAL_TO_WORLD_INDEX;
     PASSTHROUGH_RGB_COLOR;
+
+    PASSTHROUGH_PACKED_TEXTURE_INDEX;
+    PASSTHROUGH_TEXTURE_COORDINATE;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX;
+    
 }
 
 GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
     WORLD_TO_CAMERA;
     CAMERA_TO_CLIP;
+    PACKED_TEXTURES;
+    PACKED_TEXTURE_BOUNDING_BOXES;
 }
 
+// this stuff should probably go elsewhere
 get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_Attribute_Configuration {
     if #complete attr == {
         case .POSITION;
             return .{
-                type_in_jai              = Vector3,
-                var_name_in_shader       = "position",
-                plural_name              = "positions",
-                argument_name_in_buffer_object = "positions",
-                components_per_vertex    = 3,
-                data_type_of_component   = GL_FLOAT,
-                normalize                = GL_FALSE,
-                stride                   = 0,
+                type_in_jai                     = Vector3,
+                var_name_in_shader              = "position",
+                plural_name                     = "positions",
+                argument_name_in_buffer_object  = "positions",
+                constant_across_object          = false,
+                components_per_vertex           = 3,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
                 pointer_offset_to_start_of_data = null,
             };
         case .PASSTHROUGH_RGB_COLOR;
             return .{
-                type_in_jai              = Vector3,
-                var_name_in_shader       = "passthrough_rgb_color",
-                plural_name              = "passthrough_rgb_colors",
-                argument_name_in_buffer_object = "rgb_colors",
-                components_per_vertex    = 3,
-                data_type_of_component   = GL_FLOAT,
-                normalize                = GL_FALSE,
-                stride                   = 0,
+                type_in_jai                     = Vector3,
+                var_name_in_shader              = "passthrough_rgb_color",
+                plural_name                     = "passthrough_rgb_colors",
+                argument_name_in_buffer_object  = "rgb_colors",
+                constant_across_object          = false,
+                components_per_vertex           = 3,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
                 pointer_offset_to_start_of_data = null,
                 passthrough              = true,
             };
         case .LOCAL_TO_WORLD_INDEX;
             return .{
-                type_in_jai              = u32,
-                var_name_in_shader       = "local_to_world_index",
-                plural_name              = "local_to_world_indices",
-                argument_name_in_buffer_object = "local_to_world_index",
-                components_per_vertex    = 1,
-                data_type_of_component   = GL_UNSIGNED_INT,
-                normalize                = GL_FALSE,
-                stride                   = 0,
+                type_in_jai                     = u32,
+                var_name_in_shader              = "local_to_world_index",
+                plural_name                     = "local_to_world_indices",
+                argument_name_in_buffer_object  = "local_to_world_index",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_UNSIGNED_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_PACKED_TEXTURE_INDEX;
+            return .{
+                type_in_jai                     = int,
+                var_name_in_shader              = "passthrough_packed_texture_index",
+                plural_name                     = "passthrough_packed_texture_indices",
+                argument_name_in_buffer_object  = "packed_texture_index",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_TEXTURE_COORDINATE;
+            return .{
+                type_in_jai                     = Vector2,
+                var_name_in_shader              = "passthrough_texture_coordinate",
+                plural_name                     = "passthrough_texture_coordinates",
+                argument_name_in_buffer_object  = "texture_coordinates",
+                constant_across_object          = false,
+                components_per_vertex           = 2,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX;
+            return .{
+                type_in_jai                     = int,
+                var_name_in_shader              = "passthrough_packed_texture_bounding_box_index",
+                plural_name                     = "passthrough_packed_texture_bounding_box_indices",
+                argument_name_in_buffer_object  = "packed_texture_bounding_box_index",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
                 pointer_offset_to_start_of_data = null,
             };
     }
@@ -694,6 +784,10 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = Matrix4, var_name_in_shader = "world_to_camera" };
         case .CAMERA_TO_CLIP;
             return .{ type_in_jai = Matrix4, var_name_in_shader = "camera_to_clip" };
+        case .PACKED_TEXTURES;
+            return .{ type_in_jai = int, var_name_in_shader = "packed_textures" };
+        case .PACKED_TEXTURE_BOUNDING_BOXES;
+            return .{ type_in_jai = int, var_name_in_shader = "packed_texture_bounding_boxes" };
     }
 }
 
