@@ -72,6 +72,42 @@ CAMERA_PER_OBJECT_TRANSFORMS_TEXTURE_PACKED :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/texture_packed.frag"
 };
 
+
+CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_GEOMETRY_PASS :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass", 
+    attributes = .[
+        .POSITION,
+        .PASSTHROUGH_RGB_COLOR,
+        .PASSTHROUGH_NORMAL
+    ],
+    uniforms = .[
+        .CAMERA_TO_CLIP, 
+        .WORLD_TO_CAMERA
+    ],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path   = "data/shaders/out/lighting/camera_per_object_transform_color_normal.vert",
+    fragment_shader_path = "data/shaders/out/lighting/render_position_color_normal_textures.frag"
+};
+
+CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_COMPUTE_LIGHT_PASS :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass", 
+    attributes = .[
+        .POSITION,
+        .PASSTHROUGH_TEXTURE_COORDINATE,
+    ],
+    uniforms = .[
+        .ASPECT_RATIO,
+        .POSITION_TEXTURE,
+        .COLOR_TEXTURE,
+        .NORMAL_TEXTURE
+    ],
+    per_object_transforms = false,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path   = "data/shaders/out/absolute_position_textured.vert",
+    fragment_shader_path = "data/shaders/out/lighting/compute_lighting_from_position_color_normal_textures.frag"
+};
+
 get_renderer_struct_name :: (shader : Shader_Metadata) -> string {
     return tprint("%1_Renderer", shader.name);
 }
@@ -83,6 +119,9 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_TEXTURE_PACKED);
+
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_GEOMETRY_PASS);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_COMPUTE_LIGHT_PASS);
 
 create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     push_allocator(temp);
@@ -652,8 +691,7 @@ gl_uniform_suffix_for_type :: (type: Type) -> string { // unused didn't see the 
     return "UNSUPPORTED_TYPE";
 }
 
-// you have to bind the program before calling this, should we do this ourselves? idk yet.
-set_uniform :: (shader_program_gl_handle: GLuint, uniform:  GL_Shader_Uniform_Variable , m: Matrix4) {
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, m: Matrix4) {
     gl_vuc := get_configuration(uniform);
 
     row_major := GL_TRUE;
@@ -662,6 +700,74 @@ set_uniform :: (shader_program_gl_handle: GLuint, uniform:  GL_Shader_Uniform_Va
     uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
 
     glUniformMatrix4fv(uniform_location, num_matrices_we_are_updating, row_major, *m.coef[0][0]);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, v: Vector2) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform2f(uniform_location, v.x, v.y);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, value: s32) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform1i(uniform_location, value);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, value: u32) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform1ui(uniform_location, value);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, value: float32) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform1f(uniform_location, value);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, v: Vector3) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform3f(uniform_location, v.x, v.y, v.z);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, v: Vector4) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform4f(uniform_location, v.x, v.y, v.z, v.w);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, m: Matrix3) {
+    gl_vuc := get_configuration(uniform);
+    row_major := GL_TRUE;
+    num_matrices_we_are_updating: u32 = 1;
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniformMatrix3fv(uniform_location, num_matrices_we_are_updating, row_major, *m.coef[0][0]);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, value: bool) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform1i(uniform_location, cast(s32) ifx value then 1 else 0);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, x: s32, y: s32) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform2i(uniform_location, x, y);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, x: s32, y: s32, z: s32) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform3i(uniform_location, x, y, z);
+}
+
+set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, x: s32, y: s32, z: s32, w: s32) {
+    gl_vuc := get_configuration(uniform);
+    uniform_location := glGetUniformLocation(shader_program_gl_handle, temp_c_string(gl_vuc.var_name_in_shader));
+    glUniform4i(uniform_location, x, y, z, w);
 }
 
 GL_Vertex_Uniform_Configuration :: struct { // (i don't give a) gl_vuc 
@@ -678,8 +784,12 @@ GL_Vertex_Uniform_Configuration :: struct { // (i don't give a) gl_vuc
 GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     POSITION;
     LOCAL_TO_WORLD_INDEX;
-    PASSTHROUGH_RGB_COLOR;
 
+    // common passthroughs for fragment shader
+    PASSTHROUGH_RGB_COLOR;
+    PASSTHROUGH_NORMAL;
+
+    // used for texture packing
     PASSTHROUGH_PACKED_TEXTURE_INDEX;
     PASSTHROUGH_TEXTURE_COORDINATE;
     PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX;
@@ -687,10 +797,24 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
 }
 
 GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
+    // things with a camera
     WORLD_TO_CAMERA;
     CAMERA_TO_CLIP;
+
+    // used in 2d situations sometimes
+    ASPECT_RATIO;
+
+    // used for texture packing
     PACKED_TEXTURES;
     PACKED_TEXTURE_BOUNDING_BOXES;
+
+    // used in deferred rendering
+    POSITION_TEXTURE;
+    COLOR_TEXTURE;
+    NORMAL_TEXTURE;
+
+    CAMERA_POSITION; // common in lighting situations
+    LIGHTS;
 }
 
 // this stuff should probably go elsewhere
@@ -715,6 +839,20 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 var_name_in_shader              = "passthrough_rgb_color",
                 plural_name                     = "passthrough_rgb_colors",
                 argument_name_in_buffer_object  = "rgb_colors",
+                constant_across_object          = false,
+                components_per_vertex           = 3,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough              = true,
+            };
+        case .PASSTHROUGH_NORMAL;
+            return .{
+                type_in_jai                     = Vector3,
+                var_name_in_shader              = "passthrough_normal",
+                plural_name                     = "passthrough_normals",
+                argument_name_in_buffer_object  = "normals",
                 constant_across_object          = false,
                 components_per_vertex           = 3,
                 data_type_of_component          = GL_FLOAT,
@@ -788,6 +926,19 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = int, var_name_in_shader = "packed_textures" };
         case .PACKED_TEXTURE_BOUNDING_BOXES;
             return .{ type_in_jai = int, var_name_in_shader = "packed_texture_bounding_boxes" };
+        case .ASPECT_RATIO;
+            return .{ type_in_jai = Vector2, var_name_in_shader = "aspect_ratio" };
+        case .POSITION_TEXTURE;
+            return .{ type_in_jai = s32, var_name_in_shader = "position_texture" };
+        case .COLOR_TEXTURE;
+            return .{ type_in_jai = s32, var_name_in_shader = "color_texture" };
+        case .NORMAL_TEXTURE;
+            return .{ type_in_jai = s32, var_name_in_shader = "normal_texture" };
+        case .CAMERA_POSITION;
+            return .{ type_in_jai = Vector3, var_name_in_shader = "camera_position" };
+        case .LIGHTS;
+            // todo the type is a list of lights or something.
+            return .{ type_in_jai = int, var_name_in_shader = "camera_position" };
     }
 }
 

@@ -16,7 +16,6 @@ GL_FORWARD_VEC :: Vector3.{0, 0, 1};
 GL_RIGHT_VEC :: Vector3.{1, 0, 0};
 GL_UP_VEC :: Vector3.{0, 1, 0};
 
-
 enable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
 disable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
 
@@ -47,8 +46,13 @@ This means that the local_to_world index can just be the number of objects you'v
 
 // these files needs to be generated first... need a way to do that smartly.
 #load "renderers/absolute_position_color_renderer.jai";
-// #load "renderers/camera_per_object_transform_color_renderer.jai";
-#load "renderers/camera_per_object_transforms_texture_packed_renderer.jai";
+#load "renderers/camera_per_object_transform_color_renderer.jai";
+#load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
+#load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";
+// #load "renderers/camera_per_object_transforms_texture_packed_renderer.jai";
+
+#load "deferred_lighting.jai";
+
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {
     success : s32;
