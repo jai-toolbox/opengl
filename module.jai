@@ -49,7 +49,7 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/camera_per_object_transform_color_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";
-// #load "renderers/camera_per_object_transforms_texture_packed_renderer.jai";
+#load "renderers/camera_per_object_transforms_packed_texture_renderer.jai";
 
 #load "deferred_lighting.jai";
 

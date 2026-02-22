@@ -52,8 +52,9 @@ CAMERA_PER_OBJECT_TRANSFORMS_COLOR :: Shader_Metadata.{
  still keeping this in-case there's a context where 3.3 is important.
 */
 
-CAMERA_PER_OBJECT_TRANSFORMS_TEXTURE_PACKED :: Shader_Metadata.{
-    name = "Camera_Per_Object_Transforms_Texture_Packed", 
+CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE :: Shader_Metadata.{
+    // todo change to not use transforms instead just the singular.
+    name = "Camera_Per_Object_Transforms_Packed_Texture", 
     attributes = .[
         .POSITION,
         .PASSTHROUGH_PACKED_TEXTURE_INDEX, 
@@ -68,8 +69,8 @@ CAMERA_PER_OBJECT_TRANSFORMS_TEXTURE_PACKED :: Shader_Metadata.{
     ],
     per_object_transforms = true,
     num_elements_in_each_buffer = 100000,
-    vertex_shader_path = "data/shaders/out/camera_per_object_transforms_texture_packed.vert",
-    fragment_shader_path = "data/shaders/out/texture_packed.frag"
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_packed_texture.vert",
+    fragment_shader_path = "data/shaders/out/packed_texture.frag"
 };
 
 
@@ -118,7 +119,8 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR);
-#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_TEXTURE_PACKED);
+
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_GEOMETRY_PASS);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_COMPUTE_LIGHT_PASS);
@@ -923,9 +925,9 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
         case .CAMERA_TO_CLIP;
             return .{ type_in_jai = Matrix4, var_name_in_shader = "camera_to_clip" };
         case .PACKED_TEXTURES;
-            return .{ type_in_jai = int, var_name_in_shader = "packed_textures" };
+            return .{ type_in_jai = s32, var_name_in_shader = "packed_textures" };
         case .PACKED_TEXTURE_BOUNDING_BOXES;
-            return .{ type_in_jai = int, var_name_in_shader = "packed_texture_bounding_boxes" };
+            return .{ type_in_jai = s32, var_name_in_shader = "packed_texture_bounding_boxes" };
         case .ASPECT_RATIO;
             return .{ type_in_jai = Vector2, var_name_in_shader = "aspect_ratio" };
         case .POSITION_TEXTURE;
