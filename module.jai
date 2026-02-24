@@ -44,12 +44,14 @@ This means that the local_to_world index can just be the number of objects you'v
 
 */
 
-// these files needs to be generated first... need a way to do that smartly.
+// these files needs to be generated first... need a way to do that smartly, what if they always just exist...
+// also loading everything is becoming more and more bad, can we not just do a module or something?
 #load "renderers/absolute_position_color_renderer.jai";
 #load "renderers/camera_per_object_transform_color_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";
 #load "renderers/camera_per_object_transforms_packed_texture_renderer.jai";
+#load "renderers/camera_absolute_position_color_renderer.jai";
 
 #load "deferred_lighting.jai";
 

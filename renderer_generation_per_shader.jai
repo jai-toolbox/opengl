@@ -28,6 +28,17 @@ ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/color.frag"
 };
 
+CAMERA_ABSOLUTE_POSITION_COLOR :: Shader_Metadata.{
+    name = "Camera_Absolute_Position_Color", 
+    attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA],
+    per_object_transforms = false,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_absolute_position_color.vert",
+    fragment_shader_path = "data/shaders/out/color.frag"
+};
+
+
 CAMERA_PER_OBJECT_TRANSFORMS_COLOR :: Shader_Metadata.{
     // todo one day rename Transform to Transforms here, will have to update the using code too. hence why I'm not doing it now.
     name = "Camera_Per_Object_Transform_Color", 
@@ -118,6 +129,8 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 }
 
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
+#run create_code_to_render_stuff_with_shader(CAMERA_ABSOLUTE_POSITION_COLOR);
+
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE);
