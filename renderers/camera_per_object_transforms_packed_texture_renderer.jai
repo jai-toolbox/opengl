@@ -61,6 +61,10 @@ Camera_Per_Object_Transforms_Packed_Texture_Renderer :: struct {
     local_to_world_index_buffer_gl_handle : GLuint;
 
 
+    camera_to_clip_uniform_location : GLint = -1;
+    world_to_camera_uniform_location : GLint = -1;
+    packed_textures_uniform_location : GLint = -1;
+    packed_texture_bounding_boxes_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_packed_texture_indices_buffer_gl_handle: GLuint;
@@ -71,23 +75,19 @@ Camera_Per_Object_Transforms_Packed_Texture_Renderer :: struct {
 
 
 set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: Matrix4) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .CAMERA_TO_CLIP, v);
+    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: Matrix4) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .WORLD_TO_CAMERA, v);
+    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: s32) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .PACKED_TEXTURES, v);
+    glUniform1i(renderer.packed_textures_uniform_location, v);
 }
 
 set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: s32) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .PACKED_TEXTURE_BOUNDING_BOXES, v);
+    glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer) { 
@@ -101,6 +101,10 @@ init :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer)
         // this might not be necessary, doing it for now
         local_to_world_matrices[it] = Matrix4_Identity;
 
+    camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
+    world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
+    packed_textures_uniform_location = glGetUniformLocation(shader_program_gl_handle, "packed_textures");
+    packed_texture_bounding_boxes_uniform_location = glGetUniformLocation(shader_program_gl_handle, "packed_texture_bounding_boxes");
 
 }
 

@@ -1,5 +1,6 @@
 #import "String";
 #import "File";
+#import "tbx/section_logger";
 
 Shader_Metadata :: struct { // call this Shader_Metadata?
 
@@ -203,19 +204,35 @@ generate_code_for_per_object_transform_attributes :: (s : Shader_Metadata) -> st
     END;
 }
 
-generate_renderer_struct_for_given_shader :: (s : Shader_Metadata) -> string {
+generate_code_for_cached_uniform_location_attributes :: (shader: Shader_Metadata) -> string {
+    push_allocator(temp);
+    builder: String_Builder;
+    init_string_builder(*builder);
 
+    for shader.uniforms {
+        unif_conf := get_configuration(it);
+        print_to_builder(*builder, "    %_uniform_location : GLint = -1;\n", 
+            to_lower_copy(tprint("%", it)));
+    }
+
+    return builder_to_string(*builder);
+}
+
+generate_renderer_struct_for_given_shader :: (s : Shader_Metadata) -> string {
     return tprint(#string END
 
 %1 :: struct {
     using #as psr : Per_Shader_Renderer;
 
 %2
-
 %3
+%4
 }
 
-    END, get_renderer_struct_name(s), generate_code_for_per_object_transform_attributes(s), jai_struct_attributes_for_gl_vertex_attribute_handles(s.attributes));
+    END, get_renderer_struct_name(s), 
+         generate_code_for_per_object_transform_attributes(s), 
+         generate_code_for_cached_uniform_location_attributes(s),    
+         jai_struct_attributes_for_gl_vertex_attribute_handles(s.attributes));
 }
 
 generate_renderable_struct_attributes :: (shader : Shader_Metadata) -> string {
@@ -343,6 +360,22 @@ generate_code_for_initting_matrices :: (s : Shader_Metadata) -> string {
     END;
 }
 
+generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> string {
+    push_allocator(temp);
+    builder: String_Builder;
+    init_string_builder(*builder);
+
+    for shader.uniforms {
+        unif_conf := get_configuration(it);
+        lower_name := to_lower_copy(tprint("%", it));
+        print_to_builder(*builder, 
+            "    %_uniform_location = glGetUniformLocation(shader_program_gl_handle, \"%\");\n",
+            lower_name, unif_conf.var_name_in_shader);
+    }
+
+    return builder_to_string(*builder);
+}
+
 generate_code_for_init :: (shader : Shader_Metadata) -> string {
     return tprint(#string END
 
@@ -354,10 +387,14 @@ init :: (using renderer : *%1) {
     init_buffers_no_data(renderer);
 
 %4
-
+%5
 }
 
-    END, get_renderer_struct_name(shader), shader.vertex_shader_path, shader.fragment_shader_path, generate_code_for_initting_matrices(shader));
+    END, get_renderer_struct_name(shader), 
+         shader.vertex_shader_path, 
+         shader.fragment_shader_path, 
+         generate_code_for_initting_matrices(shader),
+         generate_code_for_caching_uniform_locations(shader)); 
 }
 
 generate_attribute_setup_code :: (attributes: [] GL_Shader_Vertex_Attribute_Variable) -> string {
@@ -707,6 +744,7 @@ gl_uniform_suffix_for_type :: (type: Type) -> string { // unused didn't see the 
 }
 
 set_uniform :: (shader_program_gl_handle: GLuint, uniform: GL_Shader_Uniform_Variable, m: Matrix4) {
+
     gl_vuc := get_configuration(uniform);
 
     row_major := GL_TRUE;
@@ -959,17 +997,55 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
 
 generate_code_for_uniform_setter_function :: (shader : Shader_Metadata, uniform : GL_Shader_Uniform_Variable) -> string {
     unif_conf := get_configuration(uniform);
+    lower_name := to_lower_copy(tprint("%", uniform));
+    
+    // Determine the right glUniform call based on type
+    gl_call: string;
+    args: string;
+    if unif_conf.type_in_jai == {
+        case Matrix4;
+            gl_call = "glUniformMatrix4fv";
+            args = "renderer.%1_uniform_location, 1, GL_TRUE, *v.coef[0][0]";
+        case Matrix3;
+            gl_call = "glUniformMatrix3fv";
+            args = "renderer.%1_uniform_location, 1, GL_TRUE, *v.coef[0][0]";
+        case Vector4;
+            gl_call = "glUniform4f";
+            args = "renderer.%1_uniform_location, v.x, v.y, v.z, v.w";
+        case Vector3;
+            gl_call = "glUniform3f";
+            args = "renderer.%1_uniform_location, v.x, v.y, v.z";
+        case Vector2;
+            gl_call = "glUniform2f";
+            args = "renderer.%1_uniform_location, v.x, v.y";
+        case float32;
+            gl_call = "glUniform1f";
+            args = "renderer.%1_uniform_location, v";
+        case s32;
+            gl_call = "glUniform1i";
+            args = "renderer.%1_uniform_location, v";
+        case u32;
+            gl_call = "glUniform1ui";
+            args = "renderer.%1_uniform_location, v";
+        case;
+            gl_call = "glUniform1i";
+            args = "renderer.%1_uniform_location, v";
+    }
+    
+    // replace %1 in args with the actual lower_name
+    resolved_args := tprint(args, lower_name);
+    
     return tprint(#string END
 
 set_%1_uniform :: (renderer : *%2, v: %3) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .%4, v);
+    %4(%5);
 }
     END, 
-    to_lower_copy(tprint("%", uniform)), // the context uses temp, so not mallocing
+    lower_name,
     get_renderer_struct_name(shader), 
     unif_conf.type_in_jai, 
-    uniform
+    gl_call,
+    resolved_args
     );
 }
 

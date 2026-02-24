@@ -37,6 +37,10 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer :: str
     using #as psr : Per_Shader_Renderer;
 
 
+    aspect_ratio_uniform_location : GLint = -1;
+    position_texture_uniform_location : GLint = -1;
+    color_texture_uniform_location : GLint = -1;
+    normal_texture_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
@@ -45,23 +49,19 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer :: str
 
 
 set_aspect_ratio_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: Vector2) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .ASPECT_RATIO, v);
+    glUniform2f(renderer.aspect_ratio_uniform_location, v.x, v.y);
 }
 
 set_position_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: s32) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .POSITION_TEXTURE, v);
+    glUniform1i(renderer.position_texture_uniform_location, v);
 }
 
 set_color_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: s32) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .COLOR_TEXTURE, v);
+    glUniform1i(renderer.color_texture_uniform_location, v);
 }
 
 set_normal_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: s32) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .NORMAL_TEXTURE, v);
+    glUniform1i(renderer.normal_texture_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer) { 
@@ -72,6 +72,10 @@ init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute
     init_buffers_no_data(renderer);
 
 
+    aspect_ratio_uniform_location = glGetUniformLocation(shader_program_gl_handle, "aspect_ratio");
+    position_texture_uniform_location = glGetUniformLocation(shader_program_gl_handle, "position_texture");
+    color_texture_uniform_location = glGetUniformLocation(shader_program_gl_handle, "color_texture");
+    normal_texture_uniform_location = glGetUniformLocation(shader_program_gl_handle, "normal_texture");
 
 }
 

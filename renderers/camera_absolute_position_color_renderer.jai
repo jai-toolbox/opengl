@@ -37,6 +37,8 @@ Camera_Absolute_Position_Color_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
+    camera_to_clip_uniform_location : GLint = -1;
+    world_to_camera_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_rgb_colors_buffer_gl_handle: GLuint;
@@ -45,13 +47,11 @@ Camera_Absolute_Position_Color_Renderer :: struct {
 
 
 set_camera_to_clip_uniform :: (renderer : *Camera_Absolute_Position_Color_Renderer, v: Matrix4) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .CAMERA_TO_CLIP, v);
+    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_camera_uniform :: (renderer : *Camera_Absolute_Position_Color_Renderer, v: Matrix4) {
-    // note, if this doesn't work we might have to use the shader program first.
-    set_uniform(renderer.shader_program_gl_handle, .WORLD_TO_CAMERA, v);
+    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 init :: (using renderer : *Camera_Absolute_Position_Color_Renderer) { 
@@ -62,6 +62,8 @@ init :: (using renderer : *Camera_Absolute_Position_Color_Renderer) {
     init_buffers_no_data(renderer);
 
 
+    camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
+    world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
 
 }
 
