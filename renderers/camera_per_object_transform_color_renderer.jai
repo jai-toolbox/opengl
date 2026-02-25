@@ -59,6 +59,7 @@ Camera_Per_Object_Transform_Color_Renderer :: struct {
     positions_buffer_gl_handle: GLuint;
     passthrough_rgb_colors_buffer_gl_handle: GLuint;
 
+
 }
 
 

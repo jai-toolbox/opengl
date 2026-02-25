@@ -45,6 +45,7 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer :: str
     positions_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
 
+
 }
 
 

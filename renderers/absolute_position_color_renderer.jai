@@ -37,12 +37,24 @@ Absolute_Position_Color_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
+    aspect_ratio_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_rgb_colors_buffer_gl_handle: GLuint;
 
+
+    // immediate-mode buffers
+    immediate_vertex_attribute_array_gl_handle: GLuint;
+    immediate_index_buffer_gl_handle: GLuint;
+    immediate_positions_buffer_gl_handle: GLuint;
+    immediate_passthrough_rgb_colors_buffer_gl_handle: GLuint;
+
 }
 
+
+set_aspect_ratio_uniform :: (renderer : *Absolute_Position_Color_Renderer, v: Vector2) {
+    glUniform2f(renderer.aspect_ratio_uniform_location, v.x, v.y);
+}
 
 init :: (using renderer : *Absolute_Position_Color_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/absolute_position_color.vert");
@@ -50,8 +62,10 @@ init :: (using renderer : *Absolute_Position_Color_Renderer) {
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
+    init_immediate_buffers(renderer);
 
 
+    aspect_ratio_uniform_location = glGetUniformLocation(shader_program_gl_handle, "aspect_ratio");
 
 }
 
@@ -80,6 +94,28 @@ init_buffers_no_data :: (using apcr : *Absolute_Position_Color_Renderer) { // to
 
 
 	glBindBuffer (GL_ARRAY_BUFFER, 0);
+}
+
+
+
+init_immediate_buffers :: (using renderer : *Absolute_Position_Color_Renderer) {
+
+    glGenVertexArrays(1, *immediate_vertex_attribute_array_gl_handle);
+    glBindVertexArray(immediate_vertex_attribute_array_gl_handle);
+
+    glGenBuffers(1, *immediate_index_buffer_gl_handle);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 4096, null, GL_STREAM_DRAW);
+
+    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 4096);
+    init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_positions_buffer_gl_handle, .POSITION);
+
+    generate_buffer_for_vertex_attribute(*immediate_passthrough_rgb_colors_buffer_gl_handle, Vector3, 4096);
+    init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_passthrough_rgb_colors_buffer_gl_handle, .PASSTHROUGH_RGB_COLOR);
+
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 
@@ -175,5 +211,43 @@ render :: (using renderer : *Absolute_Position_Color_Renderer) {
 
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+
+immediate_render :: (
+        using renderer: *Absolute_Position_Color_Renderer,
+        indices : [] u32,
+        positions : [] Vector3,
+        rgb_colors : [] Vector3
+        ) {
+
+    assert(indices.count > 0, "No indices to render.");
+
+    glUseProgram(shader_program_gl_handle);
+    glBindVertexArray(immediate_vertex_attribute_array_gl_handle);
+
+    glBindBuffer(GL_ARRAY_BUFFER, immediate_positions_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, positions.count * size_of(Vector3), positions.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, immediate_passthrough_rgb_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, rgb_colors.count * size_of(Vector3), rgb_colors.data);
+
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.count * size_of(u32), indices.data);
+
+    glDrawElements(GL_TRIANGLES, xx indices.count, GL_UNSIGNED_INT, cast(*void) 0);
+
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
+
+immediate_render :: (using renderer : *Absolute_Position_Color_Renderer, geometry : *$T/interface Absolute_Position_Color_Geometry) {
+    immediate_render(renderer,
+            geometry.indices,
+            geometry.positions,
+            geometry.rgb_colors
+    );
 }
 

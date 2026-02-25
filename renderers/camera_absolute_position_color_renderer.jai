@@ -43,6 +43,7 @@ Camera_Absolute_Position_Color_Renderer :: struct {
     positions_buffer_gl_handle: GLuint;
     passthrough_rgb_colors_buffer_gl_handle: GLuint;
 
+
 }
 
 

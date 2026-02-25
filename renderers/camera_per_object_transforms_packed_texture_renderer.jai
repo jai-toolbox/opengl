@@ -71,6 +71,7 @@ Camera_Per_Object_Transforms_Packed_Texture_Renderer :: struct {
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
     passthrough_packed_texture_bounding_box_indices_buffer_gl_handle: GLuint;
 
+
 }
 
 

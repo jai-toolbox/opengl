@@ -15,6 +15,25 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
 
     num_elements_in_each_buffer : u32;
 
+
+    /*
+     By default our shaders are in "retained mode", this is when you submit geometry to the GPU 
+     and then we have a handle to that geometry. When we want to draw it, we use the handle to do so.
+     The geometry persists on the GPU across frames until explicitly removed.
+
+     On the other hand there is value to being able to render things on a per-frame basis without 
+     the overhead of managing handles and GPU-side allocations. This is "immediate mode" geometry 
+     is uploaded and drawn in one shot, with no expectation that it persists beyond the current frame.
+     This is useful for debug visualization, gizmos, overlays, or any transient geometry that changes 
+     every frame and would otherwise require constant re-buffering through the retained path.
+
+     When immediate_mode_support is true, the renderer will allocate a separate set of GL buffers 
+     dedicated to immediate draws, so that immediate and retained rendering can be freely interleaved 
+     without interfering with each other.
+    */
+    immediate_mode_support : bool = false;
+    num_elements_in_each_immediate_buffer: u32 = 4096;
+
     vertex_shader_path   : string;
     fragment_shader_path : string;
 }
@@ -22,8 +41,9 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
 ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     name = "Absolute_Position_Color", 
     attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
-    uniforms = .[],
+    uniforms = .[.ASPECT_RATIO],
     per_object_transforms = false,
+    immediate_mode_support = true,
     num_elements_in_each_buffer = 100000,
     vertex_shader_path = "data/shaders/out/absolute_position_color.vert",
     fragment_shader_path = "data/shaders/out/color.frag"
@@ -156,9 +176,11 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     append(*builder, generate_code_for_uniform_setter_functions(shader));
     append(*builder, generate_code_for_init(shader));
     append(*builder, generate_init_buffers_no_data(shader));
+    append(*builder, generate_init_immediate_buffers(shader));       
     append(*builder, generate_code_for_buffer_object_from_renderable(shader));
     append(*builder, generate_buffer_object(shader));
     append(*builder, generate_render(shader));
+    append(*builder, generate_immediate_render(shader));            
 
     output := builder_to_string(*builder);
 
@@ -218,6 +240,25 @@ generate_code_for_cached_uniform_location_attributes :: (shader: Shader_Metadata
     return builder_to_string(*builder);
 }
 
+generate_code_for_immediate_mode_attributes :: (s : Shader_Metadata) -> string {
+    if !s.immediate_mode_support return "";
+
+    push_allocator(temp);
+    builder: String_Builder;
+    init_string_builder(*builder);
+
+    print_to_builder(*builder, "\n    // immediate-mode buffers\n");
+    print_to_builder(*builder, "    immediate_vertex_attribute_array_gl_handle: GLuint;\n");
+    print_to_builder(*builder, "    immediate_index_buffer_gl_handle: GLuint;\n");
+
+    for s.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*builder, "    immediate_%_buffer_gl_handle: GLuint;\n", attr_conf.plural_name);
+    }
+
+    return builder_to_string(*builder);
+}
+
 generate_renderer_struct_for_given_shader :: (s : Shader_Metadata) -> string {
     return tprint(#string END
 
@@ -227,12 +268,14 @@ generate_renderer_struct_for_given_shader :: (s : Shader_Metadata) -> string {
 %2
 %3
 %4
+%5
 }
 
     END, get_renderer_struct_name(s), 
          generate_code_for_per_object_transform_attributes(s), 
          generate_code_for_cached_uniform_location_attributes(s),    
-         jai_struct_attributes_for_gl_vertex_attribute_handles(s.attributes));
+         jai_struct_attributes_for_gl_vertex_attribute_handles(s.attributes),
+         generate_code_for_immediate_mode_attributes(s));
 }
 
 generate_renderable_struct_attributes :: (shader : Shader_Metadata) -> string {
@@ -377,6 +420,9 @@ generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> stri
 }
 
 generate_code_for_init :: (shader : Shader_Metadata) -> string {
+
+    immediate_init_call := ifx shader.immediate_mode_support then "    init_immediate_buffers(renderer);\n" else "";
+
     return tprint(#string END
 
 init :: (using renderer : *%1) { 
@@ -385,7 +431,7 @@ init :: (using renderer : *%1) {
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
-
+%6
 %4
 %5
 }
@@ -394,7 +440,8 @@ init :: (using renderer : *%1) {
          shader.vertex_shader_path, 
          shader.fragment_shader_path, 
          generate_code_for_initting_matrices(shader),
-         generate_code_for_caching_uniform_locations(shader)); 
+         generate_code_for_caching_uniform_locations(shader),
+         immediate_init_call); 
 }
 
 generate_attribute_setup_code :: (attributes: [] GL_Shader_Vertex_Attribute_Variable) -> string {
@@ -462,6 +509,51 @@ init_buffers_no_data :: (using apcr : *%1) { // todo change renderer name
     get_renderer_struct_name(shader), 
     generate_code_for_setting_up_local_to_world_matrices(shader), 
     generate_attribute_setup_code(shader.attributes));
+}
+
+generate_init_immediate_buffers :: (shader : Shader_Metadata) -> string {
+    if !shader.immediate_mode_support return "";
+
+    push_allocator(temp);
+
+    attribute_setup: String_Builder;
+    init_string_builder(*attribute_setup);
+
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+
+        print_to_builder(*attribute_setup,
+            "    generate_buffer_for_vertex_attribute(*immediate_%_buffer_gl_handle, %, %);\n",
+            attr_conf.plural_name, attr_conf.type_in_jai, shader.num_elements_in_each_immediate_buffer
+        );
+
+        print_to_builder(*attribute_setup,
+            "    init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_%_buffer_gl_handle, .%);\n\n",
+            attr_conf.plural_name, shader.attributes[it_index]
+        );
+    }
+
+    return tprint(#string END
+
+
+init_immediate_buffers :: (using renderer : *%1) {
+
+    glGenVertexArrays(1, *immediate_vertex_attribute_array_gl_handle);
+    glBindVertexArray(immediate_vertex_attribute_array_gl_handle);
+
+    glGenBuffers(1, *immediate_index_buffer_gl_handle);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * %2, null, GL_STREAM_DRAW);
+
+%3
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+    END, 
+    get_renderer_struct_name(shader),
+    shader.num_elements_in_each_immediate_buffer,
+    builder_to_string(*attribute_setup));
 }
 
 
@@ -690,6 +782,89 @@ render :: (using renderer : *%1) {
 
     END, get_renderer_struct_name(shader), generate_code_for_uploading_local_to_world_matrices(shader));
 
+}
+
+generate_immediate_render :: (shader : Shader_Metadata) -> string {
+    if !shader.immediate_mode_support return "";
+
+    push_allocator(temp);
+
+    param_list: String_Builder;
+    init_string_builder(*param_list);
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*param_list, "        % : [] %", attr_conf.argument_name_in_buffer_object, attr_conf.type_in_jai);
+        if it_index < shader.attributes.count-1 print_to_builder(*param_list, ",\n");
+    }
+
+    upload_code: String_Builder;
+    init_string_builder(*upload_code);
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*upload_code,
+            "    glBindBuffer(GL_ARRAY_BUFFER, immediate_%1_buffer_gl_handle);\n    glBufferSubData(GL_ARRAY_BUFFER, 0, %2.count * size_of(%3), %2.data);\n\n",
+            attr_conf.plural_name, attr_conf.argument_name_in_buffer_object, attr_conf.type_in_jai);
+    }
+
+    slice_version := tprint(#string END
+
+immediate_render :: (
+        using renderer: *%1,
+        indices : [] u32,
+%2
+        ) {
+
+    assert(indices.count > 0, "No indices to render.");
+
+    glUseProgram(shader_program_gl_handle);
+    glBindVertexArray(immediate_vertex_attribute_array_gl_handle);
+
+%3
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
+    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.count * size_of(u32), indices.data);
+
+    glDrawElements(GL_TRIANGLES, xx indices.count, GL_UNSIGNED_INT, cast(*void) 0);
+
+    glBindVertexArray(0);
+    glUseProgram(0);
+}
+
+    END,
+    get_renderer_struct_name(shader),
+    builder_to_string(*param_list),
+    builder_to_string(*upload_code));
+
+    // Geometry convenience overload
+    geometry_struct_name := tprint("%1_Geometry", shader.name);
+
+    geometry_args: String_Builder;
+    init_string_builder(*geometry_args);
+    print_to_builder(*geometry_args, "            geometry.indices,\n");
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*geometry_args, "            geometry.%", attr_conf.argument_name_in_buffer_object);
+        if it_index < shader.attributes.count - 1 print_to_builder(*geometry_args, ",\n");
+        else print_to_builder(*geometry_args, "\n");
+    }
+
+    geometry_version := tprint(#string END
+
+immediate_render :: (using renderer : *%1, geometry : *$T/interface %2) {
+    immediate_render(renderer,
+%3    );
+}
+
+    END,
+    get_renderer_struct_name(shader),
+    geometry_struct_name,
+    builder_to_string(*geometry_args));
+
+    // Combine both
+    result: String_Builder;
+    init_string_builder(*result);
+    append(*result, slice_version);
+    append(*result, geometry_version);
+    return builder_to_string(*result);
 }
 
 generate_buffer_for_vertex_attribute :: (attribute_buffer_gl_handle : *GLuint, $attribute_type : Type, num_elements: u32) {

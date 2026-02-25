@@ -64,6 +64,7 @@ Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderer :: struct {
     passthrough_rgb_colors_buffer_gl_handle: GLuint;
     passthrough_normals_buffer_gl_handle: GLuint;
 
+
 }
 
 
