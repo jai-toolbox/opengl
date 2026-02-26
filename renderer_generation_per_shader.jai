@@ -734,11 +734,15 @@ buffer_object :: (using renderer : *%1, renderable : *$T/interface %2) -> succes
 
 
 generate_code_for_uploading_local_to_world_matrices :: (s: Shader_Metadata) -> string {
+
+    // Note previously we use to call:
+    // glBufferData(GL_UNIFORM_BUFFER, size_of(Matrix4) * local_to_world_matrices.count, local_to_world_matrices.data, GL_DYNAMIC_DRAW);
+    // I'm leaving this comment here because in the figure I might want to go back to it, because apparently the following can cause sync slowdowns
+
     if !s.per_object_transforms return "";
     return #string END
     glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
-    glBufferData(GL_UNIFORM_BUFFER, size_of(Matrix4) * local_to_world_matrices.count, local_to_world_matrices.data, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, size_of(Matrix4) * current_local_to_world_index, local_to_world_matrices.data);
     END;
 }
 

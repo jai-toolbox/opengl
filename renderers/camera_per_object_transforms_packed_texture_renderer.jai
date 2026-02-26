@@ -245,8 +245,7 @@ render :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Rendere
     glUseProgram(shader_program_gl_handle);
 
     glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
-    glBufferData(GL_UNIFORM_BUFFER, size_of(Matrix4) * local_to_world_matrices.count, local_to_world_matrices.data, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, size_of(Matrix4) * current_local_to_world_index, local_to_world_matrices.data);
 
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
