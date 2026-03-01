@@ -881,7 +881,7 @@ immediate_render :: (
 
     geometry_version := tprint(#string END
 
-immediate_render :: (using renderer : *%1, geometry : *$T/interface %2) {
+immediate_render :: (using renderer : *%1, geometry : $T/interface %2) {
     immediate_render(renderer,
 %3    );
 }

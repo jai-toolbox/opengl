@@ -243,7 +243,7 @@ immediate_render :: (
 }
 
 
-immediate_render :: (using renderer : *Absolute_Position_Color_Renderer, geometry : *$T/interface Absolute_Position_Color_Geometry) {
+immediate_render :: (using renderer : *Absolute_Position_Color_Renderer, geometry : $T/interface Absolute_Position_Color_Geometry) {
     immediate_render(renderer,
             geometry.indices,
             geometry.positions,
