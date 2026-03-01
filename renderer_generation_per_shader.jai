@@ -105,6 +105,33 @@ CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/packed_texture.frag"
 };
 
+// could do 4 channel and 8 channel in the future I guess if needed.
+CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE_2_CHANNEL :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Packed_Texture_2_Channel", 
+    attributes = .[
+        .POSITION,
+
+        .PASSTHROUGH_TEXTURE_COORDINATE_0,
+        .PASSTHROUGH_PACKED_TEXTURE_INDEX_0, 
+        .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_0,
+
+        .PASSTHROUGH_TEXTURE_COORDINATE_1,
+        .PASSTHROUGH_PACKED_TEXTURE_INDEX_1, 
+        .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_1,
+
+    ],
+    uniforms = .[
+        .CAMERA_TO_CLIP, 
+        .WORLD_TO_CAMERA,
+        .PACKED_TEXTURES,
+        .PACKED_TEXTURE_BOUNDING_BOXES
+    ],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_packed_texture_2_channel.vert",
+    fragment_shader_path = "data/shaders/out/packed_texture_2_channel.frag"
+};
+
 
 CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_GEOMETRY_PASS :: Shader_Metadata.{
     name = "Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass", 
@@ -155,6 +182,7 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE_2_CHANNEL);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_GEOMETRY_PASS);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_COMPUTE_LIGHT_PASS);
@@ -1023,8 +1051,16 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
 
     // used for texture packing
     PASSTHROUGH_PACKED_TEXTURE_INDEX;
+    PASSTHROUGH_PACKED_TEXTURE_INDEX_0;
+    PASSTHROUGH_PACKED_TEXTURE_INDEX_1;
+
     PASSTHROUGH_TEXTURE_COORDINATE;
+    PASSTHROUGH_TEXTURE_COORDINATE_0;
+    PASSTHROUGH_TEXTURE_COORDINATE_1;
+
     PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_0;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_1;
     
 }
 
@@ -1108,10 +1144,36 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
             };
         case .PASSTHROUGH_PACKED_TEXTURE_INDEX;
             return .{
-                type_in_jai                     = int,
+                type_in_jai                     = s32,
                 var_name_in_shader              = "passthrough_packed_texture_index",
                 plural_name                     = "passthrough_packed_texture_indices",
                 argument_name_in_buffer_object  = "packed_texture_index",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_PACKED_TEXTURE_INDEX_0;
+            return .{
+                type_in_jai                     = s32,
+                var_name_in_shader              = "passthrough_packed_texture_index_0",
+                plural_name                     = "passthrough_packed_texture_indices_0",
+                argument_name_in_buffer_object  = "packed_texture_index_0",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_PACKED_TEXTURE_INDEX_1;
+            return .{
+                type_in_jai                     = s32,
+                var_name_in_shader              = "passthrough_packed_texture_index_1",
+                plural_name                     = "passthrough_packed_texture_indices_1",
+                argument_name_in_buffer_object  = "packed_texture_index_1",
                 constant_across_object          = true,
                 components_per_vertex           = 1,
                 data_type_of_component          = GL_INT,
@@ -1132,12 +1194,64 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 stride                          = 0,
                 pointer_offset_to_start_of_data = null,
             };
+        case .PASSTHROUGH_TEXTURE_COORDINATE_0;
+            return .{
+                type_in_jai                     = Vector2,
+                var_name_in_shader              = "passthrough_texture_coordinate_0",
+                plural_name                     = "passthrough_texture_coordinates_0",
+                argument_name_in_buffer_object  = "texture_coordinates_0",
+                constant_across_object          = false,
+                components_per_vertex           = 2,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_TEXTURE_COORDINATE_1;
+            return .{
+                type_in_jai                     = Vector2,
+                var_name_in_shader              = "passthrough_texture_coordinate_1",
+                plural_name                     = "passthrough_texture_coordinates_1",
+                argument_name_in_buffer_object  = "texture_coordinates_1",
+                constant_across_object          = false,
+                components_per_vertex           = 2,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
         case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX;
             return .{
-                type_in_jai                     = int,
+                type_in_jai                     = s32,
                 var_name_in_shader              = "passthrough_packed_texture_bounding_box_index",
                 plural_name                     = "passthrough_packed_texture_bounding_box_indices",
                 argument_name_in_buffer_object  = "packed_texture_bounding_box_index",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_0;
+            return .{
+                type_in_jai                     = s32,
+                var_name_in_shader              = "passthrough_packed_texture_bounding_box_index_0",
+                plural_name                     = "passthrough_packed_texture_bounding_box_indices_0",
+                argument_name_in_buffer_object  = "packed_texture_bounding_box_index_0",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_1;
+            return .{
+                type_in_jai                     = s32,
+                var_name_in_shader              = "passthrough_packed_texture_bounding_box_index_1",
+                plural_name                     = "passthrough_packed_texture_bounding_box_indices_1",
+                argument_name_in_buffer_object  = "packed_texture_bounding_box_index_1",
                 constant_across_object          = true,
                 components_per_vertex           = 1,
                 data_type_of_component          = GL_INT,

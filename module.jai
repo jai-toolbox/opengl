@@ -50,10 +50,11 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/camera_per_object_transform_color_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";
-#load "renderers/camera_per_object_transforms_packed_texture_renderer.jai";
+#load "renderers/camera_per_object_transforms_packed_texture_renderer.jai"; // bad plural on transforms
+#load "renderers/camera_per_object_transform_packed_texture_2_channel_renderer.jai";
 #load "renderers/camera_absolute_position_color_renderer.jai";
 
-#load "deferred_lighting.jai";
+// #load "deferred_lighting.jai";
 
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {

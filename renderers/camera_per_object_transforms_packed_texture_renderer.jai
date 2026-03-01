@@ -9,9 +9,9 @@ Camera_Per_Object_Transforms_Packed_Texture_Renderable :: struct {
     local_to_world_index : u32;
 
     positions: [..] Vector3;
-    packed_texture_index: [..] s64;
+    packed_texture_index: [..] s32;
     texture_coordinates: [..] Vector2;
-    packed_texture_bounding_box_index: [..] s64;
+    packed_texture_bounding_box_index: [..] s32;
 
 }
 
@@ -19,9 +19,9 @@ Camera_Per_Object_Transforms_Packed_Texture_Renderable :: struct {
 Camera_Per_Object_Transforms_Packed_Texture_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
-    packed_texture_index: [..] s64;
+    packed_texture_index: [..] s32;
     texture_coordinates: [..] Vector2;
-    packed_texture_bounding_box_index: [..] s64;
+    packed_texture_bounding_box_index: [..] s32;
 }
 
 assign_geometry :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transforms_Packed_Texture_Geometry) {
@@ -137,13 +137,13 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Packed_Textu
     generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, positions_buffer_gl_handle, .POSITION);
 
-    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_indices_buffer_gl_handle, s64, max_num_elements_in_each_buffer);
+    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_indices_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_indices_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_INDEX);
 
     generate_buffer_for_vertex_attribute(*passthrough_texture_coordinates_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_texture_coordinates_buffer_gl_handle, .PASSTHROUGH_TEXTURE_COORDINATE);
 
-    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_bounding_box_indices_buffer_gl_handle, s64, max_num_elements_in_each_buffer);
+    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_bounding_box_indices_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX);
 
 
@@ -177,9 +177,9 @@ buffer_object :: (
         using renderer: *Camera_Per_Object_Transforms_Packed_Texture_Renderer,
         indices : [..] u32,
         positions : [..] Vector3,
-        packed_texture_index : [..] s64,
+        packed_texture_index : [..] s32,
         texture_coordinates : [..] Vector2,
-        packed_texture_bounding_box_index : [..] s64
+        packed_texture_bounding_box_index : [..] s32
 
         ) -> object_index: u32, local_to_world_index: u32, success: bool {
 
@@ -207,7 +207,7 @@ buffer_object :: (
 
     
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s64), packed_texture_index.count * size_of(s64), packed_texture_index.data);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s32), packed_texture_index.count * size_of(s32), packed_texture_index.data);
 
 
     
@@ -217,7 +217,7 @@ buffer_object :: (
 
     
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s64), packed_texture_bounding_box_index.count * size_of(s64), packed_texture_bounding_box_index.data);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s32), packed_texture_bounding_box_index.count * size_of(s32), packed_texture_bounding_box_index.data);
 
 
     // local_to_world_indices are an array of the same value which is the local to world index
