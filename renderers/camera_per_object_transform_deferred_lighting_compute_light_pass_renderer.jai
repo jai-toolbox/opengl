@@ -25,11 +25,22 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_C
 }
 
 
+/*
+
+So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
+
+*/
 deinit :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable, renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     array_free(renderable.indices);
     array_free(renderable.positions);
     array_free(renderable.texture_coordinates);
+}
+
+
+unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable) {
+    unbuffer_object(*renderer.psr, renderable.object_index);
+    renderable.object_index = 0;
 }
 
 
@@ -167,7 +178,30 @@ buffer_object :: (
 
     return index, true;
 }
-render :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer) {
+
+/*
+
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+will go off the rails.
+
+*/
+rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable) {
+
+    glBindVertexArray(vertex_attribute_array_gl_handle);
+
+    glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.texture_coordinates.count * size_of(Vector2), renderable.texture_coordinates.data);
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+render :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 
@@ -181,7 +215,7 @@ render :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compu
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
     for object_indices_to_render_this_frame {
         geom_indices , success := table_find(*buffered_object_index_to_global_indices, it);
-        if !success log("couldn't find the global indices of object with id: ", it);
+        if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
         for geom_indices 
             array_add(*geom_indices_to_render, it);
     }
@@ -192,7 +226,7 @@ render :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compu
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
 
-    glDrawElements(GL_TRIANGLES, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
+    glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 
     // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
 

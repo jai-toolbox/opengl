@@ -48,6 +48,10 @@ This means that the local_to_world index can just be the number of objects you'v
 // also loading everything is becoming more and more bad, can we not just do a module or something?
 #load "renderers/absolute_position_color_renderer.jai";
 #load "renderers/camera_per_object_transform_color_renderer.jai";
+#load "renderers/camera_per_object_transform_color_alpha_renderer.jai";
+#load "renderers/camera_infinite_grid_renderer.jai";
+#load "renderers/camera_per_object_transform_position_point_color_renderer.jai";
+#load "renderers/camera_per_object_transform_object_id_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";
 #load "renderers/camera_per_object_transforms_packed_texture_renderer.jai"; // bad plural on transforms
@@ -55,6 +59,7 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/camera_absolute_position_color_renderer.jai";
 
 // #load "deferred_lighting.jai";
+#load "camera_infinite_grid.jai";
 
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {

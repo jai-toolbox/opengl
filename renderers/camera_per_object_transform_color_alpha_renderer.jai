@@ -1,29 +1,29 @@
-// auto-generated renderer for shader: Camera_Per_Object_Transform_Color
+// auto-generated renderer for shader: Camera_Per_Object_Transform_Color_Alpha
 // do not edit manually.
 
 
-Camera_Per_Object_Transform_Color_Renderable :: struct {
+Camera_Per_Object_Transform_Color_Alpha_Renderable :: struct {
     indices : [..] u32;
     object_index : u32;
 
     local_to_world_index : u32;
 
     positions: [..] Vector3;
-    rgb_colors: [..] Vector3;
+    rgba_colors: [..] Vector4;
 
 }
 
 
-Camera_Per_Object_Transform_Color_Geometry :: struct {
+Camera_Per_Object_Transform_Color_Alpha_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
-    rgb_colors: [..] Vector3;
+    rgba_colors: [..] Vector4;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Color_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Geometry) {
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Color_Alpha_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Alpha_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
-    array_copy(*renderable.rgb_colors, geometry.rgb_colors);
+    array_copy(*renderable.rgba_colors, geometry.rgba_colors);
 }
 
 
@@ -32,16 +32,16 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Color_Renderable, g
 So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
-deinit :: (renderable: *Camera_Per_Object_Transform_Color_Renderable, renderer: *Camera_Per_Object_Transform_Color_Renderer) {
+deinit :: (renderable: *Camera_Per_Object_Transform_Color_Alpha_Renderable, renderer: *Camera_Per_Object_Transform_Color_Alpha_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;
     array_free(renderable.indices);
     array_free(renderable.positions);
-    array_free(renderable.rgb_colors);
+    array_free(renderable.rgba_colors);
 }
 
 
-unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Color_Renderer, renderable: *Camera_Per_Object_Transform_Color_Renderable) {
+unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Color_Alpha_Renderer, renderable: *Camera_Per_Object_Transform_Color_Alpha_Renderable) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;
     renderable.local_to_world_index = 0;
@@ -49,12 +49,12 @@ unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Color_Renderer, rende
 }
 
 
-set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Color_Renderer, renderable: Camera_Per_Object_Transform_Color_Renderable, matrix: Matrix4) {
+set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Color_Alpha_Renderer, renderable: Camera_Per_Object_Transform_Color_Alpha_Renderable, matrix: Matrix4) {
     renderer.local_to_world_matrices[renderable.local_to_world_index] = matrix;
 }
 
 
-Camera_Per_Object_Transform_Color_Renderer :: struct {
+Camera_Per_Object_Transform_Color_Alpha_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
@@ -70,23 +70,23 @@ Camera_Per_Object_Transform_Color_Renderer :: struct {
     world_to_camera_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
-    passthrough_rgb_colors_buffer_gl_handle: GLuint;
+    passthrough_rgba_colors_buffer_gl_handle: GLuint;
 
 
 }
 
 
-set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Renderer, v: Matrix4) {
+set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, v: Matrix4) {
     glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Renderer, v: Matrix4) {
+set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, v: Matrix4) {
     glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-init :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer) { 
-    vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transforms.vert");
-    fragment_shader_source := read_entire_file("data/shaders/out/color.frag");
+init :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer) { 
+    vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transform_color_alpha.vert");
+    fragment_shader_source := read_entire_file("data/shaders/out/color_alpha.frag");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -102,7 +102,7 @@ init :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer) {
 
 
 
-init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Renderer) { // todo change renderer name
+init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Alpha_Renderer) { // todo change renderer name
 
     glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
     glBindVertexArray(vertex_attribute_array_gl_handle);
@@ -128,8 +128,8 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Rendere
     generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, positions_buffer_gl_handle, .POSITION);
 
-    generate_buffer_for_vertex_attribute(*passthrough_rgb_colors_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_rgb_colors_buffer_gl_handle, .PASSTHROUGH_RGB_COLOR);
+    generate_buffer_for_vertex_attribute(*passthrough_rgba_colors_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_rgba_colors_buffer_gl_handle, .PASSTHROUGH_RGBA_COLOR);
 
 
 
@@ -137,14 +137,14 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Rendere
 }
 
 
-buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Color_Renderable) -> success: bool {
+buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Color_Alpha_Renderable) -> success: bool {
 
 
     object_index, local_to_world_index, success := buffer_object(renderer, 
             renderable.indices, 
 
             renderable.positions,
-            renderable.rgb_colors
+            renderable.rgba_colors
     );
 
     if success {
@@ -157,10 +157,10 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer, 
 
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
-        using renderer: *Camera_Per_Object_Transform_Color_Renderer,
+        using renderer: *Camera_Per_Object_Transform_Color_Alpha_Renderer,
         indices : [..] u32,
         positions : [..] Vector3,
-        rgb_colors : [..] Vector3
+        rgba_colors : [..] Vector4
 
         ) -> object_index: u32, local_to_world_index: u32, success: bool {
 
@@ -187,8 +187,8 @@ buffer_object :: (
 
 
     
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgb_colors_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), rgb_colors.count * size_of(Vector3), rgb_colors.data);
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), rgba_colors.count * size_of(Vector4), rgba_colors.data);
 
 
     // local_to_world_indices are an array of the same value which is the local to world index
@@ -217,22 +217,22 @@ if you're rebuffering things and using up more space then you did before you'll 
 will go off the rails.
 
 */
-rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Color_Renderable) {
+rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Color_Alpha_Renderable) {
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
 
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgb_colors_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.rgb_colors.count * size_of(Vector3), renderable.rgb_colors.data);
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.rgba_colors.count * size_of(Vector4), renderable.rgba_colors.data);
 
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-render :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
+render :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 

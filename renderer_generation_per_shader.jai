@@ -36,7 +36,61 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
 
     vertex_shader_path   : string;
     fragment_shader_path : string;
+
+
+    primitive_mode : GLenum = GL_TRIANGLES;
+
 }
+
+gl_primitive_mode_to_string :: (mode: GLenum) -> string {
+    if mode == {
+        case GL_TRIANGLES;      return "GL_TRIANGLES";
+        case GL_LINES;          return "GL_LINES";
+        case GL_LINE_STRIP;     return "GL_LINE_STRIP";
+        case GL_LINE_LOOP;      return "GL_LINE_LOOP";
+        case GL_POINTS;         return "GL_POINTS";
+        case GL_TRIANGLE_STRIP; return "GL_TRIANGLE_STRIP";
+        case GL_TRIANGLE_FAN;   return "GL_TRIANGLE_FAN";
+        case GL_PATCHES;        return "GL_PATCHES";
+        case;                   return "GL_TRIANGLES"; // fallback
+    }
+}
+
+
+CAMERA_INFINITE_GRID_SHADER :: Shader_Metadata.{
+    name = "Camera_Infinite_Grid", 
+    attributes = .[], // doesn't need any vertices, it stores them internally in the shader
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA, .CAMERA_POSITION, .GRID_SIZE],
+    per_object_transforms = false,
+    immediate_mode_support = false,
+    num_elements_in_each_buffer = 6, // lol, cause we only do one quad
+    vertex_shader_path = "data/shaders/out/infinite_grid.vert",
+    fragment_shader_path = "data/shaders/out/infinite_grid.frag"
+};
+
+CAMERA_PER_OBJECT_TRANSFORM_POSITION_POINT_COLOR :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Position_Point_Color", 
+    attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA, .POINT_SIZE],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_position_point_color.vert",
+    fragment_shader_path = "data/shaders/out/position_point_color.frag",
+    primitive_mode = GL_POINTS
+};
+
+// note: if you render points with this it will not match the points rendered using the above, the reason is that 
+// the above shader turns them into circles, those circles are small and the picking probably just picks the closest one anyway
+// so I decided that the square descrepancy doesn't really bother me that much until someone complains about it.
+CAMERA_PER_OBJECT_TRANSFORM_OBJECT_ID :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Object_Id", 
+    attributes = .[.POSITION, .PASSTHROUGH_OBJECT_ID],
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA, .POINT_SIZE],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_object_id.vert",
+    fragment_shader_path = "data/shaders/out/object_id.frag",
+};
 
 ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     name = "Absolute_Position_Color", 
@@ -69,6 +123,16 @@ CAMERA_PER_OBJECT_TRANSFORMS_COLOR :: Shader_Metadata.{
     num_elements_in_each_buffer = 100000,
     vertex_shader_path = "data/shaders/out/camera_per_object_transforms.vert",
     fragment_shader_path = "data/shaders/out/color.frag"
+};
+
+CAMERA_PER_OBJECT_TRANSFORMS_COLOR_ALPHA :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Color_Alpha", 
+    attributes = .[.POSITION, .PASSTHROUGH_RGBA_COLOR],
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_color_alpha.vert",
+    fragment_shader_path = "data/shaders/out/color_alpha.frag"
 };
 
 /*
@@ -176,10 +240,17 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
     return tprint("%1_Renderable", shader.name);
 }
 
+// this is mega wasteful during compilation, there should just be a script to do this in this directory... 
+
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
 #run create_code_to_render_stuff_with_shader(CAMERA_ABSOLUTE_POSITION_COLOR);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_POSITION_POINT_COLOR);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_OBJECT_ID);
+
+#run create_code_to_render_stuff_with_shader(CAMERA_INFINITE_GRID_SHADER);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR_ALPHA);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE_2_CHANNEL);
@@ -196,19 +267,29 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     print_to_builder(*builder, "// auto-generated renderer for shader: %\n", shader.name);
     print_to_builder(*builder, "// do not edit manually.\n\n");
 
-    append(*builder, generate_renderable_struct_for_given_shader(shader));
-    append(*builder, generate_code_for_constructing_renderable_from_generic_geometry_type(shader));
-    append(*builder, generate_code_for_deinit_renderable(shader));
-    if shader.per_object_transforms append(*builder, generate_code_for_set_local_to_world_matrix(shader));
+    has_attributes := shader.attributes.count > 0;
+
+    if has_attributes {
+        append(*builder, generate_renderable_struct_for_given_shader(shader));
+        append(*builder, generate_code_for_constructing_renderable_from_generic_geometry_type(shader));
+        append(*builder, generate_code_for_deinit_renderable(shader));
+        append(*builder, generate_code_for_unbuffer_renderable(shader));
+        if shader.per_object_transforms append(*builder, generate_code_for_set_local_to_world_matrix(shader));
+    }
+
     append(*builder, generate_renderer_struct_for_given_shader(shader));
     append(*builder, generate_code_for_uniform_setter_functions(shader));
     append(*builder, generate_code_for_init(shader));
-    append(*builder, generate_init_buffers_no_data(shader));
-    append(*builder, generate_init_immediate_buffers(shader));       
-    append(*builder, generate_code_for_buffer_object_from_renderable(shader));
-    append(*builder, generate_buffer_object(shader));
-    append(*builder, generate_render(shader));
-    append(*builder, generate_immediate_render(shader));            
+
+    if has_attributes {
+        append(*builder, generate_init_buffers_no_data(shader));
+        append(*builder, generate_init_immediate_buffers(shader));       
+        append(*builder, generate_code_for_buffer_object_from_renderable(shader));
+        append(*builder, generate_buffer_object(shader));
+        append(*builder, generate_rebuffer_object(shader));
+        append(*builder, generate_render(shader));
+        append(*builder, generate_immediate_render(shader));            
+    }
 
     output := builder_to_string(*builder);
 
@@ -410,6 +491,11 @@ generate_code_for_deinit_renderable :: (shader: Shader_Metadata) -> string {
 
     return tprint(#string END
 
+/*
+
+So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
+
+*/
 deinit :: (renderable: *%1, renderer: *%2) {
     unbuffer_object(*renderer.psr, renderable.object_index);
 %3%4}
@@ -419,6 +505,30 @@ deinit :: (renderable: *%1, renderer: *%2) {
     get_renderer_struct_name(shader),
     per_object_transform_cleanup,
     builder_to_string(*array_frees)
+    );
+}
+
+generate_code_for_unbuffer_renderable :: (shader: Shader_Metadata) -> string {
+    push_allocator(temp);
+
+    local_to_world_reset := "";
+    if shader.per_object_transforms {
+        local_to_world_reset = tprint(
+            "    renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;\n    renderable.local_to_world_index = 0;\n"
+        );
+    }
+
+    return tprint(#string END
+
+unbuffer_object :: (renderer: *%1, renderable: *%2) {
+    unbuffer_object(*renderer.psr, renderable.object_index);
+%3    renderable.object_index = 0;
+}
+
+    END,
+    get_renderer_struct_name(shader),
+    get_renderable_struct_name(shader),
+    local_to_world_reset
     );
 }
 
@@ -450,6 +560,7 @@ generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> stri
 generate_code_for_init :: (shader : Shader_Metadata) -> string {
 
     immediate_init_call := ifx shader.immediate_mode_support then "    init_immediate_buffers(renderer);\n" else "";
+    init_buffers_call := ifx shader.attributes.count > 0 then "    init_buffers_no_data(renderer);\n" else "";
 
     return tprint(#string END
 
@@ -458,8 +569,7 @@ init :: (using renderer : *%1) {
     fragment_shader_source := read_entire_file("%3");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
-    init_buffers_no_data(renderer);
-%6
+%6%7
 %4
 %5
 }
@@ -469,6 +579,7 @@ init :: (using renderer : *%1) {
          shader.fragment_shader_path, 
          generate_code_for_initting_matrices(shader),
          generate_code_for_caching_uniform_locations(shader),
+         init_buffers_call,
          immediate_init_call); 
 }
 
@@ -760,6 +871,51 @@ buffer_object :: (using renderer : *%1, renderable : *$T/interface %2) -> succes
     );
 }
 
+generate_rebuffer_object :: (shader : Shader_Metadata) -> string {
+    push_allocator(temp);
+
+    renderer_name := get_renderer_struct_name(shader);
+    renderable_name := get_renderable_struct_name(shader);
+
+    upload_code: String_Builder;
+    init_string_builder(*upload_code);
+
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*upload_code, #string ATTR
+    glBindBuffer(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(%2), renderable.%3.count * size_of(%2), renderable.%3.data);
+
+ATTR,
+            attr_conf.plural_name,
+            attr_conf.type_in_jai,
+            attr_conf.argument_name_in_buffer_object);
+    }
+
+    return tprint(#string END
+
+/*
+
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+will go off the rails.
+
+*/
+rebuffer_object :: (using renderer : *%1, renderable : $T/interface %2) {
+
+    glBindVertexArray(vertex_attribute_array_gl_handle);
+
+%3
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+    END,
+    renderer_name,
+    renderable_name,
+    builder_to_string(*upload_code));
+}
+
 
 generate_code_for_uploading_local_to_world_matrices :: (s: Shader_Metadata) -> string {
 
@@ -769,15 +925,25 @@ generate_code_for_uploading_local_to_world_matrices :: (s: Shader_Metadata) -> s
 
     if !s.per_object_transforms return "";
     return #string END
+
+    // bind the ubo to the generic binding point so that glbuffersubdata knows which buffer to upload data to
     glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
+
+    // bind the ubo to indexed binding point 0 so that the shader reads from this buffer.
+    // this must be done every frame because other renderers may rebind
+    // indexed binding point 0 to a different buffer between frames
+    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
+
+    // upload the to gpu
     glBufferSubData(GL_UNIFORM_BUFFER, 0, size_of(Matrix4) * current_local_to_world_index, local_to_world_matrices.data);
+
     END;
 }
 
 generate_render :: (shader : Shader_Metadata) -> string {
 
     return tprint(#string END
-render :: (using renderer : *%1) {
+render :: (using renderer : *%1, primitive_mode: GLenum = %3) {
 
     // todo think about if we should be using temporary storage.
 
@@ -802,7 +968,7 @@ render :: (using renderer : *%1) {
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
 
-    glDrawElements(GL_TRIANGLES, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
+    glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 
     // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
 
@@ -812,7 +978,11 @@ render :: (using renderer : *%1) {
     glUseProgram(0);
 }
 
-    END, get_renderer_struct_name(shader), generate_code_for_uploading_local_to_world_matrices(shader));
+    END, 
+    get_renderer_struct_name(shader), 
+    generate_code_for_uploading_local_to_world_matrices(shader),
+    gl_primitive_mode_to_string(shader.primitive_mode),
+    );
 
 }
 
@@ -1041,13 +1211,18 @@ GL_Vertex_Uniform_Configuration :: struct { // (i don't give a) gl_vuc
 
 
 // this defines the allowed attribute variables that our shaders can have.
+// note that we don't specify the in's of the fragment shader here.
 GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     POSITION;
     LOCAL_TO_WORLD_INDEX;
 
     // common passthroughs for fragment shader
     PASSTHROUGH_RGB_COLOR;
+    PASSTHROUGH_RGBA_COLOR;
     PASSTHROUGH_NORMAL;
+
+    // for 3d picking
+    PASSTHROUGH_OBJECT_ID;
 
     // used for texture packing
     PASSTHROUGH_PACKED_TEXTURE_INDEX;
@@ -1068,6 +1243,12 @@ GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
     // things with a camera
     WORLD_TO_CAMERA;
     CAMERA_TO_CLIP;
+
+    // use for the infinite grid shader
+    GRID_SIZE;
+
+    // when you're rendering things with points
+    POINT_SIZE;
 
     // used in 2d situations sometimes
     ASPECT_RATIO;
@@ -1115,6 +1296,20 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 pointer_offset_to_start_of_data = null,
                 passthrough              = true,
             };
+        case .PASSTHROUGH_RGBA_COLOR;
+            return .{
+                type_in_jai                     = Vector4,
+                var_name_in_shader              = "passthrough_rgba_color",
+                plural_name                     = "passthrough_rgba_colors",
+                argument_name_in_buffer_object  = "rgba_colors",
+                constant_across_object          = false,
+                components_per_vertex           = 4,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough              = true,
+            };
         case .PASSTHROUGH_NORMAL;
             return .{
                 type_in_jai                     = Vector3,
@@ -1124,6 +1319,20 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 constant_across_object          = false,
                 components_per_vertex           = 3,
                 data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough              = true,
+            };
+        case .PASSTHROUGH_OBJECT_ID;
+            return .{
+                type_in_jai                     = u32,
+                var_name_in_shader              = "passthrough_object_id",
+                plural_name                     = "passthrough_object_ids",
+                argument_name_in_buffer_object  = "object_ids",
+                constant_across_object          = true,
+                components_per_vertex           = 1,
+                data_type_of_component          = GL_UNSIGNED_INT,
                 normalize                       = GL_FALSE,
                 stride                          = 0,
                 pointer_offset_to_start_of_data = null,
@@ -1268,6 +1477,10 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = Matrix4, var_name_in_shader = "world_to_camera" };
         case .CAMERA_TO_CLIP;
             return .{ type_in_jai = Matrix4, var_name_in_shader = "camera_to_clip" };
+        case .GRID_SIZE;
+            return .{ type_in_jai = float32, var_name_in_shader = "grid_size" };
+        case .POINT_SIZE;
+            return .{ type_in_jai = float32, var_name_in_shader = "point_size" };
         case .PACKED_TEXTURES;
             return .{ type_in_jai = s32, var_name_in_shader = "packed_textures" };
         case .PACKED_TEXTURE_BOUNDING_BOXES;
@@ -1458,7 +1671,7 @@ queue_render :: (using psr : *Per_Shader_Renderer, object_index : u32) {
    // add it to the per frame thing, which gets emptied when rendering.
 }
 
-render :: (using psr : *Per_Shader_Renderer) {
+render :: (using psr : *Per_Shader_Renderer, primitive_mode : GLenum = GL_TRIANGLES) {
 
     glUseProgram(shader_program_gl_handle);
 
@@ -1479,7 +1692,7 @@ render :: (using psr : *Per_Shader_Renderer) {
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
 
-    glDrawElements(GL_TRIANGLES, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
+    glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 
     // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
 
@@ -1489,6 +1702,12 @@ render :: (using psr : *Per_Shader_Renderer) {
     glUseProgram(0);
 }
 
+
+/*
+ Removes the object from the GPU-side virtual allocation and render queue,
+ but leaves the CPU-side arrays (indices, positions, colors, etc.) intact
+ so the renderable can be re-buffered later without rebuilding its data.
+*/
 unbuffer_object :: (using psr: *Per_Shader_Renderer, object_index: u32) {
 
     // note that we don't actually have to unbuffer it from the gpu arrays, we just have to make "free" in the sense that
