@@ -69,6 +69,11 @@ unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Packed_Texture_2_Chan
 }
 
 
+queue_render :: (using renderer: *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer, renderable: Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderable) {
+    queue_render(*renderer.psr, renderable.object_index);
+}
+
+
 set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer, renderable: Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderable, matrix: Matrix4) {
     renderer.local_to_world_matrices[renderable.local_to_world_index] = matrix;
 }

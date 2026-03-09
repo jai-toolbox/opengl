@@ -44,6 +44,11 @@ unbuffer_object :: (renderer: *Camera_Absolute_Position_Color_Renderer, renderab
 }
 
 
+queue_render :: (using renderer: *Camera_Absolute_Position_Color_Renderer, renderable: Camera_Absolute_Position_Color_Renderable) {
+    queue_render(*renderer.psr, renderable.object_index);
+}
+
+
 Camera_Absolute_Position_Color_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 

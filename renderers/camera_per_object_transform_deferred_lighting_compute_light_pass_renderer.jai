@@ -44,6 +44,11 @@ unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Com
 }
 
 
+queue_render :: (using renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, renderable: Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable) {
+    queue_render(*renderer.psr, renderable.object_index);
+}
+
+
 Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 

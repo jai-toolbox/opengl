@@ -57,6 +57,12 @@ gl_primitive_mode_to_string :: (mode: GLenum) -> string {
 }
 
 
+/*
+
+This shader is really good to get your orientation right in a very sparse scene. 
+Additionally it can be used for debugging things in terms of how big you expect something to be.
+
+*/
 CAMERA_INFINITE_GRID_SHADER :: Shader_Metadata.{
     name = "Camera_Infinite_Grid", 
     attributes = .[], // doesn't need any vertices, it stores them internally in the shader
@@ -68,6 +74,12 @@ CAMERA_INFINITE_GRID_SHADER :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/infinite_grid.frag"
 };
 
+/*
+
+Used for rendering 3d objects with points instead of triangles or lines, useful for modelling applications.
+Also you can specify color on the vertices so you can do things like selecting verts and see that visually.
+
+*/
 CAMERA_PER_OBJECT_TRANSFORM_POSITION_POINT_COLOR :: Shader_Metadata.{
     name = "Camera_Per_Object_Transform_Position_Point_Color", 
     attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
@@ -79,9 +91,13 @@ CAMERA_PER_OBJECT_TRANSFORM_POSITION_POINT_COLOR :: Shader_Metadata.{
     primitive_mode = GL_POINTS
 };
 
-// note: if you render points with this it will not match the points rendered using the above, the reason is that 
-// the above shader turns them into circles, those circles are small and the picking probably just picks the closest one anyway
-// so I decided that the square descrepancy doesn't really bother me that much until someone complains about it.
+/*
+
+note: if you render points with this it will not match the points rendered using the above, the reason is that 
+the above shader turns them into circles, those circles are small and the picking probably just picks the closest one anyway*
+so I decided that the square descrepancy doesn't really bother me that much until someone complains about it.
+
+*/
 CAMERA_PER_OBJECT_TRANSFORM_OBJECT_ID :: Shader_Metadata.{
     name = "Camera_Per_Object_Transform_Object_Id", 
     attributes = .[.POSITION, .PASSTHROUGH_OBJECT_ID],
@@ -92,6 +108,11 @@ CAMERA_PER_OBJECT_TRANSFORM_OBJECT_ID :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/object_id.frag",
 };
 
+/*
+
+This shader is also very simple, good for rendering solid color hud elements and things that don't move.
+
+*/
 ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     name = "Absolute_Position_Color", 
     attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
@@ -103,6 +124,10 @@ ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/color.frag"
 };
 
+/*
+
+
+*/
 CAMERA_ABSOLUTE_POSITION_COLOR :: Shader_Metadata.{
     name = "Camera_Absolute_Position_Color", 
     attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
@@ -113,15 +138,63 @@ CAMERA_ABSOLUTE_POSITION_COLOR :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/color.frag"
 };
 
+/*
 
-CAMERA_PER_OBJECT_TRANSFORMS_COLOR :: Shader_Metadata.{
+Takes in a framebuffer storing a bunch of objects being rendered by their ids (similar to 3d object picking)
+then it adds outlines to it based on the objects. Note that this isn't called camera_per_object blah blah, because
+it doesn't care where it came from.
+
+Specifically I render my scene with the CAMERA_PER_OBJECT_TRANSFORM_OBJECT_ID, on a different framebuffer, then I bind that texture
+into this shader and continue on.
+
+*/
+OBJECT_ID_SELECTION_OUTLINE :: Shader_Metadata.{
+    name = "Object_Id_Selection_Outline", 
+    attributes = .[],
+    uniforms = .[.OBJECT_ID_TEXTURE, .SELECTED_OBJECT_ID, .RGBA_COLOR, .THICKNESS_PX],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/fullscreen_quad.vert",
+    fragment_shader_path = "data/shaders/out/object_id_selection_outline.frag"
+};
+
+
+/*
+
+This shader was is a way to get borders on things fast, or so I thought. 
+Pretty much what it does is that it takes a 3d object, renders that to a stencil buffer with all 1's.
+Then you render again but this time with a "bigger" version of that object and only in places where it's 0.
+
+This tries to make an outline, and it works on most 3d objects, but then it fails on objects that are like 2d quads and stuff.
+So I realized it's not that good. I'm not sure if I'll be using this again, but I'll just keep it for now.
+
+*/
+CAMERA_PER_OBJECT_TRANSFORM_NORMAL_BORDER :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Normal_Border", 
+    attributes = .[.POSITION, .NORMAL],
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA, .BORDER_THICKNESS, .RGB_COLOR],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_normal_border.vert",
+    fragment_shader_path = "data/shaders/out/uniform_color.frag"
+};
+
+
+/*
+
+This is the simplest shader to get stuff on the screen and be somewhat visible with camera controls.
+
+This shader is also useful to check performance things, because you're barely doing anything at all here.
+
+*/
+CAMERA_PER_OBJECT_TRANSFORM_COLOR :: Shader_Metadata.{
     // todo one day rename Transform to Transforms here, will have to update the using code too. hence why I'm not doing it now.
     name = "Camera_Per_Object_Transform_Color", 
     attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
     uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA],
     per_object_transforms = true,
     num_elements_in_each_buffer = 100000,
-    vertex_shader_path = "data/shaders/out/camera_per_object_transforms.vert",
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_color.vert",
     fragment_shader_path = "data/shaders/out/color.frag"
 };
 
@@ -134,6 +207,7 @@ CAMERA_PER_OBJECT_TRANSFORMS_COLOR_ALPHA :: Shader_Metadata.{
     vertex_shader_path = "data/shaders/out/camera_per_object_transform_color_alpha.vert",
     fragment_shader_path = "data/shaders/out/color_alpha.frag"
 };
+
 
 /*
  in opengl3.3 we can batch our objects together but then we run into the problem
@@ -244,12 +318,16 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
 #run create_code_to_render_stuff_with_shader(CAMERA_ABSOLUTE_POSITION_COLOR);
+
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_NORMAL_BORDER);
+#run create_code_to_render_stuff_with_shader(OBJECT_ID_SELECTION_OUTLINE);
+
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_POSITION_POINT_COLOR);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_OBJECT_ID);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_INFINITE_GRID_SHADER);
 
-#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR);
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_COLOR);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR_ALPHA);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE);
@@ -274,6 +352,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
         append(*builder, generate_code_for_constructing_renderable_from_generic_geometry_type(shader));
         append(*builder, generate_code_for_deinit_renderable(shader));
         append(*builder, generate_code_for_unbuffer_renderable(shader));
+        append(*builder, generate_code_for_queue_render_from_renderable(shader));
         if shader.per_object_transforms append(*builder, generate_code_for_set_local_to_world_matrix(shader));
     }
 
@@ -530,6 +609,18 @@ unbuffer_object :: (renderer: *%1, renderable: *%2) {
     get_renderable_struct_name(shader),
     local_to_world_reset
     );
+}
+
+generate_code_for_queue_render_from_renderable :: (shader: Shader_Metadata) -> string {
+    return tprint(#string END
+
+queue_render :: (using renderer: *%1, renderable: %2) {
+    queue_render(*renderer.psr, renderable.object_index);
+}
+
+    END,
+    get_renderer_struct_name(shader),
+    get_renderable_struct_name(shader));
 }
 
 generate_code_for_initting_matrices :: (s : Shader_Metadata) -> string {
@@ -1214,6 +1305,7 @@ GL_Vertex_Uniform_Configuration :: struct { // (i don't give a) gl_vuc
 // note that we don't specify the in's of the fragment shader here.
 GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     POSITION;
+    NORMAL;
     LOCAL_TO_WORLD_INDEX;
 
     // common passthroughs for fragment shader
@@ -1244,18 +1336,36 @@ GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
     WORLD_TO_CAMERA;
     CAMERA_TO_CLIP;
 
+    // color the entire scene or an object a solid color
+    // note that this already exists as a passthrough vertex attribute
+    // and once passed through it becomes "rgb_color" in the fragment shader 
+    // this would be a name collision with this uniform, except for the fact that you usually don't need
+    // a uniform color if you're doing a passthrough color.
+    RGB_COLOR;
+    RGBA_COLOR;
+
     // use for the infinite grid shader
     GRID_SIZE;
 
     // when you're rendering things with points
     POINT_SIZE;
 
+    // used in borders
+    BORDER_THICKNESS;
+
     // used in 2d situations sometimes
     ASPECT_RATIO;
+
 
     // used for texture packing
     PACKED_TEXTURES;
     PACKED_TEXTURE_BOUNDING_BOXES;
+
+    // used when doing object wise things (ie object borders)
+    OBJECT_ID_TEXTURE;
+
+    SELECTED_OBJECT_ID;
+    THICKNESS_PX;
 
     // used in deferred rendering
     POSITION_TEXTURE;
@@ -1275,6 +1385,19 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 var_name_in_shader              = "position",
                 plural_name                     = "positions",
                 argument_name_in_buffer_object  = "positions",
+                constant_across_object          = false,
+                components_per_vertex           = 3,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .NORMAL;
+            return .{
+                type_in_jai                     = Vector3,
+                var_name_in_shader              = "normal",
+                plural_name                     = "normals",
+                argument_name_in_buffer_object  = "normals",
                 constant_across_object          = false,
                 components_per_vertex           = 3,
                 data_type_of_component          = GL_FLOAT,
@@ -1477,16 +1600,32 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = Matrix4, var_name_in_shader = "world_to_camera" };
         case .CAMERA_TO_CLIP;
             return .{ type_in_jai = Matrix4, var_name_in_shader = "camera_to_clip" };
+        case .RGB_COLOR;
+            return .{ type_in_jai = Vector3, var_name_in_shader = "rgb_color" };
+        case .RGBA_COLOR;
+            return .{ type_in_jai = Vector4, var_name_in_shader = "rgba_color" };
         case .GRID_SIZE;
             return .{ type_in_jai = float32, var_name_in_shader = "grid_size" };
         case .POINT_SIZE;
             return .{ type_in_jai = float32, var_name_in_shader = "point_size" };
+        case .BORDER_THICKNESS;
+            return .{ type_in_jai = float32, var_name_in_shader = "border_thickness" };
         case .PACKED_TEXTURES;
             return .{ type_in_jai = s32, var_name_in_shader = "packed_textures" };
         case .PACKED_TEXTURE_BOUNDING_BOXES;
             return .{ type_in_jai = s32, var_name_in_shader = "packed_texture_bounding_boxes" };
         case .ASPECT_RATIO;
             return .{ type_in_jai = Vector2, var_name_in_shader = "aspect_ratio" };
+        case .OBJECT_ID_TEXTURE;
+            return .{ type_in_jai = s32, var_name_in_shader = "object_id_texture" };
+
+        case .SELECTED_OBJECT_ID;
+            return .{ type_in_jai = u32, var_name_in_shader = "selected_object_id" };
+
+        case .THICKNESS_PX;
+            return .{ type_in_jai = u32, var_name_in_shader = "thickness_px" };
+
+
         case .POSITION_TEXTURE;
             return .{ type_in_jai = s32, var_name_in_shader = "position_texture" };
         case .COLOR_TEXTURE;

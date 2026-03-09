@@ -1,3 +1,14 @@
+/*
+
+So I'm starting to see a higher level pattern appear here, which is good. Some visual representations of objects will require multiple shaders, for example a shader which does draws a border/outline on an object, then there might be a wireframe version (say you're in an editor) and then there might be the entirely lit object.
+
+So I'm not entirely sure yet if it's best to create a "super shader" that does all these things at once. But the ability to combine into a multi-shader renderable seems like a logical solution without having to manually create these super shaders. A multishader renderable holds all the unique data inside, so for example if we have a shader that needs positions, texture coordinates and another that needs positions, normals, the multi-shader renderable becomes positions, texture coordinates, normals (the union of all the attributes, and there are no problems because we used metaprogramming to enforce unique attribute names).
+
+Then for the multi-shader renderable there is also a buffer object / queue render like in all other systems, though it starts to get more complicated when each shader requires different parameters like depth test off or something to render properly, but in general this seems like the right direction. The name of these renderables probably starts getting too long so at this point it's probably best to name it shorter...
+
+
+*/
+
 #import "GL";
 #import "Basic";
 #import "Math";
@@ -50,7 +61,9 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/camera_per_object_transform_color_renderer.jai";
 #load "renderers/camera_per_object_transform_color_alpha_renderer.jai";
 #load "renderers/camera_infinite_grid_renderer.jai";
+#load "renderers/object_id_selection_outline_renderer.jai";
 #load "renderers/camera_per_object_transform_position_point_color_renderer.jai";
+#load "renderers/camera_per_object_transform_normal_border_renderer.jai";
 #load "renderers/camera_per_object_transform_object_id_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";

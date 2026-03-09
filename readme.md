@@ -136,3 +136,27 @@ while running {
     swap_buffers(window);
 }
 ```
+
+Also for some reason in modules/GL/GL.jai we had this: 
+
+```jai
+            pf_attributes := s32.[
+                WGL_DRAW_TO_WINDOW_ARB,             1,
+                WGL_ACCELERATION_ARB,               WGL_FULL_ACCELERATION_ARB,
+                WGL_SUPPORT_OPENGL_ARB,             1,
+                WGL_DOUBLE_BUFFER_ARB,              1,
+                WGL_PIXEL_TYPE_ARB,                 WGL_TYPE_RGBA_ARB,  // WGL_TYPE_RGBA_FLOAT_ARB
+                WGL_COLOR_BITS_ARB,                 24,
+                WGL_ALPHA_BITS_ARB,                 0,
+                WGL_DEPTH_BITS_ARB,                 24,
+                WGL_STENCIL_BITS_ARB,               0,
+                WGL_ACCUM_BITS_ARB,                 0,
+                WGL_AUX_BUFFERS_ARB,                0,
+                WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB,   1,
+                WGL_SAMPLE_BUFFERS_ARB,             cast(s32) ifx attempted_msaa then 1 else 0,
+                WGL_SAMPLES_ARB,                    attempted_msaa,
+                0, 0
+            ];
+```
+
+which requests a 0 bit in the stencil which makes it not work, you have to change it to 8 bits to make this shader work.

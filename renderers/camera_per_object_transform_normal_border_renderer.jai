@@ -1,35 +1,29 @@
-// auto-generated renderer for shader: Camera_Per_Object_Transforms_Packed_Texture
+// auto-generated renderer for shader: Camera_Per_Object_Transform_Normal_Border
 // do not edit manually.
 
 
-Camera_Per_Object_Transforms_Packed_Texture_Renderable :: struct {
+Camera_Per_Object_Transform_Normal_Border_Renderable :: struct {
     indices : [..] u32;
     object_index : u32;
 
     local_to_world_index : u32;
 
     positions: [..] Vector3;
-    packed_texture_index: [..] s32;
-    texture_coordinates: [..] Vector2;
-    packed_texture_bounding_box_index: [..] s32;
+    normals: [..] Vector3;
 
 }
 
 
-Camera_Per_Object_Transforms_Packed_Texture_Geometry :: struct {
+Camera_Per_Object_Transform_Normal_Border_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
-    packed_texture_index: [..] s32;
-    texture_coordinates: [..] Vector2;
-    packed_texture_bounding_box_index: [..] s32;
+    normals: [..] Vector3;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transforms_Packed_Texture_Geometry) {
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Normal_Border_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Normal_Border_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
-    array_copy(*renderable.packed_texture_index, geometry.packed_texture_index);
-    array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
-    array_copy(*renderable.packed_texture_bounding_box_index, geometry.packed_texture_bounding_box_index);
+    array_copy(*renderable.normals, geometry.normals);
 }
 
 
@@ -38,18 +32,16 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Ren
 So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
-deinit :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable, renderer: *Camera_Per_Object_Transforms_Packed_Texture_Renderer) {
+deinit :: (renderable: *Camera_Per_Object_Transform_Normal_Border_Renderable, renderer: *Camera_Per_Object_Transform_Normal_Border_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;
     array_free(renderable.indices);
     array_free(renderable.positions);
-    array_free(renderable.packed_texture_index);
-    array_free(renderable.texture_coordinates);
-    array_free(renderable.packed_texture_bounding_box_index);
+    array_free(renderable.normals);
 }
 
 
-unbuffer_object :: (renderer: *Camera_Per_Object_Transforms_Packed_Texture_Renderer, renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable) {
+unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Normal_Border_Renderer, renderable: *Camera_Per_Object_Transform_Normal_Border_Renderable) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;
     renderable.local_to_world_index = 0;
@@ -57,17 +49,17 @@ unbuffer_object :: (renderer: *Camera_Per_Object_Transforms_Packed_Texture_Rende
 }
 
 
-queue_render :: (using renderer: *Camera_Per_Object_Transforms_Packed_Texture_Renderer, renderable: Camera_Per_Object_Transforms_Packed_Texture_Renderable) {
+queue_render :: (using renderer: *Camera_Per_Object_Transform_Normal_Border_Renderer, renderable: Camera_Per_Object_Transform_Normal_Border_Renderable) {
     queue_render(*renderer.psr, renderable.object_index);
 }
 
 
-set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transforms_Packed_Texture_Renderer, renderable: Camera_Per_Object_Transforms_Packed_Texture_Renderable, matrix: Matrix4) {
+set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Normal_Border_Renderer, renderable: Camera_Per_Object_Transform_Normal_Border_Renderable, matrix: Matrix4) {
     renderer.local_to_world_matrices[renderable.local_to_world_index] = matrix;
 }
 
 
-Camera_Per_Object_Transforms_Packed_Texture_Renderer :: struct {
+Camera_Per_Object_Transform_Normal_Border_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
@@ -81,37 +73,35 @@ Camera_Per_Object_Transforms_Packed_Texture_Renderer :: struct {
 
     camera_to_clip_uniform_location : GLint = -1;
     world_to_camera_uniform_location : GLint = -1;
-    packed_textures_uniform_location : GLint = -1;
-    packed_texture_bounding_boxes_uniform_location : GLint = -1;
+    border_thickness_uniform_location : GLint = -1;
+    rgb_color_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
-    passthrough_packed_texture_indices_buffer_gl_handle: GLuint;
-    passthrough_texture_coordinates_buffer_gl_handle: GLuint;
-    passthrough_packed_texture_bounding_box_indices_buffer_gl_handle: GLuint;
+    normals_buffer_gl_handle: GLuint;
 
 
 }
 
 
-set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: Matrix4) {
+set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer, v: Matrix4) {
     glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: Matrix4) {
+set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer, v: Matrix4) {
     glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: s32) {
-    glUniform1i(renderer.packed_textures_uniform_location, v);
+set_border_thickness_uniform :: (renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer, v: float32) {
+    glUniform1f(renderer.border_thickness_uniform_location, v);
 }
 
-set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, v: s32) {
-    glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
+set_rgb_color_uniform :: (renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer, v: Vector3) {
+    glUniform3f(renderer.rgb_color_uniform_location, v.x, v.y, v.z);
 }
 
-init :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer) { 
-    vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transform_packed_texture.vert");
-    fragment_shader_source := read_entire_file("data/shaders/out/packed_texture.frag");
+init :: (using renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer) { 
+    vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transform_normal_border.vert");
+    fragment_shader_source := read_entire_file("data/shaders/out/uniform_color.frag");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -122,14 +112,14 @@ init :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer)
 
     camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
     world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
-    packed_textures_uniform_location = glGetUniformLocation(shader_program_gl_handle, "packed_textures");
-    packed_texture_bounding_boxes_uniform_location = glGetUniformLocation(shader_program_gl_handle, "packed_texture_bounding_boxes");
+    border_thickness_uniform_location = glGetUniformLocation(shader_program_gl_handle, "border_thickness");
+    rgb_color_uniform_location = glGetUniformLocation(shader_program_gl_handle, "rgb_color");
 
 }
 
 
 
-init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Packed_Texture_Renderer) { // todo change renderer name
+init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Normal_Border_Renderer) { // todo change renderer name
 
     glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
     glBindVertexArray(vertex_attribute_array_gl_handle);
@@ -155,14 +145,8 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Packed_Textu
     generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, positions_buffer_gl_handle, .POSITION);
 
-    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_indices_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_indices_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_INDEX);
-
-    generate_buffer_for_vertex_attribute(*passthrough_texture_coordinates_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_texture_coordinates_buffer_gl_handle, .PASSTHROUGH_TEXTURE_COORDINATE);
-
-    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_bounding_box_indices_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX);
+    generate_buffer_for_vertex_attribute(*normals_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, normals_buffer_gl_handle, .NORMAL);
 
 
 
@@ -170,16 +154,14 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Packed_Textu
 }
 
 
-buffer_object :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, renderable : *$T/interface Camera_Per_Object_Transforms_Packed_Texture_Renderable) -> success: bool {
+buffer_object :: (using renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Normal_Border_Renderable) -> success: bool {
 
 
     object_index, local_to_world_index, success := buffer_object(renderer, 
             renderable.indices, 
 
             renderable.positions,
-            renderable.packed_texture_index,
-            renderable.texture_coordinates,
-            renderable.packed_texture_bounding_box_index
+            renderable.normals
     );
 
     if success {
@@ -192,12 +174,10 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_
 
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
-        using renderer: *Camera_Per_Object_Transforms_Packed_Texture_Renderer,
+        using renderer: *Camera_Per_Object_Transform_Normal_Border_Renderer,
         indices : [..] u32,
         positions : [..] Vector3,
-        packed_texture_index : [..] s32,
-        texture_coordinates : [..] Vector2,
-        packed_texture_bounding_box_index : [..] s32
+        normals : [..] Vector3
 
         ) -> object_index: u32, local_to_world_index: u32, success: bool {
 
@@ -224,18 +204,8 @@ buffer_object :: (
 
 
     
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s32), packed_texture_index.count * size_of(s32), packed_texture_index.data);
-
-
-    
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), texture_coordinates.count * size_of(Vector2), texture_coordinates.data);
-
-
-    
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s32), packed_texture_bounding_box_index.count * size_of(s32), packed_texture_bounding_box_index.data);
+    glBindBuffer(GL_ARRAY_BUFFER, normals_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
 
 
     // local_to_world_indices are an array of the same value which is the local to world index
@@ -264,28 +234,22 @@ if you're rebuffering things and using up more space then you did before you'll 
 will go off the rails.
 
 */
-rebuffer_object :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, renderable : $T/interface Camera_Per_Object_Transforms_Packed_Texture_Renderable) {
+rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Normal_Border_Renderable) {
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
 
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(s32), renderable.packed_texture_index.count * size_of(s32), renderable.packed_texture_index.data);
-
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.texture_coordinates.count * size_of(Vector2), renderable.texture_coordinates.data);
-
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(s32), renderable.packed_texture_bounding_box_index.count * size_of(s32), renderable.packed_texture_bounding_box_index.data);
+    glBindBuffer(GL_ARRAY_BUFFER, normals_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.normals.count * size_of(Vector3), renderable.normals.data);
 
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-render :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
+render :: (using renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 
