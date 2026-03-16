@@ -1801,6 +1801,14 @@ init :: (psr : *Per_Shader_Renderer, vertex_shader_source : string, fragment_sha
     psr.first_fit_virtual_allocator.size = max_num_elements_in_each_buffer;
 }
 
+set_active_program :: (renderer: *Per_Shader_Renderer) {
+    glUseProgram(renderer.shader_program_gl_handle);
+}
+
+clear_active_program :: () {
+    glUseProgram(0);
+}
+
 queue_render :: (using psr : *Per_Shader_Renderer, object_index : u32) { 
 
     // todo do a check to see if it exists first right? through the virtual allocator
