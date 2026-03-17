@@ -126,7 +126,6 @@ ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
 
 /*
 
-
 */
 CAMERA_ABSOLUTE_POSITION_COLOR :: Shader_Metadata.{
     name = "Camera_Absolute_Position_Color", 
@@ -1801,7 +1800,7 @@ init :: (psr : *Per_Shader_Renderer, vertex_shader_source : string, fragment_sha
     psr.first_fit_virtual_allocator.size = max_num_elements_in_each_buffer;
 }
 
-set_active_program :: (renderer: *Per_Shader_Renderer) {
+set_active_program :: (renderer: Per_Shader_Renderer) {
     glUseProgram(renderer.shader_program_gl_handle);
 }
 
