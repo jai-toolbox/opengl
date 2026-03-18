@@ -3,6 +3,12 @@ Camera_Infinite_Grid :: struct {
     empty_vao: GLuint;
 }
 
+Grid_Plane :: enum s32 {
+    XZ :: 0;  // horizontal ground plane (Y = 0)
+    XY :: 1;  // vertical front/back wall (Z = 0)
+    YZ :: 2;  // vertical side wall (X = 0)
+}
+
 init :: (using grid: *Camera_Infinite_Grid) {
     init(*renderer); // we literally just use the renderer to auto compile the shader program, we don't touch anything else.
 
@@ -26,6 +32,7 @@ render :: (using grid: *Camera_Infinite_Grid,
            camera_to_clip: Matrix4, 
            world_to_camera: Matrix4, 
            camera_position: Vector3,
+           plane: Grid_Plane = .XZ,
            grid_size: float32 = 100.0) {
 
     glUseProgram(renderer.shader_program_gl_handle);
@@ -39,6 +46,7 @@ render :: (using grid: *Camera_Infinite_Grid,
     set_world_to_camera_uniform(*renderer, world_to_camera);
     set_camera_position_uniform(*renderer, camera_position);
     set_grid_size_uniform(*renderer, grid_size);
+    set_grid_plane_uniform(*renderer, cast(s32) plane);
 
     // bind the empty vao and draw 6 vertices (two triangles).
     // the vertex shader uses gl_vertexid to index into hardcoded

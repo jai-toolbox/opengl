@@ -66,7 +66,7 @@ Additionally it can be used for debugging things in terms of how big you expect 
 CAMERA_INFINITE_GRID_SHADER :: Shader_Metadata.{
     name = "Camera_Infinite_Grid", 
     attributes = .[], // doesn't need any vertices, it stores them internally in the shader
-    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA, .CAMERA_POSITION, .GRID_SIZE],
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA, .CAMERA_POSITION, .GRID_SIZE, .GRID_PLANE],
     per_object_transforms = false,
     immediate_mode_support = false,
     num_elements_in_each_buffer = 6, // lol, cause we only do one quad
@@ -122,6 +122,17 @@ ABSOLUTE_POSITION_COLOR_SHADER :: Shader_Metadata.{
     num_elements_in_each_buffer = 100000,
     vertex_shader_path = "data/shaders/out/absolute_position_color.vert",
     fragment_shader_path = "data/shaders/out/color.frag"
+};
+
+ABSOLUTE_POSITION_COLOR_ALPHA :: Shader_Metadata.{
+    name = "Absolute_Position_Color_Alpha", 
+    attributes = .[.POSITION, .PASSTHROUGH_RGBA_COLOR],
+    uniforms = .[.ASPECT_RATIO],
+    per_object_transforms = false,
+    immediate_mode_support = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/absolute_position_color_alpha.vert",
+    fragment_shader_path = "data/shaders/out/color_alpha.frag"
 };
 
 /*
@@ -317,6 +328,7 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 // this is mega wasteful during compilation, there should just be a script to do this in this directory... 
 
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
+#run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_ALPHA);
 #run create_code_to_render_stuff_with_shader(CAMERA_ABSOLUTE_POSITION_COLOR);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_NORMAL_BORDER);
@@ -1346,6 +1358,7 @@ GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
 
     // use for the infinite grid shader
     GRID_SIZE;
+    GRID_PLANE;
 
     // when you're rendering things with points
     POINT_SIZE;
@@ -1606,6 +1619,8 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = Vector4, var_name_in_shader = "rgba_color" };
         case .GRID_SIZE;
             return .{ type_in_jai = float32, var_name_in_shader = "grid_size" };
+        case .GRID_PLANE;
+            return .{ type_in_jai = s32, var_name_in_shader = "grid_plane" };
         case .POINT_SIZE;
             return .{ type_in_jai = float32, var_name_in_shader = "point_size" };
         case .BORDER_THICKNESS;

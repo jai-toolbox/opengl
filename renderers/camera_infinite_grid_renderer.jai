@@ -10,6 +10,7 @@ Camera_Infinite_Grid_Renderer :: struct {
     world_to_camera_uniform_location : GLint = -1;
     camera_position_uniform_location : GLint = -1;
     grid_size_uniform_location : GLint = -1;
+    grid_plane_uniform_location : GLint = -1;
 
 
 
@@ -32,6 +33,10 @@ set_grid_size_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: float32)
     glUniform1f(renderer.grid_size_uniform_location, v);
 }
 
+set_grid_plane_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: s32) {
+    glUniform1i(renderer.grid_plane_uniform_location, v);
+}
+
 init :: (using renderer : *Camera_Infinite_Grid_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/infinite_grid.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/infinite_grid.frag");
@@ -43,6 +48,7 @@ init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
     world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
     camera_position_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_position");
     grid_size_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_size");
+    grid_plane_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_plane");
 
 }
 
