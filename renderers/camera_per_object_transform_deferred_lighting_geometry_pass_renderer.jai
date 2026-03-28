@@ -37,7 +37,9 @@ So deinit exists but also unbuffer object exists, the difference is that deinit 
 */
 deinit :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderable, renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
-    renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;
+    free_index(*renderer.ltw_pool, renderable.local_to_world_index);
+    renderable.local_to_world_index = 0;
+    renderable.object_index = 0;
     array_free(renderable.indices);
     array_free(renderable.positions);
     array_free(renderable.rgb_colors);
@@ -47,7 +49,7 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_P
 
 unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderer, renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderable) {
     unbuffer_object(*renderer.psr, renderable.object_index);
-    renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;
+    free_index(*renderer.ltw_pool, renderable.local_to_world_index);
     renderable.local_to_world_index = 0;
     renderable.object_index = 0;
 }
@@ -59,7 +61,7 @@ queue_render :: (using renderer: *Camera_Per_Object_Transform_Deferred_Lighting_
 
 
 set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderer, renderable: Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderable, matrix: Matrix4) {
-    renderer.local_to_world_matrices[renderable.local_to_world_index] = matrix;
+    set_matrix(*renderer.ltw_pool, renderable.local_to_world_index, matrix);
 }
 
 
@@ -67,10 +69,7 @@ Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
-    NUM_LOCAL_TO_WORLD_MATRICES :: 1024;
-    current_local_to_world_index : u32 = 0;
-    local_to_world_matrices : [NUM_LOCAL_TO_WORLD_MATRICES] Matrix4; 
-    local_to_world_gl_uniform_buffer_handle : GLuint;
+    using #as ltw_pool : Local_To_World_Matrix_Pool;
 
     local_to_world_index_buffer_gl_handle : GLuint;
 
@@ -101,9 +100,7 @@ init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Geometr
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
 
-    for 0..NUM_LOCAL_TO_WORLD_MATRICES-1
-        // this might not be necessary, doing it for now
-        local_to_world_matrices[it] = Matrix4_Identity;
+    init(*renderer.ltw_pool);
 
     camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
     world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
@@ -117,11 +114,6 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Deferred_Ligh
     glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
-
-    glGenBuffers(1, *local_to_world_gl_uniform_buffer_handle);
-    glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
-    glBufferData(GL_UNIFORM_BUFFER, local_to_world_matrices.count * size_of(Matrix4), local_to_world_matrices.data, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
 
     generate_buffer_for_vertex_attribute(*local_to_world_index_buffer_gl_handle, u32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_index_buffer_gl_handle, .LOCAL_TO_WORLD_INDEX);
@@ -211,15 +203,14 @@ buffer_object :: (
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
 
 
-    // local_to_world_indices are an array of the same value which is the local to world index
-    // the alternative to this is binding the uniform per object, which we're trying to avoid because we want to render
-    // everything at once in one big draw call.
+    ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
+    if !ltw_success {
+        virtual_free(*first_fit_virtual_allocator, index);
+        return 0, 0, false;
+    }
 
     local_to_world_indices: [..] u32;
-    for 0..positions.count array_add(*local_to_world_indices, current_local_to_world_index);
-
-    ltw_index_we_used := current_local_to_world_index;
-    current_local_to_world_index += 1;
+    for 0..positions.count array_add(*local_to_world_indices, ltw_index_we_used);
 
     glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
@@ -262,16 +253,7 @@ render :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Geome
     glUseProgram(shader_program_gl_handle);
 
 
-    // bind the ubo to the generic binding point so that glbuffersubdata knows which buffer to upload data to
-    glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
-
-    // bind the ubo to indexed binding point 0 so that the shader reads from this buffer.
-    // this must be done every frame because other renderers may rebind
-    // indexed binding point 0 to a different buffer between frames
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
-
-    // upload the to gpu
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, size_of(Matrix4) * current_local_to_world_index, local_to_world_matrices.data);
+    upload_to_gpu(*ltw_pool);
 
 
 

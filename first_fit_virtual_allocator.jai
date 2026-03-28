@@ -27,43 +27,35 @@ get_size_of_previous_alloc :: (using ffva : *First_Fit_Virtual_Allocator, index:
 
 // note: the start index is your pointer
 // todo: should this just be called t
-virtual_alloc :: (using ffva : *First_Fit_Virtual_Allocator, length: u32) -> start_index: u32, success: bool  {
+virtual_alloc :: (using ffva : *First_Fit_Virtual_Allocator, length: u32) -> start_index: u32, success: bool {
     last_end : u32 = 0;
 
-    for occupied_intervals {                                     
-        // log("iterating over occupied interval");
-        start := it[0];
-        end := it[1];
+    for idx : 0..occupied_intervals.count-1 {
+        start := occupied_intervals[idx][0];
+        end := occupied_intervals[idx][1];
 
         if (start - last_end >= length) {
             interval := u32.[last_end, last_end + length];
-            array_add(*occupied_intervals, interval);
-            return last_end, true; // found space before this iterations' interval
+            array_insert_at(*occupied_intervals, interval, idx);
+            return last_end, true;
         }
         last_end = end;
     }
 
-    // check if there's enough space after the last interval
     if (size - last_end >= length) {
-        // log("there was enough space after the last end");
         interval := u32.[last_end, last_end + length];
         array_add(*occupied_intervals, interval);
         return last_end, true;
     }
 
-    // log("not enough space after last end");
-
     return 0, false;
 }
 
 virtual_free :: (using ffva : *First_Fit_Virtual_Allocator, start_index: u32) -> bool {
-    interval_index_to_remove := 0;
-
-    for 0..occupied_intervals.count {
+    for 0..occupied_intervals.count-1 {
         interval := occupied_intervals[it];
         if (interval[0] == start_index) {
-            // note it's ok to remove in loop here because loop ends right after.
-            array_unordered_remove_by_index(*occupied_intervals, it);
+            array_ordered_remove_by_index(*occupied_intervals, it);
             return true;
         }
     }

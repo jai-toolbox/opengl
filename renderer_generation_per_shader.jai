@@ -203,6 +203,7 @@ CAMERA_PER_OBJECT_TRANSFORM_COLOR :: Shader_Metadata.{
     attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR],
     uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA],
     per_object_transforms = true,
+    immediate_mode_support = true,
     num_elements_in_each_buffer = 100000,
     vertex_shader_path = "data/shaders/out/camera_per_object_transform_color.vert",
     fragment_shader_path = "data/shaders/out/color.frag"
@@ -415,10 +416,7 @@ generate_code_for_per_object_transform_attributes :: (s : Shader_Metadata) -> st
 
     return #string END 
 
-    NUM_LOCAL_TO_WORLD_MATRICES :: 1024;
-    current_local_to_world_index : u32 = 0;
-    local_to_world_matrices : [NUM_LOCAL_TO_WORLD_MATRICES] Matrix4; 
-    local_to_world_gl_uniform_buffer_handle : GLuint;
+    using #as ltw_pool : Local_To_World_Matrix_Pool;
 
     local_to_world_index_buffer_gl_handle : GLuint;
 
@@ -553,7 +551,7 @@ generate_code_for_set_local_to_world_matrix :: (shader: Shader_Metadata) -> stri
     return tprint(#string END
 
 set_local_to_world_matrix :: (renderer: *%1, renderable: %2, matrix: Matrix4) {
-    renderer.local_to_world_matrices[renderable.local_to_world_index] = matrix;
+    set_matrix(*renderer.ltw_pool, renderable.local_to_world_index, matrix);
 }
 
     END,
@@ -576,7 +574,7 @@ generate_code_for_deinit_renderable :: (shader: Shader_Metadata) -> string {
 
     per_object_transform_cleanup := "";
     if shader.per_object_transforms {
-        per_object_transform_cleanup = "    renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;\n";
+        per_object_transform_cleanup = "    free_index(*renderer.ltw_pool, renderable.local_to_world_index);\n    renderable.local_to_world_index = 0;\n    renderable.object_index = 0;\n";
     }
 
     return tprint(#string END
@@ -604,7 +602,7 @@ generate_code_for_unbuffer_renderable :: (shader: Shader_Metadata) -> string {
     local_to_world_reset := "";
     if shader.per_object_transforms {
         local_to_world_reset = tprint(
-            "    renderer.local_to_world_matrices[renderable.local_to_world_index] = Matrix4_Identity;\n    renderable.local_to_world_index = 0;\n"
+            "    free_index(*renderer.ltw_pool, renderable.local_to_world_index);\n    renderable.local_to_world_index = 0;\n"
         );
     }
 
@@ -637,9 +635,7 @@ queue_render :: (using renderer: *%1, renderable: %2) {
 generate_code_for_initting_matrices :: (s : Shader_Metadata) -> string {
     if !s.per_object_transforms return "";
     return #string END
-    for 0..NUM_LOCAL_TO_WORLD_MATRICES-1
-        // this might not be necessary, doing it for now
-        local_to_world_matrices[it] = Matrix4_Identity;
+    init(*renderer.ltw_pool);
     END;
 }
 
@@ -710,16 +706,10 @@ generate_code_for_setting_up_local_to_world_matrices :: (shader : Shader_Metadat
     if !shader.per_object_transforms return "";
     return #string END
 
-    glGenBuffers(1, *local_to_world_gl_uniform_buffer_handle);
-    glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
-    glBufferData(GL_UNIFORM_BUFFER, local_to_world_matrices.count * size_of(Matrix4), local_to_world_matrices.data, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
-
     generate_buffer_for_vertex_attribute(*local_to_world_index_buffer_gl_handle, u32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_index_buffer_gl_handle, .LOCAL_TO_WORLD_INDEX);
 
     END;
-
 }
 
 
@@ -811,15 +801,14 @@ generate_buffer_vertex_attribute_data_at_index_code :: (attribute: GL_Shader_Ver
 
 
 code_to_buffer_local_to_world_indices :: #string END
-    // local_to_world_indices are an array of the same value which is the local to world index
-    // the alternative to this is binding the uniform per object, which we're trying to avoid because we want to render
-    // everything at once in one big draw call.
+    ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
+    if !ltw_success {
+        virtual_free(*first_fit_virtual_allocator, index);
+        return 0, 0, false;
+    }
 
     local_to_world_indices: [..] u32;
-    for 0..positions.count array_add(*local_to_world_indices, current_local_to_world_index);
-
-    ltw_index_we_used := current_local_to_world_index;
-    current_local_to_world_index += 1;
+    for 0..positions.count array_add(*local_to_world_indices, ltw_index_we_used);
 
     glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
@@ -1020,24 +1009,10 @@ rebuffer_object :: (using renderer : *%1, renderable : $T/interface %2) {
 
 
 generate_code_for_uploading_local_to_world_matrices :: (s: Shader_Metadata) -> string {
-
-    // Note previously we use to call:
-    // glBufferData(GL_UNIFORM_BUFFER, size_of(Matrix4) * local_to_world_matrices.count, local_to_world_matrices.data, GL_DYNAMIC_DRAW);
-    // I'm leaving this comment here because in the figure I might want to go back to it, because apparently the following can cause sync slowdowns
-
     if !s.per_object_transforms return "";
     return #string END
 
-    // bind the ubo to the generic binding point so that glbuffersubdata knows which buffer to upload data to
-    glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
-
-    // bind the ubo to indexed binding point 0 so that the shader reads from this buffer.
-    // this must be done every frame because other renderers may rebind
-    // indexed binding point 0 to a different buffer between frames
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
-
-    // upload the to gpu
-    glBufferSubData(GL_UNIFORM_BUFFER, 0, size_of(Matrix4) * current_local_to_world_index, local_to_world_matrices.data);
+    upload_to_gpu(*ltw_pool);
 
     END;
 }
