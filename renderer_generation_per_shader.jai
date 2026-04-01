@@ -148,6 +148,22 @@ CAMERA_ABSOLUTE_POSITION_COLOR :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/color.frag"
 };
 
+
+MULTI_CHANNEL_SIGNED_DISTANCE_FIELD_TEXT :: Shader_Metadata.{
+    name = "Multi_Channel_Signed_Distance_Field_Text",
+    attributes = .[.POSITION, .PASSTHROUGH_TEXTURE_COORDINATE],
+    uniforms = .[
+        .ASPECT_RATIO,
+        .TEXTURE_SAMPLER,
+        .RGBA_COLOR,
+    ],
+    per_object_transforms = false,
+    immediate_mode_support = true,
+    num_elements_in_each_buffer = 100000, // i think this could be reduced because text has less usually.
+    vertex_shader_path = "data/shaders/out/absolute_position_textured.vert",
+    fragment_shader_path = "data/shaders/out/multi_channel_signed_distance_field_text.frag"
+};
+
 /*
 
 Takes in a framebuffer storing a bunch of objects being rendered by their ids (similar to 3d object picking)
@@ -330,6 +346,8 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_ALPHA);
 #run create_code_to_render_stuff_with_shader(CAMERA_ABSOLUTE_POSITION_COLOR);
+
+#run create_code_to_render_stuff_with_shader(MULTI_CHANNEL_SIGNED_DISTANCE_FIELD_TEXT);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_NORMAL_BORDER);
 #run create_code_to_render_stuff_with_shader(OBJECT_ID_SELECTION_OUTLINE);
@@ -1359,6 +1377,9 @@ GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
     COLOR_TEXTURE;
     NORMAL_TEXTURE;
 
+    // generic thing for doing a texture
+    TEXTURE_SAMPLER;
+
     CAMERA_POSITION; // common in lighting situations
     LIGHTS;
 }
@@ -1621,6 +1642,10 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = s32, var_name_in_shader = "color_texture" };
         case .NORMAL_TEXTURE;
             return .{ type_in_jai = s32, var_name_in_shader = "normal_texture" };
+
+        case .TEXTURE_SAMPLER;
+            return .{ type_in_jai = s32, var_name_in_shader = "texture_sampler" };
+
         case .CAMERA_POSITION;
             return .{ type_in_jai = Vector3, var_name_in_shader = "camera_position" };
         case .LIGHTS;
