@@ -59,12 +59,14 @@ This means that the local_to_world index can just be the number of objects you'v
 // also loading everything is becoming more and more bad, can we not just do a module or something?
 #load "renderers/absolute_position_color_renderer.jai";
 #load "renderers/absolute_position_color_alpha_renderer.jai";
+#load "renderers/transform_position_color_alpha_renderer.jai";
 #load "renderers/camera_per_object_transform_color_renderer.jai";
 #load "renderers/camera_per_object_transform_color_alpha_renderer.jai";
 #load "renderers/camera_infinite_grid_renderer.jai";
 #load "renderers/object_id_selection_outline_renderer.jai";
 #load "renderers/camera_per_object_transform_position_point_color_renderer.jai";
 #load "renderers/multi_channel_signed_distance_field_text_renderer.jai";
+#load "renderers/transform_msdf_text_renderer.jai";
 #load "renderers/camera_per_object_transform_normal_border_renderer.jai";
 #load "renderers/camera_per_object_transform_object_id_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";

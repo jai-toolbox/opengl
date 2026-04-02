@@ -148,7 +148,25 @@ CAMERA_ABSOLUTE_POSITION_COLOR :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/color.frag"
 };
 
+TRANSFORM_POSITION_COLOR_ALPHA :: Shader_Metadata.{
+    name = "Transform_Position_Color_Alpha",
+    attributes = .[.POSITION, .PASSTHROUGH_RGBA_COLOR],
+    uniforms = .[
+        .TRANSFORM,
+    ],
+    per_object_transforms = false,
+    immediate_mode_support = true,
+    num_elements_in_each_buffer = 100000, 
+    vertex_shader_path = "data/shaders/out/transform_position_color_alpha.vert",
+    fragment_shader_path = "data/shaders/out/color_alpha.frag"
+};
 
+
+/*
+
+for text rendering at small and large fonts cleanly
+
+*/
 MULTI_CHANNEL_SIGNED_DISTANCE_FIELD_TEXT :: Shader_Metadata.{
     name = "Multi_Channel_Signed_Distance_Field_Text",
     attributes = .[.POSITION, .PASSTHROUGH_TEXTURE_COORDINATE],
@@ -163,6 +181,22 @@ MULTI_CHANNEL_SIGNED_DISTANCE_FIELD_TEXT :: Shader_Metadata.{
     vertex_shader_path = "data/shaders/out/absolute_position_textured.vert",
     fragment_shader_path = "data/shaders/out/multi_channel_signed_distance_field_text.frag"
 };
+
+TRANSFORM_MSDF_TEXT :: Shader_Metadata.{
+    name = "Transform_MSDF_Text",
+    attributes = .[.POSITION, .PASSTHROUGH_TEXTURE_COORDINATE],
+    uniforms = .[
+        .TRANSFORM,
+        .TEXTURE_SAMPLER,
+        .RGBA_COLOR,
+    ],
+    per_object_transforms = false,
+    immediate_mode_support = true,
+    num_elements_in_each_buffer = 100000, // i think this could be reduced because text has less usually.
+    vertex_shader_path = "data/shaders/out/transform_position_textured.vert",
+    fragment_shader_path = "data/shaders/out/multi_channel_signed_distance_field_text.frag"
+};
+
 
 /*
 
@@ -345,9 +379,11 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_SHADER);
 #run create_code_to_render_stuff_with_shader(ABSOLUTE_POSITION_COLOR_ALPHA);
+#run create_code_to_render_stuff_with_shader(TRANSFORM_POSITION_COLOR_ALPHA);
 #run create_code_to_render_stuff_with_shader(CAMERA_ABSOLUTE_POSITION_COLOR);
 
 #run create_code_to_render_stuff_with_shader(MULTI_CHANNEL_SIGNED_DISTANCE_FIELD_TEXT);
+#run create_code_to_render_stuff_with_shader(TRANSFORM_MSDF_TEXT);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_NORMAL_BORDER);
 #run create_code_to_render_stuff_with_shader(OBJECT_ID_SELECTION_OUTLINE);
@@ -1340,6 +1376,8 @@ GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
     WORLD_TO_CAMERA;
     CAMERA_TO_CLIP;
 
+    TRANSFORM;
+
     // color the entire scene or an object a solid color
     // note that this already exists as a passthrough vertex attribute
     // and once passed through it becomes "rgb_color" in the fragment shader 
@@ -1608,6 +1646,8 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = Matrix4, var_name_in_shader = "world_to_camera" };
         case .CAMERA_TO_CLIP;
             return .{ type_in_jai = Matrix4, var_name_in_shader = "camera_to_clip" };
+        case .TRANSFORM;
+            return .{ type_in_jai = Matrix4, var_name_in_shader = "transform" };
         case .RGB_COLOR;
             return .{ type_in_jai = Vector3, var_name_in_shader = "rgb_color" };
         case .RGBA_COLOR;
