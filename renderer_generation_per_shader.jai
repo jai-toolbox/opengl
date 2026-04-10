@@ -446,9 +446,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     success := write_entire_file(filename, output);
     if !success {
         log_error("Failed to write generated file: %", filename);
-    } else {
-        log("Generated: %", filename);
-    }
+    } 
 }
 
 jai_struct_attributes_for_gl_vertex_attribute_handles :: (attributes: [] GL_Shader_Vertex_Attribute_Variable) -> string {
