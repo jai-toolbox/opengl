@@ -717,6 +717,8 @@ generate_code_for_init :: (shader : Shader_Metadata) -> string {
 init :: (using renderer : *%1) { 
     vertex_shader_source := read_entire_file("%2");
     fragment_shader_source := read_entire_file("%3");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
 %6%7

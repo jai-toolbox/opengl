@@ -97,6 +97,8 @@ set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Re
 init :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transform_color.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/color.frag");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);

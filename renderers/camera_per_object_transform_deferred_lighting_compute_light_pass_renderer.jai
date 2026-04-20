@@ -84,6 +84,8 @@ set_normal_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_
 init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/absolute_position_textured.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/lighting/compute_lighting_from_position_color_normal_textures.frag");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);

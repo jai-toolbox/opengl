@@ -40,6 +40,8 @@ set_grid_plane_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: s32) {
 init :: (using renderer : *Camera_Infinite_Grid_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/infinite_grid.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/infinite_grid.frag");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
 

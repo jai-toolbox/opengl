@@ -85,6 +85,8 @@ set_rgba_color_uniform :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_
 init :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/absolute_position_textured.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/multi_channel_signed_distance_field_text.frag");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);

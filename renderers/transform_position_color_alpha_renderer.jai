@@ -75,6 +75,8 @@ set_transform_uniform :: (renderer : *Transform_Position_Color_Alpha_Renderer, v
 init :: (using renderer : *Transform_Position_Color_Alpha_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/transform_position_color_alpha.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/color_alpha.frag");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);

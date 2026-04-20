@@ -96,6 +96,8 @@ set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred
 init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/lighting/camera_per_object_transform_color_normal.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/lighting/render_position_color_normal_textures.frag");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);

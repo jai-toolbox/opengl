@@ -126,6 +126,8 @@ set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Tran
 init :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer) { 
     vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transform_packed_texture_2_channel.vert");
     fragment_shader_source := read_entire_file("data/shaders/out/packed_texture_2_channel.frag");
+    defer free(vertex_shader_source);
+    defer free(fragment_shader_source);
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
