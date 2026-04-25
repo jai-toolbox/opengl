@@ -16,6 +16,13 @@ init :: (using pool : *Local_To_World_Matrix_Pool) {
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, gl_uniform_buffer_handle);
 }
 
+deinit :: (using pool : *Local_To_World_Matrix_Pool) {
+    array_free(free_indices);
+    glDeleteBuffers(1, *gl_uniform_buffer_handle);
+    gl_uniform_buffer_handle = 0;
+    current_index = 0;
+}
+
 alloc_index :: (using pool : *Local_To_World_Matrix_Pool) -> u32, bool {
     if free_indices.count > 0 {
         return pop(*free_indices), true;

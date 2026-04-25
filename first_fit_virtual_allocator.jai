@@ -16,6 +16,11 @@ First_Fit_Virtual_Allocator :: struct {
     occupied_intervals : [..] [2] u32;
 }
 
+deinit :: (using ffva : *First_Fit_Virtual_Allocator) {
+    array_free(occupied_intervals);
+    size = 0;
+}
+
 get_size_of_previous_alloc :: (using ffva : *First_Fit_Virtual_Allocator, index: u32) -> size: u32, success: bool {
 
     for occupied_intervals 

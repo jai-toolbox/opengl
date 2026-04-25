@@ -425,6 +425,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     append(*builder, generate_renderer_struct_for_given_shader(shader));
     append(*builder, generate_code_for_uniform_setter_functions(shader));
     append(*builder, generate_code_for_init(shader));
+    append(*builder, generate_code_for_deinit_renderer(shader));
 
     if has_attributes {
         append(*builder, generate_init_buffers_no_data(shader));
@@ -735,6 +736,52 @@ init :: (using renderer : *%1) {
          immediate_init_call); 
 }
 
+generate_code_for_deinit_renderer :: (shader: Shader_Metadata) -> string {
+    push_allocator(temp);
+
+    builder: String_Builder;
+    init_string_builder(*builder);
+
+    // deinit the local-to-world matrix pool if applicable
+    if shader.per_object_transforms {
+        print_to_builder(*builder, "    deinit(*ltw_pool);\n\n");
+    }
+
+    // deinit the base per-shader renderer (shader program, VAO, index buffer, tables, allocator, etc.)
+    print_to_builder(*builder, "    deinit(*psr);\n\n");
+
+    // delete per-attribute GL buffers
+    for shader.attributes {
+        attr_conf := get_configuration(it);
+        print_to_builder(*builder, "    glDeleteBuffers(1, *%_buffer_gl_handle);\n", attr_conf.plural_name);
+    }
+
+    // delete the local_to_world_index buffer if applicable
+    if shader.per_object_transforms {
+        print_to_builder(*builder, "    glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);\n");
+    }
+
+    // delete immediate-mode GL resources if applicable
+    if shader.immediate_mode_support {
+        print_to_builder(*builder, "\n    // immediate-mode cleanup\n");
+        print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_index_buffer_gl_handle);\n");
+        for shader.attributes {
+            attr_conf := get_configuration(it);
+            print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_%_buffer_gl_handle);\n", attr_conf.plural_name);
+        }
+        print_to_builder(*builder, "    glDeleteVertexArrays(1, *immediate_vertex_attribute_array_gl_handle);\n");
+    }
+
+    return tprint(#string END
+
+deinit :: (using renderer : *%1) {
+%2}
+
+    END,
+    get_renderer_struct_name(shader),
+    builder_to_string(*builder));
+}
+
 generate_attribute_setup_code :: (attributes: [] GL_Shader_Vertex_Attribute_Variable) -> string {
     push_allocator(temp);
     builder: String_Builder;
@@ -866,6 +913,8 @@ code_to_buffer_local_to_world_indices :: #string END
 
     glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
+
+    array_free(local_to_world_indices);
 END;
 
 generate_buffer_vertex_attributes_code :: (shader : Shader_Metadata) -> string {
@@ -1098,6 +1147,7 @@ render :: (using renderer : *%1, primitive_mode: GLenum = %3) {
     // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
+    array_free(geom_indices_to_render);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 
@@ -1855,6 +1905,33 @@ init :: (psr : *Per_Shader_Renderer, vertex_shader_source : string, fragment_sha
     psr.first_fit_virtual_allocator.size = max_num_elements_in_each_buffer;
 }
 
+deinit :: (using psr : *Per_Shader_Renderer) {
+
+    // delete the shader program
+    glDeleteProgram(shader_program_gl_handle);
+    shader_program_gl_handle = 0;
+
+    // delete the VAO and index buffer
+    glDeleteVertexArrays(1, *vertex_attribute_array_gl_handle);
+    glDeleteBuffers(1, *index_buffer_gl_handle);
+    vertex_attribute_array_gl_handle = 0;
+    index_buffer_gl_handle = 0;
+
+    // free the render queue arrays
+    array_free(object_indices_to_render_this_frame);
+    array_free(object_indices_we_rendered_last_frame);
+
+    // free all the dynamic arrays stored as values in the table, then free the table itself
+    for buffered_object_index_to_global_indices {
+        array_free(it);
+    }
+    deinit(*buffered_object_index_to_global_indices);
+
+    // free the virtual allocator
+    deinit(*first_fit_virtual_allocator);
+}
+
+
 set_active_program :: (renderer: Per_Shader_Renderer) {
     glUseProgram(renderer.shader_program_gl_handle);
 }
@@ -1892,6 +1969,7 @@ render :: (using psr : *Per_Shader_Renderer, primitive_mode : GLenum = GL_TRIANG
     // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
+    array_free(geom_indices_to_render);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 

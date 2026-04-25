@@ -54,3 +54,9 @@ init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
 
 }
 
+
+deinit :: (using renderer : *Camera_Infinite_Grid_Renderer) {
+    deinit(*psr);
+
+}
+

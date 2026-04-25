@@ -111,6 +111,17 @@ init :: (using renderer : *Camera_Per_Object_Transform_Object_Id_Renderer) {
 }
 
 
+deinit :: (using renderer : *Camera_Per_Object_Transform_Object_Id_Renderer) {
+    deinit(*ltw_pool);
+
+    deinit(*psr);
+
+    glDeleteBuffers(1, *positions_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_object_ids_buffer_gl_handle);
+    glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);
+}
+
+
 
 init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Object_Id_Renderer) { // todo change renderer name
 
@@ -208,6 +219,8 @@ buffer_object :: (
     glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
 
+    array_free(local_to_world_indices);
+
 
     glBindVertexArray(0);
 
@@ -263,6 +276,7 @@ render :: (using renderer : *Camera_Per_Object_Transform_Object_Id_Renderer, pri
     // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
+    array_free(geom_indices_to_render);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 

@@ -87,6 +87,14 @@ init :: (using renderer : *Camera_Absolute_Position_Color_Renderer) {
 }
 
 
+deinit :: (using renderer : *Camera_Absolute_Position_Color_Renderer) {
+    deinit(*psr);
+
+    glDeleteBuffers(1, *positions_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_rgb_colors_buffer_gl_handle);
+}
+
+
 
 init_buffers_no_data :: (using apcr : *Camera_Absolute_Position_Color_Renderer) { // todo change renderer name
 
@@ -220,6 +228,7 @@ render :: (using renderer : *Camera_Absolute_Position_Color_Renderer, primitive_
     // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
+    array_free(geom_indices_to_render);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 

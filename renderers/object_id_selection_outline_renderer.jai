@@ -54,3 +54,12 @@ init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
 
 }
 
+
+deinit :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
+    deinit(*ltw_pool);
+
+    deinit(*psr);
+
+    glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);
+}
+
