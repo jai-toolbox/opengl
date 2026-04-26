@@ -1136,7 +1136,7 @@ render :: (using renderer : *%1, primitive_mode: GLenum = %3) {
     geom_indices_to_render : [..] u32; 
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
     for object_indices_to_render_this_frame {
-        geom_indices , success := table_find(*buffered_object_index_to_global_indices, it);
+        success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: %", it);
         for geom_indices 
             array_add(*geom_indices_to_render, it);
@@ -1958,7 +1958,7 @@ render :: (using psr : *Per_Shader_Renderer, primitive_mode : GLenum = GL_TRIANG
     geom_indices_to_render : [..] u32; 
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
     for object_indices_to_render_this_frame {
-        geom_indices , success := table_find(*buffered_object_index_to_global_indices, it);
+        success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: %", it);
         for geom_indices 
             array_add(*geom_indices_to_render, it);
@@ -1998,7 +1998,7 @@ unbuffer_object :: (using psr: *Per_Shader_Renderer, object_index: u32) {
 
     virtual_free(*first_fit_virtual_allocator, object_index);
 
-    global_indices, found := table_find(*buffered_object_index_to_global_indices, object_index);
+    found, global_indices := table_find(*buffered_object_index_to_global_indices, object_index);
     if found {
         array_free(global_indices);
         table_remove(*buffered_object_index_to_global_indices, object_index);
