@@ -18,10 +18,16 @@ Absolute_Position_Color_Geometry :: struct {
     rgb_colors: [..] Vector3;
 }
 
-assign_geometry :: (renderable: *Absolute_Position_Color_Renderable, geometry: $T/interface Absolute_Position_Color_Geometry) {
+assign_geometry_copy :: (renderable: *Absolute_Position_Color_Renderable, geometry: $T/interface Absolute_Position_Color_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.rgb_colors, geometry.rgb_colors);
+}
+
+assign_geometry :: (renderable: *Absolute_Position_Color_Renderable, geometry: $T/interface Absolute_Position_Color_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.rgb_colors = geometry.rgb_colors;
 }
 
 

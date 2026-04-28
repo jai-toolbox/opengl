@@ -20,10 +20,16 @@ Camera_Per_Object_Transform_Object_Id_Geometry :: struct {
     object_ids: [..] u32;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Object_Id_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Object_Id_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Object_Id_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Object_Id_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.object_ids, geometry.object_ids);
+}
+
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Object_Id_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Object_Id_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.object_ids = geometry.object_ids;
 }
 
 

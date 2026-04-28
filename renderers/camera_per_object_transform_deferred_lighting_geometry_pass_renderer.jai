@@ -22,11 +22,18 @@ Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Geometry :: struct {
     normals: [..] Vector3;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.rgb_colors, geometry.rgb_colors);
     array_copy(*renderable.normals, geometry.normals);
+}
+
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.rgb_colors = geometry.rgb_colors;
+    renderable.normals = geometry.normals;
 }
 
 

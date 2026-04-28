@@ -18,10 +18,16 @@ Transform_MSDF_Text_Geometry :: struct {
     texture_coordinates: [..] Vector2;
 }
 
-assign_geometry :: (renderable: *Transform_MSDF_Text_Renderable, geometry: $T/interface Transform_MSDF_Text_Geometry) {
+assign_geometry_copy :: (renderable: *Transform_MSDF_Text_Renderable, geometry: $T/interface Transform_MSDF_Text_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
+}
+
+assign_geometry :: (renderable: *Transform_MSDF_Text_Renderable, geometry: $T/interface Transform_MSDF_Text_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.texture_coordinates = geometry.texture_coordinates;
 }
 
 

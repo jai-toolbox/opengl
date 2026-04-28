@@ -20,10 +20,16 @@ Camera_Per_Object_Transform_Color_Alpha_Geometry :: struct {
     rgba_colors: [..] Vector4;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Color_Alpha_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Alpha_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Color_Alpha_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Alpha_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.rgba_colors, geometry.rgba_colors);
+}
+
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Color_Alpha_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Alpha_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.rgba_colors = geometry.rgba_colors;
 }
 
 

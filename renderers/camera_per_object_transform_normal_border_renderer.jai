@@ -20,10 +20,16 @@ Camera_Per_Object_Transform_Normal_Border_Geometry :: struct {
     normals: [..] Vector3;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Normal_Border_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Normal_Border_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Normal_Border_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Normal_Border_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.normals, geometry.normals);
+}
+
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Normal_Border_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Normal_Border_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.normals = geometry.normals;
 }
 
 

@@ -18,10 +18,16 @@ Multi_Channel_Signed_Distance_Field_Text_Geometry :: struct {
     texture_coordinates: [..] Vector2;
 }
 
-assign_geometry :: (renderable: *Multi_Channel_Signed_Distance_Field_Text_Renderable, geometry: $T/interface Multi_Channel_Signed_Distance_Field_Text_Geometry) {
+assign_geometry_copy :: (renderable: *Multi_Channel_Signed_Distance_Field_Text_Renderable, geometry: $T/interface Multi_Channel_Signed_Distance_Field_Text_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
+}
+
+assign_geometry :: (renderable: *Multi_Channel_Signed_Distance_Field_Text_Renderable, geometry: $T/interface Multi_Channel_Signed_Distance_Field_Text_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.texture_coordinates = geometry.texture_coordinates;
 }
 
 

@@ -18,10 +18,16 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Geometry :: str
     texture_coordinates: [..] Vector2;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
+}
+
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.texture_coordinates = geometry.texture_coordinates;
 }
 
 

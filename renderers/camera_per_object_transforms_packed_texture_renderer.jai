@@ -24,12 +24,20 @@ Camera_Per_Object_Transforms_Packed_Texture_Geometry :: struct {
     packed_texture_bounding_box_index: [..] s32;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transforms_Packed_Texture_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transforms_Packed_Texture_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.packed_texture_index, geometry.packed_texture_index);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
     array_copy(*renderable.packed_texture_bounding_box_index, geometry.packed_texture_bounding_box_index);
+}
+
+assign_geometry :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transforms_Packed_Texture_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.packed_texture_index = geometry.packed_texture_index;
+    renderable.texture_coordinates = geometry.texture_coordinates;
+    renderable.packed_texture_bounding_box_index = geometry.packed_texture_bounding_box_index;
 }
 
 
