@@ -261,7 +261,8 @@ render :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, 
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
     // todo: reserve so we don't get a ton of reallocations in this for loop
-    geom_indices_to_render : [..] u32; 
+    geom_indices_to_render : [..] u32;  // can we just use temp storage?
+    defer array_free(geom_indices_to_render);
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
@@ -275,7 +276,6 @@ render :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, 
     // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
-    array_free(geom_indices_to_render);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 

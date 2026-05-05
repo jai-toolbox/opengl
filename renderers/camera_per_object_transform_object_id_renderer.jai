@@ -220,7 +220,7 @@ buffer_object :: (
     }
 
     local_to_world_indices: [..] u32;
-    for 0..positions.count array_add(*local_to_world_indices, ltw_index_we_used);
+    for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
     glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
@@ -268,7 +268,8 @@ render :: (using renderer : *Camera_Per_Object_Transform_Object_Id_Renderer, pri
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
     // todo: reserve so we don't get a ton of reallocations in this for loop
-    geom_indices_to_render : [..] u32; 
+    geom_indices_to_render : [..] u32;  // can we just use temp storage?
+    defer array_free(geom_indices_to_render);
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
@@ -282,7 +283,6 @@ render :: (using renderer : *Camera_Per_Object_Transform_Object_Id_Renderer, pri
     // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
-    array_free(geom_indices_to_render);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
 
