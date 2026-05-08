@@ -644,6 +644,9 @@ generate_code_for_deinit_renderable :: (shader: Shader_Metadata) -> string {
 
     return tprint(#string END
 
+deinit :: (renderable: *%1) {
+%4}
+
 /*
 
 So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.

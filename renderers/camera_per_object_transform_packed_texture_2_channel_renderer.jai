@@ -53,6 +53,17 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_2_Ch
 }
 
 
+deinit :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderable) {
+    array_free(renderable.indices);
+    array_free(renderable.positions);
+    array_free(renderable.texture_coordinates_0);
+    array_free(renderable.packed_texture_index_0);
+    array_free(renderable.packed_texture_bounding_box_index_0);
+    array_free(renderable.texture_coordinates_1);
+    array_free(renderable.packed_texture_index_1);
+    array_free(renderable.packed_texture_bounding_box_index_1);
+}
+
 /*
 
 So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
