@@ -111,10 +111,10 @@ set_rgb_color_uniform :: (renderer : *Camera_Per_Object_Transform_Normal_Border_
 }
 
 init :: (using renderer : *Camera_Per_Object_Transform_Normal_Border_Renderer) { 
-    vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transform_normal_border.vert");
-    fragment_shader_source := read_entire_file("data/shaders/out/uniform_color.frag");
-    defer free(vertex_shader_source);
-    defer free(fragment_shader_source);
+    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/camera_per_object_transform_normal_border.vert");
+    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/camera_per_object_transform_normal_border.vert");
+    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/uniform_color.frag");
+    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/uniform_color.frag");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);

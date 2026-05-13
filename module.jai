@@ -16,6 +16,7 @@ Then for the multi-shader renderable there is also a buffer object / queue rende
 #import,file "first_fit_virtual_allocator.jai";
 
 #import "Hash_Table";
+#import "tbx/assets";
 
 #load "renderer_generation_per_shader.jai";
 
@@ -168,4 +169,3 @@ set_vsync :: (value : bool) {
         wglSwapIntervalEXT(xx ifx value then 1 else 0);
     }
 }
-

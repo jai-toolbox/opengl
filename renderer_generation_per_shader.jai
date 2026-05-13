@@ -731,10 +731,10 @@ generate_code_for_init :: (shader : Shader_Metadata) -> string {
     return tprint(#string END
 
 init :: (using renderer : *%1) { 
-    vertex_shader_source := read_entire_file("%2");
-    fragment_shader_source := read_entire_file("%3");
-    defer free(vertex_shader_source);
-    defer free(fragment_shader_source);
+    vertex_shader_loaded, vertex_shader_source := load_asset("%2");
+    assert(vertex_shader_loaded, "Failed to load vertex shader asset: %2");
+    fragment_shader_loaded, fragment_shader_source := load_asset("%3");
+    assert(fragment_shader_loaded, "Failed to load fragment shader asset: %3");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
 %6%7
