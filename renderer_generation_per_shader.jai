@@ -332,6 +332,45 @@ CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE_2_CHANNEL :: Shader_Metadata.{
 };
 
 
+CAMERA_PER_OBJECT_TRANSFORM_PBR_PACKED_TEXTURE :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Pbr_Packed_Texture",
+    attributes = .[
+        .POSITION,
+        .PASSTHROUGH_NORMAL,
+        .PASSTHROUGH_TANGENT,
+        .PASSTHROUGH_TEXTURE_COORDINATE,
+
+        .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_BASE_COLOR,
+        .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_BASE_COLOR,
+
+        .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_NORMAL,
+        .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_NORMAL,
+
+        .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_METALLIC_ROUGHNESS,
+        .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_METALLIC_ROUGHNESS,
+
+        .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_AMBIENT_OCCLUSION,
+        .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_AMBIENT_OCCLUSION,
+    ],
+    uniforms = .[
+        .CAMERA_TO_CLIP,
+        .WORLD_TO_CAMERA,
+        .CAMERA_POSITION,
+        .PACKED_TEXTURES,
+        .PACKED_TEXTURE_BOUNDING_BOXES,
+        .NUM_ACTIVE_LIGHTS,
+        .DEFAULT_BASE_COLOR,
+        .DEFAULT_METALLIC,
+        .DEFAULT_ROUGHNESS,
+        .DEFAULT_AMBIENT_OCCLUSION,
+    ],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 500000,
+    vertex_shader_path   = "data/shaders/out/camera_per_object_transform_pbr_packed_texture.vert",
+    fragment_shader_path = "data/shaders/out/pbr_packed_texture.frag",
+};
+
+
 CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_GEOMETRY_PASS :: Shader_Metadata.{
     name = "Camera_Per_Object_Transform_Deferred_Lighting_Geometry_Pass", 
     attributes = .[
@@ -398,6 +437,8 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE_2_CHANNEL);
+
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PBR_PACKED_TEXTURE);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_GEOMETRY_PASS);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_DEFERRED_LIGHTING_COMPUTE_LIGHT_PASS);
@@ -1417,6 +1458,7 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     PASSTHROUGH_RGB_COLOR;
     PASSTHROUGH_RGBA_COLOR;
     PASSTHROUGH_NORMAL;
+    PASSTHROUGH_TANGENT;
 
     // for 3d picking
     PASSTHROUGH_OBJECT_ID;
@@ -1426,13 +1468,28 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     PASSTHROUGH_PACKED_TEXTURE_INDEX_0;
     PASSTHROUGH_PACKED_TEXTURE_INDEX_1;
 
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_0;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_1;
+
+
+    // multi-channel texture coordinates (for things like light mapping etc)
     PASSTHROUGH_TEXTURE_COORDINATE;
     PASSTHROUGH_TEXTURE_COORDINATE_0;
     PASSTHROUGH_TEXTURE_COORDINATE_1;
 
-    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX;
-    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_0;
-    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_1;
+
+    // texture packing with pbr, note that metallic and roughness are combined because we can do that to remove one texture from gpu memory
+    PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_BASE_COLOR;
+    PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_NORMAL;
+    PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_METALLIC_ROUGHNESS;
+    PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_AMBIENT_OCCLUSION;
+
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_BASE_COLOR;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_NORMAL;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_METALLIC_ROUGHNESS;
+    PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_AMBIENT_OCCLUSION;
+
     
 }
 
@@ -1485,9 +1542,18 @@ GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
 
     CAMERA_POSITION; // common in lighting situations
     LIGHTS;
+
+    // used in forward lighting situations to not iterate over all lights when possible
+    NUM_ACTIVE_LIGHTS;
+
+    // default values for things rendered with pbr that are missing a texture
+    DEFAULT_BASE_COLOR;
+    DEFAULT_METALLIC;
+    DEFAULT_ROUGHNESS;
+    DEFAULT_AMBIENT_OCCLUSION;
 }
 
-// this stuff should probably go elsewhere
+// good god, we need to automate this away soon, but it's working for now because we only add one shader at a time, but this has really exploded hasn't it.
 get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_Attribute_Configuration {
     if #complete attr == {
         case .POSITION;
@@ -1557,6 +1623,20 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 stride                          = 0,
                 pointer_offset_to_start_of_data = null,
                 passthrough              = true,
+            };
+        case .PASSTHROUGH_TANGENT;
+            return .{
+                type_in_jai                     = Vector3,
+                var_name_in_shader              = "passthrough_tangent",
+                plural_name                     = "passthrough_tangents",
+                argument_name_in_buffer_object  = "tangents",
+                constant_across_object          = false,
+                components_per_vertex           = 3,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough                     = true,
             };
         case .PASSTHROUGH_OBJECT_ID;
             return .{
@@ -1702,6 +1782,126 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 stride                          = 0,
                 pointer_offset_to_start_of_data = null,
             };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_BASE_COLOR;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_index_for_base_color",
+            plural_name                     = "passthrough_packed_texture_indices_for_base_color",
+            argument_name_in_buffer_object  = "packed_texture_index_for_base_color",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_NORMAL;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_index_for_normal",
+            plural_name                     = "passthrough_packed_texture_indices_for_normal",
+            argument_name_in_buffer_object  = "packed_texture_index_for_normal",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_METALLIC_ROUGHNESS;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_index_for_metallic_roughness",
+            plural_name                     = "passthrough_packed_texture_indices_for_metallic_roughness",
+            argument_name_in_buffer_object  = "packed_texture_index_for_metallic_roughness",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_AMBIENT_OCCLUSION;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_index_for_ambient_occlusion",
+            plural_name                     = "passthrough_packed_texture_indices_for_ambient_occlusion",
+            argument_name_in_buffer_object  = "packed_texture_index_for_ambient_occlusion",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_BASE_COLOR;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_bounding_box_index_for_base_color",
+            plural_name                     = "passthrough_packed_texture_bounding_box_indices_for_base_color",
+            argument_name_in_buffer_object  = "packed_texture_bounding_box_index_for_base_color",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_NORMAL;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_bounding_box_index_for_normal",
+            plural_name                     = "passthrough_packed_texture_bounding_box_indices_for_normal",
+            argument_name_in_buffer_object  = "packed_texture_bounding_box_index_for_normal",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_METALLIC_ROUGHNESS;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_bounding_box_index_for_metallic_roughness",
+            plural_name                     = "passthrough_packed_texture_bounding_box_indices_for_metallic_roughness",
+            argument_name_in_buffer_object  = "packed_texture_bounding_box_index_for_metallic_roughness",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
+
+    case .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_AMBIENT_OCCLUSION;
+        return .{
+            type_in_jai                     = s32,
+            var_name_in_shader              = "passthrough_packed_texture_bounding_box_index_for_ambient_occlusion",
+            plural_name                     = "passthrough_packed_texture_bounding_box_indices_for_ambient_occlusion",
+            argument_name_in_buffer_object  = "packed_texture_bounding_box_index_for_ambient_occlusion",
+            constant_across_object          = true,
+            components_per_vertex           = 1,
+            data_type_of_component          = GL_INT,
+            normalize                       = GL_FALSE,
+            stride                          = 0,
+            pointer_offset_to_start_of_data = null,
+            passthrough                     = true,
+        };
     }
 }
 
@@ -1756,6 +1956,19 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
         case .LIGHTS;
             // todo the type is a list of lights or something.
             return .{ type_in_jai = int, var_name_in_shader = "camera_position" };
+
+        case .NUM_ACTIVE_LIGHTS;
+            return .{ type_in_jai = s32, var_name_in_shader = "num_active_lights" };
+        case .DEFAULT_BASE_COLOR;
+            return .{ type_in_jai = Vector3, var_name_in_shader = "default_base_color" };
+        case .DEFAULT_METALLIC;
+            return .{ type_in_jai = float32, var_name_in_shader = "default_metallic" };
+        case .DEFAULT_ROUGHNESS;
+            return .{ type_in_jai = float32, var_name_in_shader = "default_roughness" };
+        case .DEFAULT_AMBIENT_OCCLUSION;
+            return .{ type_in_jai = float32, var_name_in_shader = "default_ambient_occlusion" };
+
+
     }
 }
 
