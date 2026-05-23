@@ -251,7 +251,7 @@ render :: (using renderer : *Camera_Per_Object_Transforms_Texture_Packed_Rendere
     geom_indices_to_render : [..] u32; 
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
     for object_indices_to_render_this_frame {
-        geom_indices , success := table_find(*buffered_object_index_to_global_indices, it);
+        success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: ", it);
         for geom_indices 
             array_add(*geom_indices_to_render, it);
