@@ -12,6 +12,8 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable :: struct {
     normals: [..] Vector3;
     tangents: [..] Vector3;
     texture_coordinates: [..] Vector2;
+    base_color_factors: [..] Vector4;
+    alpha_parameters: [..] Vector2;
     packed_texture_index_for_base_color: [..] s32;
     packed_texture_bounding_box_index_for_base_color: [..] s32;
     packed_texture_index_for_normal: [..] s32;
@@ -30,6 +32,8 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry :: struct {
     normals: [..] Vector3;
     tangents: [..] Vector3;
     texture_coordinates: [..] Vector2;
+    base_color_factors: [..] Vector4;
+    alpha_parameters: [..] Vector2;
     packed_texture_index_for_base_color: [..] s32;
     packed_texture_bounding_box_index_for_base_color: [..] s32;
     packed_texture_index_for_normal: [..] s32;
@@ -40,12 +44,14 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry :: struct {
     packed_texture_bounding_box_index_for_ambient_occlusion: [..] s32;
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.normals, geometry.normals);
     array_copy(*renderable.tangents, geometry.tangents);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
+    array_copy(*renderable.base_color_factors, geometry.base_color_factors);
+    array_copy(*renderable.alpha_parameters, geometry.alpha_parameters);
     array_copy(*renderable.packed_texture_index_for_base_color, geometry.packed_texture_index_for_base_color);
     array_copy(*renderable.packed_texture_bounding_box_index_for_base_color, geometry.packed_texture_bounding_box_index_for_base_color);
     array_copy(*renderable.packed_texture_index_for_normal, geometry.packed_texture_index_for_normal);
@@ -56,6 +62,42 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_
     array_copy(*renderable.packed_texture_bounding_box_index_for_ambient_occlusion, geometry.packed_texture_bounding_box_index_for_ambient_occlusion);
 }
 
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry) {
+    renderable.indices = geometry.indices;
+    renderable.positions = geometry.positions;
+    renderable.normals = geometry.normals;
+    renderable.tangents = geometry.tangents;
+    renderable.texture_coordinates = geometry.texture_coordinates;
+    renderable.base_color_factors = geometry.base_color_factors;
+    renderable.alpha_parameters = geometry.alpha_parameters;
+    renderable.packed_texture_index_for_base_color = geometry.packed_texture_index_for_base_color;
+    renderable.packed_texture_bounding_box_index_for_base_color = geometry.packed_texture_bounding_box_index_for_base_color;
+    renderable.packed_texture_index_for_normal = geometry.packed_texture_index_for_normal;
+    renderable.packed_texture_bounding_box_index_for_normal = geometry.packed_texture_bounding_box_index_for_normal;
+    renderable.packed_texture_index_for_metallic_roughness = geometry.packed_texture_index_for_metallic_roughness;
+    renderable.packed_texture_bounding_box_index_for_metallic_roughness = geometry.packed_texture_bounding_box_index_for_metallic_roughness;
+    renderable.packed_texture_index_for_ambient_occlusion = geometry.packed_texture_index_for_ambient_occlusion;
+    renderable.packed_texture_bounding_box_index_for_ambient_occlusion = geometry.packed_texture_bounding_box_index_for_ambient_occlusion;
+}
+
+
+deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable) {
+    array_free(renderable.indices);
+    array_free(renderable.positions);
+    array_free(renderable.normals);
+    array_free(renderable.tangents);
+    array_free(renderable.texture_coordinates);
+    array_free(renderable.base_color_factors);
+    array_free(renderable.alpha_parameters);
+    array_free(renderable.packed_texture_index_for_base_color);
+    array_free(renderable.packed_texture_bounding_box_index_for_base_color);
+    array_free(renderable.packed_texture_index_for_normal);
+    array_free(renderable.packed_texture_bounding_box_index_for_normal);
+    array_free(renderable.packed_texture_index_for_metallic_roughness);
+    array_free(renderable.packed_texture_bounding_box_index_for_metallic_roughness);
+    array_free(renderable.packed_texture_index_for_ambient_occlusion);
+    array_free(renderable.packed_texture_bounding_box_index_for_ambient_occlusion);
+}
 
 /*
 
@@ -72,6 +114,8 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderabl
     array_free(renderable.normals);
     array_free(renderable.tangents);
     array_free(renderable.texture_coordinates);
+    array_free(renderable.base_color_factors);
+    array_free(renderable.alpha_parameters);
     array_free(renderable.packed_texture_index_for_base_color);
     array_free(renderable.packed_texture_bounding_box_index_for_base_color);
     array_free(renderable.packed_texture_index_for_normal);
@@ -120,11 +164,16 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer :: struct {
     default_metallic_uniform_location : GLint = -1;
     default_roughness_uniform_location : GLint = -1;
     default_ambient_occlusion_uniform_location : GLint = -1;
+    reflection_cubemap_uniform_location : GLint = -1;
+    use_reflection_cubemap_uniform_location : GLint = -1;
+    reflection_strength_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_normals_buffer_gl_handle: GLuint;
     passthrough_tangents_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
+    passthrough_base_color_factors_buffer_gl_handle: GLuint;
+    passthrough_alpha_parameters_buffer_gl_handle: GLuint;
     passthrough_packed_texture_indices_for_base_color_buffer_gl_handle: GLuint;
     passthrough_packed_texture_bounding_box_indices_for_base_color_buffer_gl_handle: GLuint;
     passthrough_packed_texture_indices_for_normal_buffer_gl_handle: GLuint;
@@ -178,9 +227,23 @@ set_default_ambient_occlusion_uniform :: (renderer : *Camera_Per_Object_Transfor
     glUniform1f(renderer.default_ambient_occlusion_uniform_location, v);
 }
 
+set_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
+    glUniform1i(renderer.reflection_cubemap_uniform_location, v);
+}
+
+set_use_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: bool) {
+    glUniform1i(renderer.use_reflection_cubemap_uniform_location, xx v);
+}
+
+set_reflection_strength_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
+    glUniform1f(renderer.reflection_strength_uniform_location, v);
+}
+
 init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) { 
-    vertex_shader_source := read_entire_file("data/shaders/out/camera_per_object_transform_pbr_packed_texture.vert");
-    fragment_shader_source := read_entire_file("data/shaders/out/pbr_packed_texture.frag");
+    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/camera_per_object_transform_pbr_packed_texture.vert");
+    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/camera_per_object_transform_pbr_packed_texture.vert");
+    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/pbr_packed_texture.frag");
+    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/pbr_packed_texture.frag");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -197,7 +260,33 @@ init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Render
     default_metallic_uniform_location = glGetUniformLocation(shader_program_gl_handle, "default_metallic");
     default_roughness_uniform_location = glGetUniformLocation(shader_program_gl_handle, "default_roughness");
     default_ambient_occlusion_uniform_location = glGetUniformLocation(shader_program_gl_handle, "default_ambient_occlusion");
+    reflection_cubemap_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_cubemap");
+    use_reflection_cubemap_uniform_location = glGetUniformLocation(shader_program_gl_handle, "use_reflection_cubemap");
+    reflection_strength_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_strength");
 
+}
+
+
+deinit :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) {
+    deinit(*ltw_pool);
+
+    deinit(*psr);
+
+    glDeleteBuffers(1, *positions_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_normals_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_tangents_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_texture_coordinates_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_base_color_factors_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_alpha_parameters_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_indices_for_base_color_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_bounding_box_indices_for_base_color_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_indices_for_normal_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_bounding_box_indices_for_normal_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_indices_for_metallic_roughness_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_bounding_box_indices_for_metallic_roughness_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_indices_for_ambient_occlusion_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_packed_texture_bounding_box_indices_for_ambient_occlusion_buffer_gl_handle);
+    glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);
 }
 
 
@@ -231,6 +320,12 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
 
     generate_buffer_for_vertex_attribute(*passthrough_texture_coordinates_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_texture_coordinates_buffer_gl_handle, .PASSTHROUGH_TEXTURE_COORDINATE);
+
+    generate_buffer_for_vertex_attribute(*passthrough_base_color_factors_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_base_color_factors_buffer_gl_handle, .PASSTHROUGH_BASE_COLOR_FACTOR);
+
+    generate_buffer_for_vertex_attribute(*passthrough_alpha_parameters_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_alpha_parameters_buffer_gl_handle, .PASSTHROUGH_ALPHA_PARAMETERS);
 
     generate_buffer_for_vertex_attribute(*passthrough_packed_texture_indices_for_base_color_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_indices_for_base_color_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_BASE_COLOR);
@@ -272,6 +367,8 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Textu
             renderable.normals,
             renderable.tangents,
             renderable.texture_coordinates,
+            renderable.base_color_factors,
+            renderable.alpha_parameters,
             renderable.packed_texture_index_for_base_color,
             renderable.packed_texture_bounding_box_index_for_base_color,
             renderable.packed_texture_index_for_normal,
@@ -298,6 +395,8 @@ buffer_object :: (
         normals : [..] Vector3,
         tangents : [..] Vector3,
         texture_coordinates : [..] Vector2,
+        base_color_factors : [..] Vector4,
+        alpha_parameters : [..] Vector2,
         packed_texture_index_for_base_color : [..] s32,
         packed_texture_bounding_box_index_for_base_color : [..] s32,
         packed_texture_index_for_normal : [..] s32,
@@ -347,6 +446,16 @@ buffer_object :: (
 
 
     
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_base_color_factors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), base_color_factors.count * size_of(Vector4), base_color_factors.data);
+
+
+    
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_alpha_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), alpha_parameters.count * size_of(Vector2), alpha_parameters.data);
+
+
+    
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_for_base_color_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s32), packed_texture_index_for_base_color.count * size_of(s32), packed_texture_index_for_base_color.data);
 
@@ -393,10 +502,12 @@ buffer_object :: (
     }
 
     local_to_world_indices: [..] u32;
-    for 0..positions.count array_add(*local_to_world_indices, ltw_index_we_used);
+    for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
     glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
+
+    array_free(local_to_world_indices);
 
 
     glBindVertexArray(0);
@@ -426,6 +537,12 @@ rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Tex
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.texture_coordinates.count * size_of(Vector2), renderable.texture_coordinates.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_base_color_factors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.base_color_factors.count * size_of(Vector4), renderable.base_color_factors.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_alpha_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.alpha_parameters.count * size_of(Vector2), renderable.alpha_parameters.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_for_base_color_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(s32), renderable.packed_texture_index_for_base_color.count * size_of(s32), renderable.packed_texture_index_for_base_color.data);
@@ -469,10 +586,11 @@ render :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Rend
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
     // todo: reserve so we don't get a ton of reallocations in this for loop
-    geom_indices_to_render : [..] u32; 
+    geom_indices_to_render : [..] u32;  // can we just use temp storage?
+    defer array_free(geom_indices_to_render);
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
     for object_indices_to_render_this_frame {
-        geom_indices , success := table_find(*buffered_object_index_to_global_indices, it);
+        success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
         for geom_indices 
             array_add(*geom_indices_to_render, it);

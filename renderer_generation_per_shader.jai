@@ -339,6 +339,8 @@ CAMERA_PER_OBJECT_TRANSFORM_PBR_PACKED_TEXTURE :: Shader_Metadata.{
         .PASSTHROUGH_NORMAL,
         .PASSTHROUGH_TANGENT,
         .PASSTHROUGH_TEXTURE_COORDINATE,
+        .PASSTHROUGH_BASE_COLOR_FACTOR,
+        .PASSTHROUGH_ALPHA_PARAMETERS,
 
         .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_BASE_COLOR,
         .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_BASE_COLOR,
@@ -363,6 +365,9 @@ CAMERA_PER_OBJECT_TRANSFORM_PBR_PACKED_TEXTURE :: Shader_Metadata.{
         .DEFAULT_METALLIC,
         .DEFAULT_ROUGHNESS,
         .DEFAULT_AMBIENT_OCCLUSION,
+        .REFLECTION_CUBEMAP,
+        .USE_REFLECTION_CUBEMAP,
+        .REFLECTION_STRENGTH,
     ],
     per_object_transforms = true,
     num_elements_in_each_buffer = 500000,
@@ -1490,6 +1495,9 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_METALLIC_ROUGHNESS;
     PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_AMBIENT_OCCLUSION;
 
+    PASSTHROUGH_BASE_COLOR_FACTOR;
+    PASSTHROUGH_ALPHA_PARAMETERS;
+
     
 }
 
@@ -1551,6 +1559,10 @@ GL_Shader_Uniform_Variable :: enum u32 { // gl_suv
     DEFAULT_METALLIC;
     DEFAULT_ROUGHNESS;
     DEFAULT_AMBIENT_OCCLUSION;
+
+    REFLECTION_CUBEMAP;
+    USE_REFLECTION_CUBEMAP;
+    REFLECTION_STRENGTH;
 }
 
 // good god, we need to automate this away soon, but it's working for now because we only add one shader at a time, but this has really exploded hasn't it.
@@ -1651,6 +1663,34 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 stride                          = 0,
                 pointer_offset_to_start_of_data = null,
                 passthrough              = true,
+            };
+        case .PASSTHROUGH_BASE_COLOR_FACTOR;
+            return .{
+                type_in_jai                     = Vector4,
+                var_name_in_shader              = "passthrough_base_color_factor",
+                plural_name                     = "passthrough_base_color_factors",
+                argument_name_in_buffer_object  = "base_color_factors",
+                constant_across_object          = true,
+                components_per_vertex           = 4,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough                     = true,
+            };
+        case .PASSTHROUGH_ALPHA_PARAMETERS;
+            return .{
+                type_in_jai                     = Vector2,
+                var_name_in_shader              = "passthrough_alpha_parameters",
+                plural_name                     = "passthrough_alpha_parameters",
+                argument_name_in_buffer_object  = "alpha_parameters",
+                constant_across_object          = true,
+                components_per_vertex           = 2,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough                     = true,
             };
         case .LOCAL_TO_WORLD_INDEX;
             return .{
@@ -1967,6 +2007,12 @@ get_configuration :: (uniform: GL_Shader_Uniform_Variable) -> GL_Vertex_Uniform_
             return .{ type_in_jai = float32, var_name_in_shader = "default_roughness" };
         case .DEFAULT_AMBIENT_OCCLUSION;
             return .{ type_in_jai = float32, var_name_in_shader = "default_ambient_occlusion" };
+        case .REFLECTION_CUBEMAP;
+            return .{ type_in_jai = s32, var_name_in_shader = "reflection_cubemap" };
+        case .USE_REFLECTION_CUBEMAP;
+            return .{ type_in_jai = bool, var_name_in_shader = "use_reflection_cubemap" };
+        case .REFLECTION_STRENGTH;
+            return .{ type_in_jai = float32, var_name_in_shader = "reflection_strength" };
 
 
     }
@@ -2004,6 +2050,9 @@ generate_code_for_uniform_setter_function :: (shader : Shader_Metadata, uniform 
         case u32;
             gl_call = "glUniform1ui";
             args = "renderer.%1_uniform_location, v";
+        case bool;
+            gl_call = "glUniform1i";
+            args = "renderer.%1_uniform_location, xx v";
         case;
             gl_call = "glUniform1i";
             args = "renderer.%1_uniform_location, v";
