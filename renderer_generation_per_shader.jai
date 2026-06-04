@@ -340,6 +340,9 @@ CAMERA_PER_OBJECT_TRANSFORM_PBR_PACKED_TEXTURE :: Shader_Metadata.{
         .PASSTHROUGH_TANGENT,
         .PASSTHROUGH_TEXTURE_COORDINATE,
         .PASSTHROUGH_BASE_COLOR_FACTOR,
+        .PASSTHROUGH_MATERIAL_PARAMETERS,
+        .PASSTHROUGH_GLASS_PARAMETERS,
+        .PASSTHROUGH_VOLUME_PARAMETERS,
         .PASSTHROUGH_ALPHA_PARAMETERS,
 
         .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_BASE_COLOR,
@@ -848,6 +851,8 @@ generate_attribute_setup_code :: (attributes: [] GL_Shader_Vertex_Attribute_Vari
     builder: String_Builder;
 
     for attr: attributes {
+        if is_disabled_generated_vertex_attribute(attr) continue;
+
         glvac := get_configuration(attr);
 
         print_to_builder(*builder,
@@ -862,6 +867,11 @@ generate_attribute_setup_code :: (attributes: [] GL_Shader_Vertex_Attribute_Vari
     }
 
     return builder_to_string(*builder);
+}
+
+is_disabled_generated_vertex_attribute :: (attr: GL_Shader_Vertex_Attribute_Variable) -> bool {
+    return attr == .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_AMBIENT_OCCLUSION
+        || attr == .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_AMBIENT_OCCLUSION;
 }
 
 generate_code_for_setting_up_local_to_world_matrices :: (shader : Shader_Metadata) -> string {
@@ -1496,6 +1506,9 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_AMBIENT_OCCLUSION;
 
     PASSTHROUGH_BASE_COLOR_FACTOR;
+    PASSTHROUGH_MATERIAL_PARAMETERS;
+    PASSTHROUGH_GLASS_PARAMETERS;
+    PASSTHROUGH_VOLUME_PARAMETERS;
     PASSTHROUGH_ALPHA_PARAMETERS;
 
     
@@ -1638,12 +1651,12 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
             };
         case .PASSTHROUGH_TANGENT;
             return .{
-                type_in_jai                     = Vector3,
+                type_in_jai                     = Vector4,
                 var_name_in_shader              = "passthrough_tangent",
                 plural_name                     = "passthrough_tangents",
                 argument_name_in_buffer_object  = "tangents",
                 constant_across_object          = false,
-                components_per_vertex           = 3,
+                components_per_vertex           = 4,
                 data_type_of_component          = GL_FLOAT,
                 normalize                       = GL_FALSE,
                 stride                          = 0,
@@ -1686,6 +1699,48 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 argument_name_in_buffer_object  = "alpha_parameters",
                 constant_across_object          = true,
                 components_per_vertex           = 2,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough                     = true,
+            };
+        case .PASSTHROUGH_MATERIAL_PARAMETERS;
+            return .{
+                type_in_jai                     = Vector4,
+                var_name_in_shader              = "passthrough_material_parameters",
+                plural_name                     = "passthrough_material_parameters",
+                argument_name_in_buffer_object  = "material_parameters",
+                constant_across_object          = true,
+                components_per_vertex           = 4,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough                     = true,
+            };
+        case .PASSTHROUGH_GLASS_PARAMETERS;
+            return .{
+                type_in_jai                     = Vector4,
+                var_name_in_shader              = "passthrough_glass_parameters",
+                plural_name                     = "passthrough_glass_parameters",
+                argument_name_in_buffer_object  = "glass_parameters",
+                constant_across_object          = true,
+                components_per_vertex           = 4,
+                data_type_of_component          = GL_FLOAT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+                passthrough                     = true,
+            };
+        case .PASSTHROUGH_VOLUME_PARAMETERS;
+            return .{
+                type_in_jai                     = Vector4,
+                var_name_in_shader              = "passthrough_volume_parameters",
+                plural_name                     = "passthrough_volume_parameters",
+                argument_name_in_buffer_object  = "volume_parameters",
+                constant_across_object          = true,
+                components_per_vertex           = 4,
                 data_type_of_component          = GL_FLOAT,
                 normalize                       = GL_FALSE,
                 stride                          = 0,
@@ -2098,8 +2153,8 @@ init_vertex_attribute :: (
     glBindVertexArray(vertex_attribute_array_gl_handle);
     glBindBuffer(GL_ARRAY_BUFFER, attribute_buffer_gl_handle);
 
-    log("%", var_name_in_shader);
     vertex_attribute_gl_handle : s32 = glGetAttribLocation(shader_program_gl_handle, temp_c_string(var_name_in_shader));
+    if vertex_attribute_gl_handle < 0 return;
 
     glEnableVertexAttribArray(xx vertex_attribute_gl_handle);
 

@@ -81,6 +81,7 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "camera_infinite_grid.jai";
 #load "local_to_world_matrix_pool.jai";
 #load "skybox.jai";
+#load "hdr_post_process.jai";
 
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {

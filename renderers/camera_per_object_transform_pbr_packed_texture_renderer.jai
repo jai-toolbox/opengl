@@ -10,9 +10,12 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable :: struct {
 
     positions: [..] Vector3;
     normals: [..] Vector3;
-    tangents: [..] Vector3;
+    tangents: [..] Vector4;
     texture_coordinates: [..] Vector2;
     base_color_factors: [..] Vector4;
+    material_parameters: [..] Vector4;
+    glass_parameters: [..] Vector4;
+    volume_parameters: [..] Vector4;
     alpha_parameters: [..] Vector2;
     packed_texture_index_for_base_color: [..] s32;
     packed_texture_bounding_box_index_for_base_color: [..] s32;
@@ -30,9 +33,12 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
     normals: [..] Vector3;
-    tangents: [..] Vector3;
+    tangents: [..] Vector4;
     texture_coordinates: [..] Vector2;
     base_color_factors: [..] Vector4;
+    material_parameters: [..] Vector4;
+    glass_parameters: [..] Vector4;
+    volume_parameters: [..] Vector4;
     alpha_parameters: [..] Vector2;
     packed_texture_index_for_base_color: [..] s32;
     packed_texture_bounding_box_index_for_base_color: [..] s32;
@@ -51,6 +57,9 @@ assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Tex
     array_copy(*renderable.tangents, geometry.tangents);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
     array_copy(*renderable.base_color_factors, geometry.base_color_factors);
+    array_copy(*renderable.material_parameters, geometry.material_parameters);
+    array_copy(*renderable.glass_parameters, geometry.glass_parameters);
+    array_copy(*renderable.volume_parameters, geometry.volume_parameters);
     array_copy(*renderable.alpha_parameters, geometry.alpha_parameters);
     array_copy(*renderable.packed_texture_index_for_base_color, geometry.packed_texture_index_for_base_color);
     array_copy(*renderable.packed_texture_bounding_box_index_for_base_color, geometry.packed_texture_bounding_box_index_for_base_color);
@@ -69,6 +78,9 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_
     renderable.tangents = geometry.tangents;
     renderable.texture_coordinates = geometry.texture_coordinates;
     renderable.base_color_factors = geometry.base_color_factors;
+    renderable.material_parameters = geometry.material_parameters;
+    renderable.glass_parameters = geometry.glass_parameters;
+    renderable.volume_parameters = geometry.volume_parameters;
     renderable.alpha_parameters = geometry.alpha_parameters;
     renderable.packed_texture_index_for_base_color = geometry.packed_texture_index_for_base_color;
     renderable.packed_texture_bounding_box_index_for_base_color = geometry.packed_texture_bounding_box_index_for_base_color;
@@ -88,6 +100,9 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderabl
     array_free(renderable.tangents);
     array_free(renderable.texture_coordinates);
     array_free(renderable.base_color_factors);
+    array_free(renderable.material_parameters);
+    array_free(renderable.glass_parameters);
+    array_free(renderable.volume_parameters);
     array_free(renderable.alpha_parameters);
     array_free(renderable.packed_texture_index_for_base_color);
     array_free(renderable.packed_texture_bounding_box_index_for_base_color);
@@ -115,6 +130,9 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderabl
     array_free(renderable.tangents);
     array_free(renderable.texture_coordinates);
     array_free(renderable.base_color_factors);
+    array_free(renderable.material_parameters);
+    array_free(renderable.glass_parameters);
+    array_free(renderable.volume_parameters);
     array_free(renderable.alpha_parameters);
     array_free(renderable.packed_texture_index_for_base_color);
     array_free(renderable.packed_texture_bounding_box_index_for_base_color);
@@ -173,6 +191,9 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer :: struct {
     passthrough_tangents_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
     passthrough_base_color_factors_buffer_gl_handle: GLuint;
+    passthrough_material_parameters_buffer_gl_handle: GLuint;
+    passthrough_glass_parameters_buffer_gl_handle: GLuint;
+    passthrough_volume_parameters_buffer_gl_handle: GLuint;
     passthrough_alpha_parameters_buffer_gl_handle: GLuint;
     passthrough_packed_texture_indices_for_base_color_buffer_gl_handle: GLuint;
     passthrough_packed_texture_bounding_box_indices_for_base_color_buffer_gl_handle: GLuint;
@@ -277,6 +298,9 @@ deinit :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Rend
     glDeleteBuffers(1, *passthrough_tangents_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_texture_coordinates_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_base_color_factors_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_material_parameters_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_glass_parameters_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_volume_parameters_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_alpha_parameters_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_packed_texture_indices_for_base_color_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_packed_texture_bounding_box_indices_for_base_color_buffer_gl_handle);
@@ -315,7 +339,7 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
     generate_buffer_for_vertex_attribute(*passthrough_normals_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_normals_buffer_gl_handle, .PASSTHROUGH_NORMAL);
 
-    generate_buffer_for_vertex_attribute(*passthrough_tangents_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
+    generate_buffer_for_vertex_attribute(*passthrough_tangents_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_tangents_buffer_gl_handle, .PASSTHROUGH_TANGENT);
 
     generate_buffer_for_vertex_attribute(*passthrough_texture_coordinates_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
@@ -323,6 +347,15 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
 
     generate_buffer_for_vertex_attribute(*passthrough_base_color_factors_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_base_color_factors_buffer_gl_handle, .PASSTHROUGH_BASE_COLOR_FACTOR);
+
+    generate_buffer_for_vertex_attribute(*passthrough_material_parameters_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_material_parameters_buffer_gl_handle, .PASSTHROUGH_MATERIAL_PARAMETERS);
+
+    generate_buffer_for_vertex_attribute(*passthrough_glass_parameters_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_glass_parameters_buffer_gl_handle, .PASSTHROUGH_GLASS_PARAMETERS);
+
+    generate_buffer_for_vertex_attribute(*passthrough_volume_parameters_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_volume_parameters_buffer_gl_handle, .PASSTHROUGH_VOLUME_PARAMETERS);
 
     generate_buffer_for_vertex_attribute(*passthrough_alpha_parameters_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_alpha_parameters_buffer_gl_handle, .PASSTHROUGH_ALPHA_PARAMETERS);
@@ -345,12 +378,6 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
     generate_buffer_for_vertex_attribute(*passthrough_packed_texture_bounding_box_indices_for_metallic_roughness_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_bounding_box_indices_for_metallic_roughness_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_METALLIC_ROUGHNESS);
 
-    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_indices_for_ambient_occlusion_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_indices_for_ambient_occlusion_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_INDEX_FOR_AMBIENT_OCCLUSION);
-
-    generate_buffer_for_vertex_attribute(*passthrough_packed_texture_bounding_box_indices_for_ambient_occlusion_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_packed_texture_bounding_box_indices_for_ambient_occlusion_buffer_gl_handle, .PASSTHROUGH_PACKED_TEXTURE_BOUNDING_BOX_INDEX_FOR_AMBIENT_OCCLUSION);
-
 
 
 	glBindBuffer (GL_ARRAY_BUFFER, 0);
@@ -368,6 +395,9 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Textu
             renderable.tangents,
             renderable.texture_coordinates,
             renderable.base_color_factors,
+            renderable.material_parameters,
+            renderable.glass_parameters,
+            renderable.volume_parameters,
             renderable.alpha_parameters,
             renderable.packed_texture_index_for_base_color,
             renderable.packed_texture_bounding_box_index_for_base_color,
@@ -393,9 +423,12 @@ buffer_object :: (
         indices : [..] u32,
         positions : [..] Vector3,
         normals : [..] Vector3,
-        tangents : [..] Vector3,
+        tangents : [..] Vector4,
         texture_coordinates : [..] Vector2,
         base_color_factors : [..] Vector4,
+        material_parameters : [..] Vector4,
+        glass_parameters : [..] Vector4,
+        volume_parameters : [..] Vector4,
         alpha_parameters : [..] Vector2,
         packed_texture_index_for_base_color : [..] s32,
         packed_texture_bounding_box_index_for_base_color : [..] s32,
@@ -437,7 +470,7 @@ buffer_object :: (
 
     
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_tangents_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), tangents.count * size_of(Vector3), tangents.data);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), tangents.count * size_of(Vector4), tangents.data);
 
 
     
@@ -448,6 +481,21 @@ buffer_object :: (
     
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_base_color_factors_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), base_color_factors.count * size_of(Vector4), base_color_factors.data);
+
+
+    
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_material_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), material_parameters.count * size_of(Vector4), material_parameters.data);
+
+
+    
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_glass_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), glass_parameters.count * size_of(Vector4), glass_parameters.data);
+
+
+    
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_volume_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), volume_parameters.count * size_of(Vector4), volume_parameters.data);
 
 
     
@@ -533,13 +581,22 @@ rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Tex
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.normals.count * size_of(Vector3), renderable.normals.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_tangents_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.tangents.count * size_of(Vector3), renderable.tangents.data);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.tangents.count * size_of(Vector4), renderable.tangents.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.texture_coordinates.count * size_of(Vector2), renderable.texture_coordinates.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_base_color_factors_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.base_color_factors.count * size_of(Vector4), renderable.base_color_factors.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_material_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.material_parameters.count * size_of(Vector4), renderable.material_parameters.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_glass_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.glass_parameters.count * size_of(Vector4), renderable.glass_parameters.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_volume_parameters_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.volume_parameters.count * size_of(Vector4), renderable.volume_parameters.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_alpha_parameters_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.alpha_parameters.count * size_of(Vector2), renderable.alpha_parameters.data);
