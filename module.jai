@@ -83,6 +83,13 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "skybox.jai";
 #load "hdr_post_process.jai";
 
+#if OS == .LINUX {
+    X11 :: #import "X11";
+
+    _libGL :: #library,system "libGL";
+    glXGetCurrentDrawable :: () -> X11.GLXDrawable #foreign _libGL;
+}
+
 
 check_compile_errors :: (shader : GLuint) -> success: bool, info_log : string {
     success : s32;
@@ -170,5 +177,24 @@ create_shader_program :: (vertex_source : string, fragment_source : string) -> p
 set_vsync :: (value : bool) {
 	#if OS == .WINDOWS {
         wglSwapIntervalEXT(xx ifx value then 1 else 0);
+    } else #if OS == .LINUX {
+        interval := cast(s32) ifx value then 1 else 0;
+
+        display := X11.x_global_display;
+        drawable := glXGetCurrentDrawable();
+        if display != null && drawable != 0 && glXSwapIntervalEXT != null {
+            glXSwapIntervalEXT(display, drawable, interval);
+            return;
+        }
+
+        if glXSwapIntervalMESA != null {
+            glXSwapIntervalMESA(interval);
+            return;
+        }
+
+        if glXSwapIntervalSGI != null {
+            glXSwapIntervalSGI(interval);
+            return;
+        }
     }
 }
