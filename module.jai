@@ -62,6 +62,7 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/absolute_position_color_alpha_renderer.jai";
 #load "renderers/transform_position_color_alpha_renderer.jai";
 #load "renderers/camera_per_object_transform_color_renderer.jai";
+#load "renderers/camera_per_object_transform_color_skeletal_animation_renderer.jai";
 #load "renderers/camera_per_object_transform_color_alpha_renderer.jai";
 #load "renderers/camera_infinite_grid_renderer.jai";
 #load "renderers/object_id_selection_outline_renderer.jai";

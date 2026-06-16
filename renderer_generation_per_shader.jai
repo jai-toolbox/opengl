@@ -269,6 +269,21 @@ CAMERA_PER_OBJECT_TRANSFORMS_COLOR_ALPHA :: Shader_Metadata.{
     fragment_shader_path = "data/shaders/out/color_alpha.frag"
 };
 
+/*
+
+The most basic animation shader (doesn't require any lighting).
+
+*/
+CAMERA_PER_OBJECT_TRANSFORM_COLOR_SKELETAL_ANIMATION :: Shader_Metadata.{
+    name = "Camera_Per_Object_Transform_Color_Skeletal_Animation", 
+    attributes = .[.POSITION, .PASSTHROUGH_RGB_COLOR, .BONE_TRANSFORM_INDICES, .BONE_WEIGHTS],
+    uniforms = .[.CAMERA_TO_CLIP, .WORLD_TO_CAMERA],
+    per_object_transforms = true,
+    num_elements_in_each_buffer = 100000,
+    vertex_shader_path = "data/shaders/out/camera_per_object_transform_color_skeletal_animation.vert",
+    fragment_shader_path = "data/shaders/out/color.frag"
+};
+
 
 /*
  in opengl3.3 we can batch our objects together but then we run into the problem
@@ -442,6 +457,8 @@ get_renderable_struct_name :: (shader : Shader_Metadata) -> string {
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_COLOR);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORMS_COLOR_ALPHA);
+
+#run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_COLOR_SKELETAL_ANIMATION);
 
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE);
 #run create_code_to_render_stuff_with_shader(CAMERA_PER_OBJECT_TRANSFORM_PACKED_TEXTURE_2_CHANNEL);
@@ -1469,6 +1486,10 @@ GL_Shader_Vertex_Attribute_Variable :: enum u32 { // gl_sav
     NORMAL;
     LOCAL_TO_WORLD_INDEX;
 
+    // skeletal animation
+    BONE_TRANSFORM_INDICES;
+    BONE_WEIGHTS;
+
     // common passthroughs for fragment shader
     PASSTHROUGH_RGB_COLOR;
     PASSTHROUGH_RGBA_COLOR;
@@ -1756,6 +1777,32 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
                 constant_across_object          = true,
                 components_per_vertex           = 1,
                 data_type_of_component          = GL_UNSIGNED_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .BONE_TRANSFORM_INDICES;
+            return .{
+                type_in_jai                     = [4] u32,
+                var_name_in_shader              = "bone_transform_indices",
+                plural_name                     = "bone_transform_indices",
+                argument_name_in_buffer_object  = "bone_transform_indices",
+                constant_across_object          = false,
+                components_per_vertex           = 4,
+                data_type_of_component          = GL_INT,
+                normalize                       = GL_FALSE,
+                stride                          = 0,
+                pointer_offset_to_start_of_data = null,
+            };
+        case .BONE_WEIGHTS;
+            return .{
+                type_in_jai                     = [4] float32,
+                var_name_in_shader              = "bone_weights",
+                plural_name                     = "bone_weights",
+                argument_name_in_buffer_object  = "bone_weights",
+                constant_across_object          = false,
+                components_per_vertex           = 4,
+                data_type_of_component          = GL_FLOAT,
                 normalize                       = GL_FALSE,
                 stride                          = 0,
                 pointer_offset_to_start_of_data = null,
