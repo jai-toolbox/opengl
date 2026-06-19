@@ -2,6 +2,8 @@
 #import "File";
 #import "tbx/section_logger";
 
+BONE_INFLUENCES_PER_VERTEX :: 4;
+
 Shader_Metadata :: struct { // call this Shader_Metadata?
 
     name : string;
@@ -1783,12 +1785,12 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
             };
         case .BONE_TRANSFORM_INDICES;
             return .{
-                type_in_jai                     = [4] u32,
+                type_in_jai                     = [BONE_INFLUENCES_PER_VERTEX] u32,
                 var_name_in_shader              = "bone_transform_indices",
                 plural_name                     = "bone_transform_indices",
                 argument_name_in_buffer_object  = "bone_transform_indices",
                 constant_across_object          = false,
-                components_per_vertex           = 4,
+                components_per_vertex           = BONE_INFLUENCES_PER_VERTEX,
                 data_type_of_component          = GL_INT,
                 normalize                       = GL_FALSE,
                 stride                          = 0,
@@ -1796,12 +1798,12 @@ get_configuration :: (attr: GL_Shader_Vertex_Attribute_Variable) -> GL_Vertex_At
             };
         case .BONE_WEIGHTS;
             return .{
-                type_in_jai                     = [4] float32,
+                type_in_jai                     = [BONE_INFLUENCES_PER_VERTEX] float32,
                 var_name_in_shader              = "bone_weights",
                 plural_name                     = "bone_weights",
                 argument_name_in_buffer_object  = "bone_weights",
                 constant_across_object          = false,
-                components_per_vertex           = 4,
+                components_per_vertex           = BONE_INFLUENCES_PER_VERTEX,
                 data_type_of_component          = GL_FLOAT,
                 normalize                       = GL_FALSE,
                 stride                          = 0,
