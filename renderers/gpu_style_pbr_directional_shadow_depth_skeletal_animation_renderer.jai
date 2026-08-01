@@ -1,50 +1,45 @@
-// auto-generated renderer for shader: Camera_Per_Object_Transform_Color_Skeletal_Animation
+// auto-generated renderer for shader: Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation
 // do not edit manually.
 
 
-Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable :: struct {
+Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable :: struct {
     indices : [..] u32;
     object_index : u32;
 
     local_to_world_index : u32;
 
     positions: [..] Vector3;
-    rgb_colors: [..] Vector3;
     bone_transform_indices: [..] [4] u32;
     bone_weights: [..] [4] float32;
 
 }
 
 
-Camera_Per_Object_Transform_Color_Skeletal_Animation_Geometry :: struct {
+Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
-    rgb_colors: [..] Vector3;
     bone_transform_indices: [..] [4] u32;
     bone_weights: [..] [4] float32;
 }
 
-assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Skeletal_Animation_Geometry) {
+assign_geometry_copy :: (renderable: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable, geometry: $T/interface Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
-    array_copy(*renderable.rgb_colors, geometry.rgb_colors);
     array_copy(*renderable.bone_transform_indices, geometry.bone_transform_indices);
     array_copy(*renderable.bone_weights, geometry.bone_weights);
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Color_Skeletal_Animation_Geometry) {
+assign_geometry :: (renderable: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable, geometry: $T/interface Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Geometry) {
     renderable.indices = geometry.indices;
     renderable.positions = geometry.positions;
-    renderable.rgb_colors = geometry.rgb_colors;
     renderable.bone_transform_indices = geometry.bone_transform_indices;
     renderable.bone_weights = geometry.bone_weights;
 }
 
 
-deinit :: (renderable: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable) {
+deinit :: (renderable: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable) {
     array_free(renderable.indices);
     array_free(renderable.positions);
-    array_free(renderable.rgb_colors);
     array_free(renderable.bone_transform_indices);
     array_free(renderable.bone_weights);
 }
@@ -54,20 +49,19 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Ren
 So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
-deinit :: (renderable: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable, renderer: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer) {
+deinit :: (renderable: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable, renderer: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     free_index(*renderer.ltw_pool, renderable.local_to_world_index);
     renderable.local_to_world_index = 0;
     renderable.object_index = 0;
     array_free(renderable.indices);
     array_free(renderable.positions);
-    array_free(renderable.rgb_colors);
     array_free(renderable.bone_transform_indices);
     array_free(renderable.bone_weights);
 }
 
 
-unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, renderable: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable) {
+unbuffer_object :: (renderer: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, renderable: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     free_index(*renderer.ltw_pool, renderable.local_to_world_index);
     renderable.local_to_world_index = 0;
@@ -75,17 +69,17 @@ unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Color_Skeletal_Animat
 }
 
 
-queue_render :: (using renderer: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, renderable: Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable) {
+queue_render :: (using renderer: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, renderable: Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable) {
     queue_render(*renderer.psr, renderable.object_index);
 }
 
 
-set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, renderable: Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable, matrix: Matrix4) {
+set_local_to_world_matrix :: (renderer: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, renderable: Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable, matrix: Matrix4) {
     set_matrix(*renderer.ltw_pool, renderable.local_to_world_index, matrix);
 }
 
 
-Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer :: struct {
+Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
@@ -94,11 +88,9 @@ Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer :: struct {
     local_to_world_index_buffer_gl_handle : GLuint;
 
 
-    camera_to_clip_uniform_location : GLint = -1;
-    world_to_camera_uniform_location : GLint = -1;
+    world_to_light_clip_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
-    passthrough_rgb_colors_buffer_gl_handle: GLuint;
     bone_transform_indices_buffer_gl_handle: GLuint;
     bone_weights_buffer_gl_handle: GLuint;
 
@@ -106,38 +98,32 @@ Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer :: struct {
 }
 
 
-set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+set_world_to_light_clip_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, v: Matrix4) {
+    glUniformMatrix4fv(renderer.world_to_light_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
-}
-
-init :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/camera_per_object_transform_color_skeletal_animation.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/camera_per_object_transform_color_skeletal_animation.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/color.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/color.frag");
+init :: (using renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer) { 
+    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/generated/gpu_style_pbr_directional_shadow_depth_skeletal_animation.vert");
+    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/generated/gpu_style_pbr_directional_shadow_depth_skeletal_animation.vert");
+    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/generated/gpu_style_pbr_directional_shadow_depth_skeletal_animation.frag");
+    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/generated/gpu_style_pbr_directional_shadow_depth_skeletal_animation.frag");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
 
     init(*renderer.ltw_pool);
 
-    camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
-    world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
+    world_to_light_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_light_clip");
 
 }
 
 
-deinit :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer) {
+deinit :: (using renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer) {
     deinit(*ltw_pool);
 
     deinit(*psr);
 
     glDeleteBuffers(1, *positions_buffer_gl_handle);
-    glDeleteBuffers(1, *passthrough_rgb_colors_buffer_gl_handle);
     glDeleteBuffers(1, *bone_transform_indices_buffer_gl_handle);
     glDeleteBuffers(1, *bone_weights_buffer_gl_handle);
     glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);
@@ -145,7 +131,7 @@ deinit :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animatio
 
 
 
-init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer) { // todo change renderer name
+init_buffers_no_data :: (using apcr : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer) { // todo change renderer name
 
     glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
     glBindVertexArray(vertex_attribute_array_gl_handle);
@@ -166,11 +152,8 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Skeleta
     generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
 
-    generate_buffer_for_vertex_attribute(*passthrough_rgb_colors_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_rgb_colors_buffer_gl_handle, "passthrough_rgb_color", 3, GL_FLOAT, GL_FALSE, 0, null);
-
     generate_buffer_for_vertex_attribute(*bone_transform_indices_buffer_gl_handle, [4] u32, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, bone_transform_indices_buffer_gl_handle, "bone_transform_indices", 4, GL_INT, GL_FALSE, 0, null);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, bone_transform_indices_buffer_gl_handle, "bone_transform_indices", 4, GL_UNSIGNED_INT, GL_FALSE, 0, null);
 
     generate_buffer_for_vertex_attribute(*bone_weights_buffer_gl_handle, [4] float32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, bone_weights_buffer_gl_handle, "bone_weights", 4, GL_FLOAT, GL_FALSE, 0, null);
@@ -181,14 +164,13 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Skeleta
 }
 
 
-buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable) -> success: bool {
+buffer_object :: (using renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, renderable : *$T/interface Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable) -> success: bool {
 
 
     object_index, local_to_world_index, success := buffer_object(renderer, 
             renderable.indices, 
 
             renderable.positions,
-            renderable.rgb_colors,
             renderable.bone_transform_indices,
             renderable.bone_weights
     );
@@ -203,10 +185,9 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_A
 
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
-        using renderer: *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer,
+        using renderer: *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer,
         indices : [..] u32,
         positions : [..] Vector3,
-        rgb_colors : [..] Vector3,
         bone_transform_indices : [..] [4] u32,
         bone_weights : [..] [4] float32
 
@@ -232,11 +213,6 @@ buffer_object :: (
     
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
-
-
-    
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgb_colors_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), rgb_colors.count * size_of(Vector3), rgb_colors.data);
 
 
     
@@ -276,15 +252,12 @@ if you're rebuffering things and using up more space then you did before you'll 
 will go off the rails.
 
 */
-rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable) {
+rebuffer_object :: (using renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, renderable : $T/interface Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderable) {
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
-
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgb_colors_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.rgb_colors.count * size_of(Vector3), renderable.rgb_colors.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, bone_transform_indices_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of([4] u32), renderable.bone_transform_indices.count * size_of([4] u32), renderable.bone_transform_indices.data);
@@ -297,7 +270,7 @@ rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal
     glBindVertexArray(0);
 }
 
-render :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
+render :: (using renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 

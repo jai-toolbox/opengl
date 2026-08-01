@@ -77,6 +77,15 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/camera_per_object_transform_packed_texture_2_channel_renderer.jai";
 #load "renderers/camera_per_object_transform_pbr_packed_texture_renderer.jai";
 #load "renderers/camera_absolute_position_color_renderer.jai";
+#load "renderers/gpu_style_vertex_color_renderer.jai";
+#load "renderers/gpu_style_blinn_phong_renderer.jai";
+#load "renderers/gpu_style_pbr_renderer.jai";
+#load "renderers/gpu_style_pbr_lightmapped_renderer.jai";
+#load "renderers/gpu_style_pbr_directional_shadows_renderer.jai";
+#load "renderers/gpu_style_pbr_directional_shadow_depth_renderer.jai";
+#load "renderers/gpu_style_pbr_skeletal_animation_renderer.jai";
+#load "renderers/gpu_style_pbr_directional_shadows_skeletal_animation_renderer.jai";
+#load "renderers/gpu_style_pbr_directional_shadow_depth_skeletal_animation_renderer.jai";
 
 // #load "deferred_lighting.jai";
 #load "camera_infinite_grid.jai";

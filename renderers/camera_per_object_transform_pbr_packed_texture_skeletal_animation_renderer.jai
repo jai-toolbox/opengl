@@ -1,21 +1,20 @@
-// auto-generated renderer for shader: Camera_Per_Object_Transform_Pbr_Packed_Texture
+// auto-generated renderer for shader: Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation
 // do not edit manually.
 
 
-Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable :: struct {
+Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable :: struct {
     indices : [..] u32;
     object_index : u32;
 
     local_to_world_index : u32;
 
     positions: [..] Vector3;
+    bone_transform_indices: [..] [4] u32;
+    bone_weights: [..] [4] float32;
     normals: [..] Vector3;
     tangents: [..] Vector4;
     texture_coordinates: [..] Vector2;
     base_color_factors: [..] Vector4;
-    material_parameters: [..] Vector4;
-    glass_parameters: [..] Vector4;
-    volume_parameters: [..] Vector4;
     alpha_parameters: [..] Vector2;
     packed_texture_index_for_base_color: [..] s32;
     packed_texture_bounding_box_index_for_base_color: [..] s32;
@@ -29,16 +28,15 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable :: struct {
 }
 
 
-Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry :: struct {
+Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
+    bone_transform_indices: [..] [4] u32;
+    bone_weights: [..] [4] float32;
     normals: [..] Vector3;
     tangents: [..] Vector4;
     texture_coordinates: [..] Vector2;
     base_color_factors: [..] Vector4;
-    material_parameters: [..] Vector4;
-    glass_parameters: [..] Vector4;
-    volume_parameters: [..] Vector4;
     alpha_parameters: [..] Vector2;
     packed_texture_index_for_base_color: [..] s32;
     packed_texture_bounding_box_index_for_base_color: [..] s32;
@@ -50,16 +48,15 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry :: struct {
     packed_texture_bounding_box_index_for_ambient_occlusion: [..] s32;
 }
 
-assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
+    array_copy(*renderable.bone_transform_indices, geometry.bone_transform_indices);
+    array_copy(*renderable.bone_weights, geometry.bone_weights);
     array_copy(*renderable.normals, geometry.normals);
     array_copy(*renderable.tangents, geometry.tangents);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
     array_copy(*renderable.base_color_factors, geometry.base_color_factors);
-    array_copy(*renderable.material_parameters, geometry.material_parameters);
-    array_copy(*renderable.glass_parameters, geometry.glass_parameters);
-    array_copy(*renderable.volume_parameters, geometry.volume_parameters);
     array_copy(*renderable.alpha_parameters, geometry.alpha_parameters);
     array_copy(*renderable.packed_texture_index_for_base_color, geometry.packed_texture_index_for_base_color);
     array_copy(*renderable.packed_texture_bounding_box_index_for_base_color, geometry.packed_texture_bounding_box_index_for_base_color);
@@ -71,16 +68,15 @@ assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Tex
     array_copy(*renderable.packed_texture_bounding_box_index_for_ambient_occlusion, geometry.packed_texture_bounding_box_index_for_ambient_occlusion);
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Geometry) {
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Geometry) {
     renderable.indices = geometry.indices;
     renderable.positions = geometry.positions;
+    renderable.bone_transform_indices = geometry.bone_transform_indices;
+    renderable.bone_weights = geometry.bone_weights;
     renderable.normals = geometry.normals;
     renderable.tangents = geometry.tangents;
     renderable.texture_coordinates = geometry.texture_coordinates;
     renderable.base_color_factors = geometry.base_color_factors;
-    renderable.material_parameters = geometry.material_parameters;
-    renderable.glass_parameters = geometry.glass_parameters;
-    renderable.volume_parameters = geometry.volume_parameters;
     renderable.alpha_parameters = geometry.alpha_parameters;
     renderable.packed_texture_index_for_base_color = geometry.packed_texture_index_for_base_color;
     renderable.packed_texture_bounding_box_index_for_base_color = geometry.packed_texture_bounding_box_index_for_base_color;
@@ -93,16 +89,15 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_
 }
 
 
-deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable) {
+deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable) {
     array_free(renderable.indices);
     array_free(renderable.positions);
+    array_free(renderable.bone_transform_indices);
+    array_free(renderable.bone_weights);
     array_free(renderable.normals);
     array_free(renderable.tangents);
     array_free(renderable.texture_coordinates);
     array_free(renderable.base_color_factors);
-    array_free(renderable.material_parameters);
-    array_free(renderable.glass_parameters);
-    array_free(renderable.volume_parameters);
     array_free(renderable.alpha_parameters);
     array_free(renderable.packed_texture_index_for_base_color);
     array_free(renderable.packed_texture_bounding_box_index_for_base_color);
@@ -119,20 +114,19 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderabl
 So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
-deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) {
+deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable, renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     free_index(*renderer.ltw_pool, renderable.local_to_world_index);
     renderable.local_to_world_index = 0;
     renderable.object_index = 0;
     array_free(renderable.indices);
     array_free(renderable.positions);
+    array_free(renderable.bone_transform_indices);
+    array_free(renderable.bone_weights);
     array_free(renderable.normals);
     array_free(renderable.tangents);
     array_free(renderable.texture_coordinates);
     array_free(renderable.base_color_factors);
-    array_free(renderable.material_parameters);
-    array_free(renderable.glass_parameters);
-    array_free(renderable.volume_parameters);
     array_free(renderable.alpha_parameters);
     array_free(renderable.packed_texture_index_for_base_color);
     array_free(renderable.packed_texture_bounding_box_index_for_base_color);
@@ -145,7 +139,7 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderabl
 }
 
 
-unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable) {
+unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, renderable: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     free_index(*renderer.ltw_pool, renderable.local_to_world_index);
     renderable.local_to_world_index = 0;
@@ -153,17 +147,17 @@ unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Re
 }
 
 
-queue_render :: (using renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, renderable: Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable) {
+queue_render :: (using renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, renderable: Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable) {
     queue_render(*renderer.psr, renderable.object_index);
 }
 
 
-set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, renderable: Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, matrix: Matrix4) {
+set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, renderable: Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable, matrix: Matrix4) {
     set_matrix(*renderer.ltw_pool, renderable.local_to_world_index, matrix);
 }
 
 
-Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer :: struct {
+Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
@@ -187,13 +181,12 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer :: struct {
     reflection_strength_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
+    bone_transform_indices_buffer_gl_handle: GLuint;
+    bone_weights_buffer_gl_handle: GLuint;
     passthrough_normals_buffer_gl_handle: GLuint;
     passthrough_tangents_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
     passthrough_base_color_factors_buffer_gl_handle: GLuint;
-    passthrough_material_parameters_buffer_gl_handle: GLuint;
-    passthrough_glass_parameters_buffer_gl_handle: GLuint;
-    passthrough_volume_parameters_buffer_gl_handle: GLuint;
     passthrough_alpha_parameters_buffer_gl_handle: GLuint;
     passthrough_packed_texture_indices_for_base_color_buffer_gl_handle: GLuint;
     passthrough_packed_texture_bounding_box_indices_for_base_color_buffer_gl_handle: GLuint;
@@ -208,61 +201,61 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer :: struct {
 }
 
 
-set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Matrix4) {
+set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: Matrix4) {
     glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Matrix4) {
+set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: Matrix4) {
     glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_camera_position_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Vector3) {
+set_camera_position_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: Vector3) {
     glUniform3f(renderer.camera_position_uniform_location, v.x, v.y, v.z);
 }
 
-set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
+set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: s32) {
     glUniform1i(renderer.packed_textures_uniform_location, v);
 }
 
-set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
+set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: s32) {
     glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
-set_num_active_lights_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
+set_num_active_lights_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: s32) {
     glUniform1i(renderer.num_active_lights_uniform_location, v);
 }
 
-set_default_base_color_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Vector3) {
+set_default_base_color_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: Vector3) {
     glUniform3f(renderer.default_base_color_uniform_location, v.x, v.y, v.z);
 }
 
-set_default_metallic_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
+set_default_metallic_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: float32) {
     glUniform1f(renderer.default_metallic_uniform_location, v);
 }
 
-set_default_roughness_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
+set_default_roughness_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: float32) {
     glUniform1f(renderer.default_roughness_uniform_location, v);
 }
 
-set_default_ambient_occlusion_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
+set_default_ambient_occlusion_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: float32) {
     glUniform1f(renderer.default_ambient_occlusion_uniform_location, v);
 }
 
-set_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
+set_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: s32) {
     glUniform1i(renderer.reflection_cubemap_uniform_location, v);
 }
 
-set_use_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: bool) {
+set_use_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: bool) {
     glUniform1i(renderer.use_reflection_cubemap_uniform_location, xx v);
 }
 
-set_reflection_strength_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
+set_reflection_strength_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, v: float32) {
     glUniform1f(renderer.reflection_strength_uniform_location, v);
 }
 
-init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/camera_per_object_transform_pbr_packed_texture.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/camera_per_object_transform_pbr_packed_texture.vert");
+init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer) { 
+    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/camera_per_object_transform_pbr_packed_texture_skeletal_animation.vert");
+    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/camera_per_object_transform_pbr_packed_texture_skeletal_animation.vert");
     fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/pbr_packed_texture.frag");
     assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/pbr_packed_texture.frag");
 
@@ -288,19 +281,18 @@ init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Render
 }
 
 
-deinit :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) {
+deinit :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer) {
     deinit(*ltw_pool);
 
     deinit(*psr);
 
     glDeleteBuffers(1, *positions_buffer_gl_handle);
+    glDeleteBuffers(1, *bone_transform_indices_buffer_gl_handle);
+    glDeleteBuffers(1, *bone_weights_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_normals_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_tangents_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_texture_coordinates_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_base_color_factors_buffer_gl_handle);
-    glDeleteBuffers(1, *passthrough_material_parameters_buffer_gl_handle);
-    glDeleteBuffers(1, *passthrough_glass_parameters_buffer_gl_handle);
-    glDeleteBuffers(1, *passthrough_volume_parameters_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_alpha_parameters_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_packed_texture_indices_for_base_color_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_packed_texture_bounding_box_indices_for_base_color_buffer_gl_handle);
@@ -315,7 +307,7 @@ deinit :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Rend
 
 
 
-init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) { // todo change renderer name
+init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer) { // todo change renderer name
 
     glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
     glBindVertexArray(vertex_attribute_array_gl_handle);
@@ -336,6 +328,12 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
     generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
 
+    generate_buffer_for_vertex_attribute(*bone_transform_indices_buffer_gl_handle, [4] u32, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, bone_transform_indices_buffer_gl_handle, "bone_transform_indices", 4, GL_INT, GL_FALSE, 0, null);
+
+    generate_buffer_for_vertex_attribute(*bone_weights_buffer_gl_handle, [4] float32, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, bone_weights_buffer_gl_handle, "bone_weights", 4, GL_FLOAT, GL_FALSE, 0, null);
+
     generate_buffer_for_vertex_attribute(*passthrough_normals_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_normals_buffer_gl_handle, "passthrough_normal", 3, GL_FLOAT, GL_FALSE, 0, null);
 
@@ -347,15 +345,6 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
 
     generate_buffer_for_vertex_attribute(*passthrough_base_color_factors_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_base_color_factors_buffer_gl_handle, "passthrough_base_color_factor", 4, GL_FLOAT, GL_FALSE, 0, null);
-
-    generate_buffer_for_vertex_attribute(*passthrough_material_parameters_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_material_parameters_buffer_gl_handle, "passthrough_material_parameters", 4, GL_FLOAT, GL_FALSE, 0, null);
-
-    generate_buffer_for_vertex_attribute(*passthrough_glass_parameters_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_glass_parameters_buffer_gl_handle, "passthrough_glass_parameters", 4, GL_FLOAT, GL_FALSE, 0, null);
-
-    generate_buffer_for_vertex_attribute(*passthrough_volume_parameters_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_volume_parameters_buffer_gl_handle, "passthrough_volume_parameters", 4, GL_FLOAT, GL_FALSE, 0, null);
 
     generate_buffer_for_vertex_attribute(*passthrough_alpha_parameters_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_alpha_parameters_buffer_gl_handle, "passthrough_alpha_parameters", 2, GL_FLOAT, GL_FALSE, 0, null);
@@ -384,20 +373,19 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
 }
 
 
-buffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable) -> success: bool {
+buffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable) -> success: bool {
 
 
     object_index, local_to_world_index, success := buffer_object(renderer, 
             renderable.indices, 
 
             renderable.positions,
+            renderable.bone_transform_indices,
+            renderable.bone_weights,
             renderable.normals,
             renderable.tangents,
             renderable.texture_coordinates,
             renderable.base_color_factors,
-            renderable.material_parameters,
-            renderable.glass_parameters,
-            renderable.volume_parameters,
             renderable.alpha_parameters,
             renderable.packed_texture_index_for_base_color,
             renderable.packed_texture_bounding_box_index_for_base_color,
@@ -419,16 +407,15 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Textu
 
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
-        using renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer,
+        using renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer,
         indices : [..] u32,
         positions : [..] Vector3,
+        bone_transform_indices : [..] [4] u32,
+        bone_weights : [..] [4] float32,
         normals : [..] Vector3,
         tangents : [..] Vector4,
         texture_coordinates : [..] Vector2,
         base_color_factors : [..] Vector4,
-        material_parameters : [..] Vector4,
-        glass_parameters : [..] Vector4,
-        volume_parameters : [..] Vector4,
         alpha_parameters : [..] Vector2,
         packed_texture_index_for_base_color : [..] s32,
         packed_texture_bounding_box_index_for_base_color : [..] s32,
@@ -464,6 +451,16 @@ buffer_object :: (
 
 
     
+    glBindBuffer(GL_ARRAY_BUFFER, bone_transform_indices_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of([4] u32), bone_transform_indices.count * size_of([4] u32), bone_transform_indices.data);
+
+
+    
+    glBindBuffer(GL_ARRAY_BUFFER, bone_weights_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of([4] float32), bone_weights.count * size_of([4] float32), bone_weights.data);
+
+
+    
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_normals_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
 
@@ -481,21 +478,6 @@ buffer_object :: (
     
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_base_color_factors_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), base_color_factors.count * size_of(Vector4), base_color_factors.data);
-
-
-    
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_material_parameters_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), material_parameters.count * size_of(Vector4), material_parameters.data);
-
-
-    
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_glass_parameters_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), glass_parameters.count * size_of(Vector4), glass_parameters.data);
-
-
-    
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_volume_parameters_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), volume_parameters.count * size_of(Vector4), volume_parameters.data);
 
 
     
@@ -570,12 +552,18 @@ if you're rebuffering things and using up more space then you did before you'll 
 will go off the rails.
 
 */
-rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable) {
+rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable) {
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, bone_transform_indices_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of([4] u32), renderable.bone_transform_indices.count * size_of([4] u32), renderable.bone_transform_indices.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, bone_weights_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of([4] float32), renderable.bone_weights.count * size_of([4] float32), renderable.bone_weights.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_normals_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.normals.count * size_of(Vector3), renderable.normals.data);
@@ -588,15 +576,6 @@ rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Tex
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_base_color_factors_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.base_color_factors.count * size_of(Vector4), renderable.base_color_factors.data);
-
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_material_parameters_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.material_parameters.count * size_of(Vector4), renderable.material_parameters.data);
-
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_glass_parameters_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.glass_parameters.count * size_of(Vector4), renderable.glass_parameters.data);
-
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_volume_parameters_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.volume_parameters.count * size_of(Vector4), renderable.volume_parameters.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_alpha_parameters_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.alpha_parameters.count * size_of(Vector2), renderable.alpha_parameters.data);
@@ -630,7 +609,7 @@ rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Tex
     glBindVertexArray(0);
 }
 
-render :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
+render :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 
