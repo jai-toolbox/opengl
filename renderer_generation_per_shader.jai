@@ -40,7 +40,7 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
      without interfering with each other.
     */
     immediate_mode_support : bool = false;
-    num_elements_in_each_immediate_buffer: u32 = 4096;
+    num_elements_in_each_immediate_buffer: u32 = 65536;
 
     vertex_shader_path   : string;
     fragment_shader_path : string;
@@ -56,7 +56,7 @@ Shader_Program_Metadata :: struct {
     per_object_transforms : bool;
     immediate_mode_support : bool = false;
     num_elements_in_each_buffer : u32 = 100000;
-    num_elements_in_each_immediate_buffer: u32 = 4096;
+    num_elements_in_each_immediate_buffer: u32 = 65536;
 
     vertex_shader_path   : string;
     fragment_shader_path : string;
@@ -969,6 +969,9 @@ generate_code_for_immediate_mode_attributes :: (s : Shader_Metadata) -> string {
     print_to_builder(*builder, "\n    // immediate-mode buffers\n");
     print_to_builder(*builder, "    immediate_vertex_attribute_array_gl_handle: GLuint;\n");
     print_to_builder(*builder, "    immediate_index_buffer_gl_handle: GLuint;\n");
+    if s.per_object_transforms {
+        print_to_builder(*builder, "    immediate_local_to_world_index_buffer_gl_handle : GLuint;\n");
+    }
 
     attributes := shader_attribute_configurations(s);
     for attributes {
@@ -1246,6 +1249,9 @@ generate_code_for_deinit_renderer :: (shader: Shader_Metadata) -> string {
     if shader.immediate_mode_support {
         print_to_builder(*builder, "\n    // immediate-mode cleanup\n");
         print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_index_buffer_gl_handle);\n");
+        if shader.per_object_transforms {
+            print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_local_to_world_index_buffer_gl_handle);\n");
+        }
         for attributes {
             print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_%_buffer_gl_handle);\n", it.plural_name);
         }
@@ -1334,6 +1340,21 @@ generate_init_immediate_buffers :: (shader : Shader_Metadata) -> string {
 
     push_allocator(temp);
 
+    per_object_immediate_attribute_setup := "";
+    if shader.per_object_transforms {
+        per_object_immediate_attribute_setup = tprint(#string END
+    immediate_local_to_world_indices: [..] u32;
+    defer array_free(immediate_local_to_world_indices);
+    array_resize(*immediate_local_to_world_indices, %);
+    for * immediate_local_to_world_indices it.* = 0;
+    glGenBuffers(1, *immediate_local_to_world_index_buffer_gl_handle);
+    glBindBuffer(GL_ARRAY_BUFFER, immediate_local_to_world_index_buffer_gl_handle);
+    glBufferData(GL_ARRAY_BUFFER, size_of(u32) * immediate_local_to_world_indices.count, immediate_local_to_world_indices.data, GL_STATIC_DRAW);
+    init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_local_to_world_index_buffer_gl_handle, "local_to_world_index", 1, GL_UNSIGNED_INT, GL_FALSE, 0, null);
+
+    END, shader.num_elements_in_each_immediate_buffer);
+    }
+
     attribute_setup: String_Builder;
     init_string_builder(*attribute_setup);
 
@@ -1370,6 +1391,7 @@ init_immediate_buffers :: (using renderer : *%1) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * %2, null, GL_STREAM_DRAW);
 
 %3
+%4
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -1377,6 +1399,7 @@ init_immediate_buffers :: (using renderer : *%1) {
     END, 
     get_renderer_struct_name(shader),
     shader.num_elements_in_each_immediate_buffer,
+    per_object_immediate_attribute_setup,
     builder_to_string(*attribute_setup));
 }
 

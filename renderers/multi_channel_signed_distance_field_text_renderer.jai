@@ -68,6 +68,7 @@ Multi_Channel_Signed_Distance_Field_Text_Renderer :: struct {
     aspect_ratio_uniform_location : GLint = -1;
     texture_sampler_uniform_location : GLint = -1;
     rgba_color_uniform_location : GLint = -1;
+    screen_pixels_per_distance_range_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
@@ -94,6 +95,10 @@ set_rgba_color_uniform :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_
     glUniform4f(renderer.rgba_color_uniform_location, v.x, v.y, v.z, v.w);
 }
 
+set_screen_pixels_per_distance_range_uniform :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, v: float32) {
+    glUniform1f(renderer.screen_pixels_per_distance_range_uniform_location, v);
+}
+
 init :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) { 
     vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/absolute_position_textured.vert");
     assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/absolute_position_textured.vert");
@@ -108,6 +113,7 @@ init :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) {
     aspect_ratio_uniform_location = glGetUniformLocation(shader_program_gl_handle, "aspect_ratio");
     texture_sampler_uniform_location = glGetUniformLocation(shader_program_gl_handle, "texture_sampler");
     rgba_color_uniform_location = glGetUniformLocation(shader_program_gl_handle, "rgba_color");
+    screen_pixels_per_distance_range_uniform_location = glGetUniformLocation(shader_program_gl_handle, "screen_pixels_per_distance_range");
 
 }
 
@@ -161,12 +167,12 @@ init_immediate_buffers :: (using renderer : *Multi_Channel_Signed_Distance_Field
 
     glGenBuffers(1, *immediate_index_buffer_gl_handle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 4096, null, GL_STREAM_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 65536, null, GL_STREAM_DRAW);
 
-    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 4096);
+    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
 
-    generate_buffer_for_vertex_attribute(*immediate_passthrough_texture_coordinates_buffer_gl_handle, Vector2, 4096);
+    generate_buffer_for_vertex_attribute(*immediate_passthrough_texture_coordinates_buffer_gl_handle, Vector2, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_passthrough_texture_coordinates_buffer_gl_handle, "passthrough_texture_coordinate", 2, GL_FLOAT, GL_FALSE, 0, null);
 
 
@@ -330,4 +336,3 @@ immediate_render :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_
             geometry.texture_coordinates
     );
 }
-

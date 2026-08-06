@@ -149,12 +149,12 @@ init_immediate_buffers :: (using renderer : *Absolute_Position_Color_Alpha_Rende
 
     glGenBuffers(1, *immediate_index_buffer_gl_handle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 4096, null, GL_STREAM_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 65536, null, GL_STREAM_DRAW);
 
-    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 4096);
+    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
 
-    generate_buffer_for_vertex_attribute(*immediate_passthrough_rgba_colors_buffer_gl_handle, Vector4, 4096);
+    generate_buffer_for_vertex_attribute(*immediate_passthrough_rgba_colors_buffer_gl_handle, Vector4, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_passthrough_rgba_colors_buffer_gl_handle, "passthrough_rgba_color", 4, GL_FLOAT, GL_FALSE, 0, null);
 
 
@@ -318,4 +318,3 @@ immediate_render :: (using renderer : *Absolute_Position_Color_Alpha_Renderer, g
             geometry.rgba_colors
     );
 }
-

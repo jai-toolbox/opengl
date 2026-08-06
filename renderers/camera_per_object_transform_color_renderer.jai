@@ -92,6 +92,7 @@ Camera_Per_Object_Transform_Color_Renderer :: struct {
     // immediate-mode buffers
     immediate_vertex_attribute_array_gl_handle: GLuint;
     immediate_index_buffer_gl_handle: GLuint;
+    immediate_local_to_world_index_buffer_gl_handle : GLuint;
     immediate_positions_buffer_gl_handle: GLuint;
     immediate_passthrough_rgb_colors_buffer_gl_handle: GLuint;
 
@@ -135,6 +136,7 @@ deinit :: (using renderer : *Camera_Per_Object_Transform_Color_Renderer) {
 
     // immediate-mode cleanup
     glDeleteBuffers(1, *immediate_index_buffer_gl_handle);
+    glDeleteBuffers(1, *immediate_local_to_world_index_buffer_gl_handle);
     glDeleteBuffers(1, *immediate_positions_buffer_gl_handle);
     glDeleteBuffers(1, *immediate_passthrough_rgb_colors_buffer_gl_handle);
     glDeleteVertexArrays(1, *immediate_vertex_attribute_array_gl_handle);
@@ -181,6 +183,15 @@ init_immediate_buffers :: (using renderer : *Camera_Per_Object_Transform_Color_R
     glGenBuffers(1, *immediate_index_buffer_gl_handle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 4096, null, GL_STREAM_DRAW);
+
+    immediate_local_to_world_indices: [..] u32;
+    defer array_free(immediate_local_to_world_indices);
+    array_resize(*immediate_local_to_world_indices, 4096);
+    for * immediate_local_to_world_indices it.* = 0;
+    glGenBuffers(1, *immediate_local_to_world_index_buffer_gl_handle);
+    glBindBuffer(GL_ARRAY_BUFFER, immediate_local_to_world_index_buffer_gl_handle);
+    glBufferData(GL_ARRAY_BUFFER, size_of(u32) * immediate_local_to_world_indices.count, immediate_local_to_world_indices.data, GL_STATIC_DRAW);
+    init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_local_to_world_index_buffer_gl_handle, "local_to_world_index", 1, GL_UNSIGNED_INT, GL_FALSE, 0, null);
 
     generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 4096);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
@@ -366,4 +377,3 @@ immediate_render :: (using renderer : *Camera_Per_Object_Transform_Color_Rendere
             geometry.rgb_colors
     );
 }
-

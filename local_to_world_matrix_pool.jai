@@ -1,6 +1,6 @@
 Local_To_World_Matrix_Pool :: struct {
     NUM_MATRICES :: 1024;
-    current_index : u32 = 0;
+    current_index : u32 = 1;
     free_indices : [..] u32;
     matrices : [NUM_MATRICES] Matrix4;
     gl_uniform_buffer_handle : GLuint;
@@ -20,7 +20,7 @@ deinit :: (using pool : *Local_To_World_Matrix_Pool) {
     array_free(free_indices);
     glDeleteBuffers(1, *gl_uniform_buffer_handle);
     gl_uniform_buffer_handle = 0;
-    current_index = 0;
+    current_index = 1;
 }
 
 alloc_index :: (using pool : *Local_To_World_Matrix_Pool) -> u32, bool {
@@ -37,6 +37,11 @@ alloc_index :: (using pool : *Local_To_World_Matrix_Pool) -> u32, bool {
 }
 
 free_index :: (using pool : *Local_To_World_Matrix_Pool, idx : u32) {
+    if idx == 0 {
+        matrices[0] = Matrix4_Identity;
+        return;
+    }
+
     matrices[idx] = Matrix4_Identity;
     array_add(*free_indices, idx);
 }
