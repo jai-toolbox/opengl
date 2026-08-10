@@ -72,6 +72,7 @@ Multi_Channel_Signed_Distance_Field_Text_Renderer :: struct {
 
     positions_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
+    passthrough_rgba_colors_buffer_gl_handle: GLuint;
 
 
     // immediate-mode buffers
@@ -79,6 +80,7 @@ Multi_Channel_Signed_Distance_Field_Text_Renderer :: struct {
     immediate_index_buffer_gl_handle: GLuint;
     immediate_positions_buffer_gl_handle: GLuint;
     immediate_passthrough_texture_coordinates_buffer_gl_handle: GLuint;
+    immediate_passthrough_rgba_colors_buffer_gl_handle: GLuint;
 
 }
 
@@ -123,11 +125,13 @@ deinit :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) 
 
     glDeleteBuffers(1, *positions_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_texture_coordinates_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_rgba_colors_buffer_gl_handle);
 
     // immediate-mode cleanup
     glDeleteBuffers(1, *immediate_index_buffer_gl_handle);
     glDeleteBuffers(1, *immediate_positions_buffer_gl_handle);
     glDeleteBuffers(1, *immediate_passthrough_texture_coordinates_buffer_gl_handle);
+    glDeleteBuffers(1, *immediate_passthrough_rgba_colors_buffer_gl_handle);
     glDeleteVertexArrays(1, *immediate_vertex_attribute_array_gl_handle);
 }
 
@@ -153,6 +157,9 @@ init_buffers_no_data :: (using apcr : *Multi_Channel_Signed_Distance_Field_Text_
     generate_buffer_for_vertex_attribute(*passthrough_texture_coordinates_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_texture_coordinates_buffer_gl_handle, "passthrough_texture_coordinate", 2, GL_FLOAT, GL_FALSE, 0, null);
 
+    generate_buffer_for_vertex_attribute(*passthrough_rgba_colors_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_rgba_colors_buffer_gl_handle, "passthrough_rgba_color", 4, GL_FLOAT, GL_FALSE, 0, null);
+
 
 
 	glBindBuffer (GL_ARRAY_BUFFER, 0);
@@ -174,6 +181,9 @@ init_immediate_buffers :: (using renderer : *Multi_Channel_Signed_Distance_Field
 
     generate_buffer_for_vertex_attribute(*immediate_passthrough_texture_coordinates_buffer_gl_handle, Vector2, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_passthrough_texture_coordinates_buffer_gl_handle, "passthrough_texture_coordinate", 2, GL_FLOAT, GL_FALSE, 0, null);
+
+    generate_buffer_for_vertex_attribute(*immediate_passthrough_rgba_colors_buffer_gl_handle, Vector4, 65536);
+    init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_passthrough_rgba_colors_buffer_gl_handle, "passthrough_rgba_color", 4, GL_FLOAT, GL_FALSE, 0, null);
 
 
 
@@ -233,7 +243,13 @@ buffer_object :: (
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), texture_coordinates.count * size_of(Vector2), texture_coordinates.data);
 
+    default_colors: [..] Vector4;
+    defer array_free(default_colors);
+    array_reserve(*default_colors, positions.count);
+    for 0..positions.count-1 array_add(*default_colors, .{1, 1, 1, 1});
 
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), default_colors.count * size_of(Vector4), default_colors.data);
 
 
     glBindVertexArray(0);
@@ -258,6 +274,13 @@ rebuffer_object :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_R
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.texture_coordinates.count * size_of(Vector2), renderable.texture_coordinates.data);
 
+    default_colors: [..] Vector4;
+    defer array_free(default_colors);
+    array_reserve(*default_colors, renderable.positions.count);
+    for 0..renderable.positions.count-1 array_add(*default_colors, .{1, 1, 1, 1});
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), default_colors.count * size_of(Vector4), default_colors.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -304,7 +327,8 @@ immediate_render :: (
         using renderer: *Multi_Channel_Signed_Distance_Field_Text_Renderer,
         indices : [] u32,
         positions : [] Vector3,
-        texture_coordinates : [] Vector2
+        texture_coordinates : [] Vector2,
+        rgba_colors: [] Vector4
         ) {
 
     assert(indices.count > 0, "No indices to render.");
@@ -318,6 +342,8 @@ immediate_render :: (
     glBindBuffer(GL_ARRAY_BUFFER, immediate_passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, 0, texture_coordinates.count * size_of(Vector2), texture_coordinates.data);
 
+    glBindBuffer(GL_ARRAY_BUFFER, immediate_passthrough_rgba_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, rgba_colors.count * size_of(Vector4), rgba_colors.data);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.count * size_of(u32), indices.data);
@@ -326,6 +352,19 @@ immediate_render :: (
 
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+immediate_render :: (
+        using renderer: *Multi_Channel_Signed_Distance_Field_Text_Renderer,
+        indices : [] u32,
+        positions : [] Vector3,
+        texture_coordinates : [] Vector2
+        ) {
+    default_colors: [..] Vector4;
+    defer array_free(default_colors);
+    array_reserve(*default_colors, positions.count);
+    for 0..positions.count-1 array_add(*default_colors, .{1, 1, 1, 1});
+    immediate_render(renderer, indices, positions, texture_coordinates, default_colors);
 }
 
 
