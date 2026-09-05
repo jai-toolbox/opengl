@@ -19,6 +19,7 @@ Then for the multi-shader renderable there is also a buffer object / queue rende
 #import "tbx/assets";
 
 #load "renderer_generation_per_shader.jai";
+#load "reflection_probe_resources.jai";
 
 // opengl's coordinate system is only NDC space, everything else is something that you make up
 // and ndc space we have the following, the misconception can be understood here:
