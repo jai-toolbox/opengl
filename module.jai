@@ -209,3 +209,7 @@ set_vsync :: (value : bool) {
         }
     }
 }
+
+// The shared tbx/ui module produces backend-neutral draw buffers. This file
+// owns the OpenGL implementation that uploads and renders those buffers.
+#load "ui.jai";
