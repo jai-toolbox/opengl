@@ -37,11 +37,9 @@ set_thickness_px_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer, v
     glUniform1ui(renderer.thickness_px_uniform_location, v);
 }
 
-init :: (using renderer : *Object_Id_Selection_Outline_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/fullscreen_quad.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/fullscreen_quad.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/object_id_selection_outline.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/object_id_selection_outline.frag");
+init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/fullscreen_quad.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/object_id_selection_outline.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
 
@@ -62,4 +60,3 @@ deinit :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
 
     glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);
 }
-

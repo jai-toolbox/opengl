@@ -1,0 +1,5 @@
+Shader_Program_Metadata.{
+    immediate_mode_support = false,
+    vertex_shader_path = "src/tbx/opengl/shaders/out/infinite_grid.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/infinite_grid.frag"
+}

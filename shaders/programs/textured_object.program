@@ -1,0 +1,4 @@
+Shader_Program_Metadata.{
+    vertex_shader_path = "src/tbx/opengl/shaders/generated/textured_object.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/generated/textured_object.frag"
+}

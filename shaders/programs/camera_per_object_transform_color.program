@@ -1,0 +1,6 @@
+Shader_Program_Metadata.{
+    // todo one day rename Transform to Transforms here, will have to update the using code too. hence why I'm not doing it now.
+    immediate_mode_support = true,
+    vertex_shader_path = "src/tbx/opengl/shaders/out/camera_per_object_transform_color.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/color.frag"
+}

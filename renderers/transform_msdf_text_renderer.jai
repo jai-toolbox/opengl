@@ -67,7 +67,6 @@ Transform_MSDF_Text_Renderer :: struct {
 
     transform_uniform_location : GLint = -1;
     texture_sampler_uniform_location : GLint = -1;
-    rgba_color_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
@@ -90,15 +89,9 @@ set_texture_sampler_uniform :: (renderer : *Transform_MSDF_Text_Renderer, v: s32
     glUniform1i(renderer.texture_sampler_uniform_location, v);
 }
 
-set_rgba_color_uniform :: (renderer : *Transform_MSDF_Text_Renderer, v: Vector4) {
-    glUniform4f(renderer.rgba_color_uniform_location, v.x, v.y, v.z, v.w);
-}
-
-init :: (using renderer : *Transform_MSDF_Text_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/transform_position_textured.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/transform_position_textured.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/multi_channel_signed_distance_field_text.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/multi_channel_signed_distance_field_text.frag");
+init :: (using renderer : *Transform_MSDF_Text_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/transform_position_textured.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/multi_channel_signed_distance_field_text.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -107,7 +100,6 @@ init :: (using renderer : *Transform_MSDF_Text_Renderer) {
 
     transform_uniform_location = glGetUniformLocation(shader_program_gl_handle, "transform");
     texture_sampler_uniform_location = glGetUniformLocation(shader_program_gl_handle, "texture_sampler");
-    rgba_color_uniform_location = glGetUniformLocation(shader_program_gl_handle, "rgba_color");
 
 }
 
@@ -161,12 +153,13 @@ init_immediate_buffers :: (using renderer : *Transform_MSDF_Text_Renderer) {
 
     glGenBuffers(1, *immediate_index_buffer_gl_handle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 4096, null, GL_STREAM_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 65536, null, GL_STREAM_DRAW);
 
-    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 4096);
+
+    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
 
-    generate_buffer_for_vertex_attribute(*immediate_passthrough_texture_coordinates_buffer_gl_handle, Vector2, 4096);
+    generate_buffer_for_vertex_attribute(*immediate_passthrough_texture_coordinates_buffer_gl_handle, Vector2, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_passthrough_texture_coordinates_buffer_gl_handle, "passthrough_texture_coordinate", 2, GL_FLOAT, GL_FALSE, 0, null);
 
 
@@ -178,8 +171,8 @@ init_immediate_buffers :: (using renderer : *Transform_MSDF_Text_Renderer) {
 buffer_object :: (using renderer : *Transform_MSDF_Text_Renderer, renderable : *$T/interface Transform_MSDF_Text_Renderable) -> success: bool {
 
 
-    object_index, success := buffer_object(renderer, 
-            renderable.indices, 
+    object_index, success := buffer_object(renderer,
+            renderable.indices,
 
             renderable.positions,
             renderable.texture_coordinates
@@ -211,19 +204,19 @@ buffer_object :: (
     }
 
     global_indices_for_object : [..] u32;
-    for indices 
+    for indices
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), texture_coordinates.count * size_of(Vector2), texture_coordinates.data);
 
@@ -237,8 +230,8 @@ buffer_object :: (
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
-if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things
 will go off the rails.
 
 */
@@ -273,7 +266,7 @@ render :: (using renderer : *Transform_MSDF_Text_Renderer, primitive_mode: GLenu
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
-        for geom_indices 
+        for geom_indices
             array_add(*geom_indices_to_render, it);
     }
 
@@ -330,4 +323,3 @@ immediate_render :: (using renderer : *Transform_MSDF_Text_Renderer, geometry : 
             geometry.texture_coordinates
     );
 }
-

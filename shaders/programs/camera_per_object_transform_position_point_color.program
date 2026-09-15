@@ -1,0 +1,5 @@
+Shader_Program_Metadata.{
+    vertex_shader_path = "src/tbx/opengl/shaders/out/camera_per_object_transform_position_point_color.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/position_point_color.frag",
+    primitive_mode = GL_POINTS,
+}

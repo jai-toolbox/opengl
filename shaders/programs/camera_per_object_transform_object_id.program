@@ -1,0 +1,4 @@
+Shader_Program_Metadata.{
+    vertex_shader_path = "src/tbx/opengl/shaders/out/camera_per_object_transform_object_id.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/object_id.frag",
+}

@@ -178,11 +178,9 @@ set_lightmap_texture_uniform :: (renderer : *Gpu_Style_Pbr_Lightmapped_Renderer,
     glUniform1i(renderer.lightmap_texture_uniform_location, v);
 }
 
-init :: (using renderer : *Gpu_Style_Pbr_Lightmapped_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/generated/gpu_style_pbr_lightmapped.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/generated/gpu_style_pbr_lightmapped.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/generated/gpu_style_pbr_lightmapped.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/generated/gpu_style_pbr_lightmapped.frag");
+init :: (using renderer : *Gpu_Style_Pbr_Lightmapped_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/generated/gpu_style_pbr_lightmapped.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/generated/gpu_style_pbr_lightmapped.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -266,8 +264,8 @@ init_buffers_no_data :: (using apcr : *Gpu_Style_Pbr_Lightmapped_Renderer) { // 
 buffer_object :: (using renderer : *Gpu_Style_Pbr_Lightmapped_Renderer, renderable : *$T/interface Gpu_Style_Pbr_Lightmapped_Renderable) -> success: bool {
 
 
-    object_index, local_to_world_index, success := buffer_object(renderer, 
-            renderable.indices, 
+    object_index, local_to_world_index, success := buffer_object(renderer,
+            renderable.indices,
 
             renderable.positions,
             renderable.normals,
@@ -308,39 +306,39 @@ buffer_object :: (
     }
 
     global_indices_for_object : [..] u32;
-    for indices 
+    for indices
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, normals_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, tangents_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), tangents.count * size_of(Vector3), tangents.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, uvs_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), uvs.count * size_of(Vector2), uvs.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, lightmap_uvs_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), lightmap_uvs.count * size_of(Vector2), lightmap_uvs.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, material_indices_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), material_indices.count * size_of(u32), material_indices.data);
 
@@ -367,8 +365,8 @@ buffer_object :: (
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
-if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things
 will go off the rails.
 
 */
@@ -418,7 +416,7 @@ render :: (using renderer : *Gpu_Style_Pbr_Lightmapped_Renderer, primitive_mode:
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
-        for geom_indices 
+        for geom_indices
             array_add(*geom_indices_to_render, it);
     }
 
@@ -437,4 +435,3 @@ render :: (using renderer : *Gpu_Style_Pbr_Lightmapped_Renderer, primitive_mode:
     glBindVertexArray(0);
     glUseProgram(0);
 }
-

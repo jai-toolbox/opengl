@@ -1,0 +1,4 @@
+Shader_Program_Metadata.{
+    vertex_shader_path   = "src/tbx/opengl/shaders/out/absolute_position_textured.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/lighting/compute_lighting_from_position_color_normal_textures.frag"
+}

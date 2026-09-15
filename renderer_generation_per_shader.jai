@@ -293,8 +293,8 @@ glsl_component_type :: (type_name: string) -> GLenum {
 }
 
 legacy_shader_program_path :: (program: Shader_Program_Metadata) -> bool {
-    return starts_with(program.vertex_shader_path, "data/shaders/out/")
-        || starts_with(program.fragment_shader_path, "data/shaders/out/");
+    return starts_with(program.vertex_shader_path, "src/tbx/opengl/shaders/out/")
+        || starts_with(program.fragment_shader_path, "src/tbx/opengl/shaders/out/");
 }
 
 legacy_shader_uniform_is_allowed :: (name: string) -> bool {
@@ -773,8 +773,7 @@ read_shader_program_metadata_file :: (program_path: string) -> (program: Shader_
 shader_program_generation_visitor :: (info: *File_Visit_Info, _: *void) {
     if !ends_with(info.full_name, ".program") return;
 
-    program_path := tprint("data/shaders/programs/%", shader_program_path_to_file_stem(info.full_name));
-    program_path = tprint("%.program", program_path);
+    program_path := info.full_name;
 
     program, ok := read_shader_program_metadata_file(program_path);
     if !ok return;
@@ -782,8 +781,10 @@ shader_program_generation_visitor :: (info: *File_Visit_Info, _: *void) {
     create_code_to_render_stuff_with_shader_from_program(program_path, program);
 }
 
-create_code_to_render_stuff_with_shader_program_files :: (program_directory: string = "data/shaders/programs") {
-    visit_files(program_directory, recursive = false, null, shader_program_generation_visitor, visit_directories = false);
+create_code_to_render_stuff_with_shader_program_files :: (program_directory: string = "") {
+    directory := program_directory;
+    if directory.count == 0 directory = tprint("%shaders/programs", #filepath);
+    visit_files(directory, recursive = false, null, shader_program_generation_visitor, visit_directories = false);
 }
 
 create_code_to_render_stuff_with_shader_from_program :: (program_path: string, program: Shader_Program_Metadata) {
@@ -871,6 +872,28 @@ is_disabled_generated_vertex_attribute :: (attr: GL_Vertex_Attribute_Configurati
         || attr.var_name_in_shader == "passthrough_packed_texture_bounding_box_index_for_ambient_occlusion";
 }
 
+normalize_generated_jai_source :: (source: string) -> string {
+    lines := split(source, cast(u8) #char "\n");
+
+    last_content_line := -1;
+    for line, line_index: lines {
+        if trim(line).count > 0 last_content_line = line_index;
+    }
+
+    builder: String_Builder;
+    init_string_builder(*builder);
+
+    if last_content_line >= 0 {
+        for line, line_index: lines {
+            if line_index > last_content_line break;
+            append(*builder, trim_right(line));
+            append(*builder, "\n");
+        }
+    }
+
+    return builder_to_string(*builder);
+}
+
 create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     push_allocator(temp);
 
@@ -907,7 +930,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
         append(*builder, generate_immediate_render(shader));            
     }
 
-    output := builder_to_string(*builder);
+    output := normalize_generated_jai_source(builder_to_string(*builder));
 
     renderers_dir := tprint("%/renderers", #filepath);
     make_directory_if_it_does_not_exist(renderers_dir);
@@ -1192,6 +1215,28 @@ generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> stri
     return builder_to_string(*builder);
 }
 
+generated_renderer_compile_time_shader_read_expression :: (shader_path: string) -> string {
+    module_shader_prefix :: "src/tbx/opengl/shaders/";
+    legacy_shader_prefix :: "data/shaders/";
+
+    relative_path := shader_path;
+    if starts_with(shader_path, module_shader_prefix) {
+        relative_path = advance(shader_path, module_shader_prefix.count);
+    } else if starts_with(shader_path, legacy_shader_prefix) {
+        relative_path = advance(shader_path, legacy_shader_prefix.count);
+    } else {
+        log_error("OpenGL renderer generation received a shader outside tbx/opengl/shaders: %", shader_path);
+    }
+
+    builder: String_Builder;
+    init_string_builder(*builder);
+    append(*builder, "#run read_entire_file(tprint(\"%");
+    append(*builder, "../shaders/");
+    append(*builder, relative_path);
+    append(*builder, "\", #filepath))");
+    return builder_to_string(*builder);
+}
+
 generate_code_for_init :: (shader : Shader_Metadata) -> string {
 
     immediate_init_call := ifx shader.immediate_mode_support then "    init_immediate_buffers(renderer);\n" else "";
@@ -1200,10 +1245,8 @@ generate_code_for_init :: (shader : Shader_Metadata) -> string {
     return tprint(#string END
 
 init :: (using renderer : *%1) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("%2");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: %2");
-    fragment_shader_loaded, fragment_shader_source := load_asset("%3");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: %3");
+    vertex_shader_source := %2;
+    fragment_shader_source := %3;
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
 %6%7
@@ -1212,8 +1255,8 @@ init :: (using renderer : *%1) {
 }
 
     END, get_renderer_struct_name(shader), 
-         shader.vertex_shader_path, 
-         shader.fragment_shader_path, 
+         generated_renderer_compile_time_shader_read_expression(shader.vertex_shader_path),
+         generated_renderer_compile_time_shader_read_expression(shader.fragment_shader_path),
          generate_code_for_initting_matrices(shader),
          generate_code_for_caching_uniform_locations(shader),
          init_buffers_call,

@@ -91,10 +91,10 @@ set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Tran
 }
 
 init :: (using renderer : *Camera_Per_Object_Transforms_Texture_Packed_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/camera_per_object_transforms_texture_packed.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/camera_per_object_transforms_texture_packed.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/texture_packed.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/texture_packed.frag");
+    vertex_shader_loaded, vertex_shader_source := load_asset("src/tbx/opengl/shaders/out/camera_per_object_transforms_texture_packed.vert");
+    assert(vertex_shader_loaded, "Failed to load vertex shader asset: src/tbx/opengl/shaders/out/camera_per_object_transforms_texture_packed.vert");
+    fragment_shader_loaded, fragment_shader_source := load_asset("src/tbx/opengl/shaders/out/texture_packed.frag");
+    assert(fragment_shader_loaded, "Failed to load fragment shader asset: src/tbx/opengl/shaders/out/texture_packed.frag");
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);

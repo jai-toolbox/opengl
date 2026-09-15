@@ -100,11 +100,9 @@ set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Color_Al
     glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-init :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/camera_per_object_transform_color_alpha.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/camera_per_object_transform_color_alpha.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/color_alpha.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/color_alpha.frag");
+init :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/camera_per_object_transform_color_alpha.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/color_alpha.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -162,8 +160,8 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Alpha_R
 buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Color_Alpha_Renderable) -> success: bool {
 
 
-    object_index, local_to_world_index, success := buffer_object(renderer, 
-            renderable.indices, 
+    object_index, local_to_world_index, success := buffer_object(renderer,
+            renderable.indices,
 
             renderable.positions,
             renderable.rgba_colors
@@ -196,19 +194,19 @@ buffer_object :: (
     }
 
     global_indices_for_object : [..] u32;
-    for indices 
+    for indices
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), rgba_colors.count * size_of(Vector4), rgba_colors.data);
 
@@ -235,8 +233,8 @@ buffer_object :: (
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
-if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things
 will go off the rails.
 
 */
@@ -274,7 +272,7 @@ render :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, p
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
-        for geom_indices 
+        for geom_indices
             array_add(*geom_indices_to_render, it);
     }
 
@@ -293,4 +291,3 @@ render :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, p
     glBindVertexArray(0);
     glUseProgram(0);
 }
-

@@ -131,11 +131,9 @@ set_packed_texture_bounding_boxes_uniform :: (renderer : *Textured_Object_Render
     glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
-init :: (using renderer : *Textured_Object_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/generated/textured_object.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/generated/textured_object.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/generated/textured_object.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/generated/textured_object.frag");
+init :: (using renderer : *Textured_Object_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/generated/textured_object.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/generated/textured_object.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -207,8 +205,8 @@ init_buffers_no_data :: (using apcr : *Textured_Object_Renderer) { // todo chang
 buffer_object :: (using renderer : *Textured_Object_Renderer, renderable : *$T/interface Textured_Object_Renderable) -> success: bool {
 
 
-    object_index, local_to_world_index, success := buffer_object(renderer, 
-            renderable.indices, 
+    object_index, local_to_world_index, success := buffer_object(renderer,
+            renderable.indices,
 
             renderable.positions,
             renderable.normals,
@@ -247,34 +245,34 @@ buffer_object :: (
     }
 
     global_indices_for_object : [..] u32;
-    for indices 
+    for indices
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, normals_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s32), packed_texture_index.count * size_of(s32), packed_texture_index.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), texture_coordinates.count * size_of(Vector2), texture_coordinates.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s32), packed_texture_bounding_box_index.count * size_of(s32), packed_texture_bounding_box_index.data);
 
@@ -301,8 +299,8 @@ buffer_object :: (
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
-if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things
 will go off the rails.
 
 */
@@ -349,7 +347,7 @@ render :: (using renderer : *Textured_Object_Renderer, primitive_mode: GLenum = 
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
-        for geom_indices 
+        for geom_indices
             array_add(*geom_indices_to_render, it);
     }
 
@@ -368,4 +366,3 @@ render :: (using renderer : *Textured_Object_Renderer, primitive_mode: GLenum = 
     glBindVertexArray(0);
     glUseProgram(0);
 }
-

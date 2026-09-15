@@ -1,0 +1,4 @@
+Shader_Program_Metadata.{
+    vertex_shader_path = "src/tbx/opengl/shaders/generated/gpu_style_pbr_skeletal_animation.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/generated/gpu_style_pbr_skeletal_animation.frag"
+}

@@ -7,6 +7,7 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable :: s
     object_index : u32;
 
     positions: [..] Vector3;
+    rgba_colors: [..] Vector4;
     texture_coordinates: [..] Vector2;
 
 }
@@ -15,18 +16,21 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable :: s
 Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
+    rgba_colors: [..] Vector4;
     texture_coordinates: [..] Vector2;
 }
 
 assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
+    array_copy(*renderable.rgba_colors, geometry.rgba_colors);
     array_copy(*renderable.texture_coordinates, geometry.texture_coordinates);
 }
 
 assign_geometry :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Geometry) {
     renderable.indices = geometry.indices;
     renderable.positions = geometry.positions;
+    renderable.rgba_colors = geometry.rgba_colors;
     renderable.texture_coordinates = geometry.texture_coordinates;
 }
 
@@ -34,6 +38,7 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_C
 deinit :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable) {
     array_free(renderable.indices);
     array_free(renderable.positions);
+    array_free(renderable.rgba_colors);
     array_free(renderable.texture_coordinates);
 }
 
@@ -46,6 +51,7 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Li
     unbuffer_object(*renderer.psr, renderable.object_index);
     array_free(renderable.indices);
     array_free(renderable.positions);
+    array_free(renderable.rgba_colors);
     array_free(renderable.texture_coordinates);
 }
 
@@ -71,6 +77,7 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer :: str
     normal_texture_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
+    passthrough_rgba_colors_buffer_gl_handle: GLuint;
     passthrough_texture_coordinates_buffer_gl_handle: GLuint;
 
 
@@ -93,11 +100,9 @@ set_normal_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_
     glUniform1i(renderer.normal_texture_uniform_location, v);
 }
 
-init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/absolute_position_textured.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/absolute_position_textured.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/lighting/compute_lighting_from_position_color_normal_textures.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/lighting/compute_lighting_from_position_color_normal_textures.frag");
+init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/absolute_position_textured.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/lighting/compute_lighting_from_position_color_normal_textures.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -115,6 +120,7 @@ deinit :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compu
     deinit(*psr);
 
     glDeleteBuffers(1, *positions_buffer_gl_handle);
+    glDeleteBuffers(1, *passthrough_rgba_colors_buffer_gl_handle);
     glDeleteBuffers(1, *passthrough_texture_coordinates_buffer_gl_handle);
 }
 
@@ -137,6 +143,9 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Deferred_Ligh
     generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
 
+    generate_buffer_for_vertex_attribute(*passthrough_rgba_colors_buffer_gl_handle, Vector4, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_rgba_colors_buffer_gl_handle, "passthrough_rgba_color", 4, GL_FLOAT, GL_FALSE, 0, null);
+
     generate_buffer_for_vertex_attribute(*passthrough_texture_coordinates_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, passthrough_texture_coordinates_buffer_gl_handle, "passthrough_texture_coordinate", 2, GL_FLOAT, GL_FALSE, 0, null);
 
@@ -149,10 +158,11 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Deferred_Ligh
 buffer_object :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderable) -> success: bool {
 
 
-    object_index, success := buffer_object(renderer, 
-            renderable.indices, 
+    object_index, success := buffer_object(renderer,
+            renderable.indices,
 
             renderable.positions,
+            renderable.rgba_colors,
             renderable.texture_coordinates
     );
 
@@ -168,6 +178,7 @@ buffer_object :: (
         using renderer: *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer,
         indices : [..] u32,
         positions : [..] Vector3,
+        rgba_colors : [..] Vector4,
         texture_coordinates : [..] Vector2
 
         ) -> object_index: u32, success: bool {
@@ -182,19 +193,24 @@ buffer_object :: (
     }
 
     global_indices_for_object : [..] u32;
-    for indices 
+    for indices
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
-    
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), rgba_colors.count * size_of(Vector4), rgba_colors.data);
+
+
+
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), texture_coordinates.count * size_of(Vector2), texture_coordinates.data);
 
@@ -208,8 +224,8 @@ buffer_object :: (
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
-if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things
 will go off the rails.
 
 */
@@ -219,6 +235,9 @@ rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Deferred_Light
 
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
+
+    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.rgba_colors.count * size_of(Vector4), renderable.rgba_colors.data);
 
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.texture_coordinates.count * size_of(Vector2), renderable.texture_coordinates.data);
@@ -244,7 +263,7 @@ render :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compu
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
-        for geom_indices 
+        for geom_indices
             array_add(*geom_indices_to_render, it);
     }
 
@@ -263,4 +282,3 @@ render :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compu
     glBindVertexArray(0);
     glUseProgram(0);
 }
-

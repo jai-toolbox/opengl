@@ -84,11 +84,9 @@ set_transform_uniform :: (renderer : *Transform_Position_Color_Alpha_Renderer, v
     glUniformMatrix4fv(renderer.transform_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-init :: (using renderer : *Transform_Position_Color_Alpha_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/transform_position_color_alpha.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/transform_position_color_alpha.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/color_alpha.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/color_alpha.frag");
+init :: (using renderer : *Transform_Position_Color_Alpha_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/transform_position_color_alpha.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/color_alpha.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -149,12 +147,13 @@ init_immediate_buffers :: (using renderer : *Transform_Position_Color_Alpha_Rend
 
     glGenBuffers(1, *immediate_index_buffer_gl_handle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 4096, null, GL_STREAM_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * 65536, null, GL_STREAM_DRAW);
 
-    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 4096);
+
+    generate_buffer_for_vertex_attribute(*immediate_positions_buffer_gl_handle, Vector3, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_positions_buffer_gl_handle, "position", 3, GL_FLOAT, GL_FALSE, 0, null);
 
-    generate_buffer_for_vertex_attribute(*immediate_passthrough_rgba_colors_buffer_gl_handle, Vector4, 4096);
+    generate_buffer_for_vertex_attribute(*immediate_passthrough_rgba_colors_buffer_gl_handle, Vector4, 65536);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_passthrough_rgba_colors_buffer_gl_handle, "passthrough_rgba_color", 4, GL_FLOAT, GL_FALSE, 0, null);
 
 
@@ -166,8 +165,8 @@ init_immediate_buffers :: (using renderer : *Transform_Position_Color_Alpha_Rend
 buffer_object :: (using renderer : *Transform_Position_Color_Alpha_Renderer, renderable : *$T/interface Transform_Position_Color_Alpha_Renderable) -> success: bool {
 
 
-    object_index, success := buffer_object(renderer, 
-            renderable.indices, 
+    object_index, success := buffer_object(renderer,
+            renderable.indices,
 
             renderable.positions,
             renderable.rgba_colors
@@ -199,19 +198,19 @@ buffer_object :: (
     }
 
     global_indices_for_object : [..] u32;
-    for indices 
+    for indices
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), rgba_colors.count * size_of(Vector4), rgba_colors.data);
 
@@ -225,8 +224,8 @@ buffer_object :: (
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
-if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
+So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
+if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things
 will go off the rails.
 
 */
@@ -261,7 +260,7 @@ render :: (using renderer : *Transform_Position_Color_Alpha_Renderer, primitive_
     for object_indices_to_render_this_frame {
         success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
         if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
-        for geom_indices 
+        for geom_indices
             array_add(*geom_indices_to_render, it);
     }
 
@@ -318,4 +317,3 @@ immediate_render :: (using renderer : *Transform_Position_Color_Alpha_Renderer, 
             geometry.rgba_colors
     );
 }
-

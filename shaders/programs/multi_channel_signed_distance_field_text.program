@@ -1,0 +1,5 @@
+Shader_Program_Metadata.{
+    immediate_mode_support = true,
+    vertex_shader_path = "src/tbx/opengl/shaders/out/absolute_position_textured.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/multi_channel_signed_distance_field_text.frag"
+}

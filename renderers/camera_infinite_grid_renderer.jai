@@ -37,11 +37,9 @@ set_grid_plane_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: s32) {
     glUniform1i(renderer.grid_plane_uniform_location, v);
 }
 
-init :: (using renderer : *Camera_Infinite_Grid_Renderer) { 
-    vertex_shader_loaded, vertex_shader_source := load_asset("data/shaders/out/infinite_grid.vert");
-    assert(vertex_shader_loaded, "Failed to load vertex shader asset: data/shaders/out/infinite_grid.vert");
-    fragment_shader_loaded, fragment_shader_source := load_asset("data/shaders/out/infinite_grid.frag");
-    assert(fragment_shader_loaded, "Failed to load fragment shader asset: data/shaders/out/infinite_grid.frag");
+init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/infinite_grid.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/infinite_grid.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
 
@@ -59,4 +57,3 @@ deinit :: (using renderer : *Camera_Infinite_Grid_Renderer) {
     deinit(*psr);
 
 }
-

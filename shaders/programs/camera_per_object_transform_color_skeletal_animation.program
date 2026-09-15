@@ -1,0 +1,4 @@
+Shader_Program_Metadata.{
+    vertex_shader_path = "src/tbx/opengl/shaders/out/camera_per_object_transform_color_skeletal_animation.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/color.frag"
+}

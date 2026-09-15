@@ -1,0 +1,4 @@
+Shader_Program_Metadata.{
+    vertex_shader_path   = "src/tbx/opengl/shaders/out/lighting/camera_per_object_transform_color_normal.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/lighting/render_position_color_normal_textures.frag"
+}

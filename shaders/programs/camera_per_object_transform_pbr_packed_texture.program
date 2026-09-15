@@ -1,0 +1,4 @@
+Shader_Program_Metadata.{
+    vertex_shader_path   = "src/tbx/opengl/shaders/out/camera_per_object_transform_pbr_packed_texture.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/pbr_packed_texture.frag",
+}

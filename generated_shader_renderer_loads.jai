@@ -1,4 +1,4 @@
-// auto-generated from data/shaders/programs/*.program
+// auto-generated from src/tbx/opengl/shaders/programs/*.program
 // do not edit manually.
 
 #load "renderers/absolute_position_color_renderer.jai";

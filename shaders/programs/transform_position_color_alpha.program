@@ -1,0 +1,5 @@
+Shader_Program_Metadata.{
+    immediate_mode_support = true,
+    vertex_shader_path = "src/tbx/opengl/shaders/out/transform_position_color_alpha.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/color_alpha.frag"
+}

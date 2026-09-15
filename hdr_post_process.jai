@@ -25,22 +25,22 @@ HDR_Post_Process :: struct {
 }
 
 init :: (using hdr: *HDR_Post_Process, initial_width: s32, initial_height: s32) {
-    bright_vs_loaded, fullscreen_vs := load_asset("data/shaders/out/fullscreen_quad_texture.vert");
+    bright_vs_loaded, fullscreen_vs := load_asset("src/tbx/opengl/shaders/out/fullscreen_quad_texture.vert");
     assert(bright_vs_loaded, "Failed to load fullscreen quad vertex shader");
 
-    bright_fs_loaded, bright_fs := load_asset("data/shaders/out/hdr_bright_extract.frag");
+    bright_fs_loaded, bright_fs := load_asset("src/tbx/opengl/shaders/out/hdr_bright_extract.frag");
     assert(bright_fs_loaded, "Failed to load HDR bright extract shader");
     bright_program, bright_ok := create_shader_program(fullscreen_vs, bright_fs);
     assert(bright_ok, "Failed to create HDR bright extract shader program");
     bright_extract_shader = bright_program;
 
-    blur_fs_loaded, blur_fs := load_asset("data/shaders/out/hdr_blur.frag");
+    blur_fs_loaded, blur_fs := load_asset("src/tbx/opengl/shaders/out/hdr_blur.frag");
     assert(blur_fs_loaded, "Failed to load HDR blur shader");
     blur_program, blur_ok := create_shader_program(fullscreen_vs, blur_fs);
     assert(blur_ok, "Failed to create HDR blur shader program");
     blur_shader = blur_program;
 
-    tone_fs_loaded, tone_fs := load_asset("data/shaders/out/hdr_tone_map.frag");
+    tone_fs_loaded, tone_fs := load_asset("src/tbx/opengl/shaders/out/hdr_tone_map.frag");
     assert(tone_fs_loaded, "Failed to load HDR tone map shader");
     tone_program, tone_ok := create_shader_program(fullscreen_vs, tone_fs);
     assert(tone_ok, "Failed to create HDR tone map shader program");
