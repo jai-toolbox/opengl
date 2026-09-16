@@ -82,6 +82,9 @@ Reflection_Capture_Map_Build_Data :: struct {
 
 Reflection_Probe_Resources :: struct {
     cubemap_array_gl_handle: GLuint;
+    // GL 3.3 has 2D arrays but no core cube-map arrays. In that mode each
+    // capture's six faces occupy consecutive 2D-array layers.
+    cubemap_faces_are_2d_array: bool;
     proxy_buffer_gl_handle: GLuint;
     proxy_texture_gl_handle: GLuint;
     captures: [..] Reflection_Capture_Map_Record;
@@ -122,7 +125,7 @@ reflection_capture_full_hdr_bytes :: (size: s32) -> u64 {
     return result;
 }
 
-load_reflection_probe_resources :: (path: string) -> Reflection_Probe_Resources, bool {
+load_reflection_probe_resources :: (path: string, gl33_face_array: bool = false) -> Reflection_Probe_Resources, bool {
     result: Reflection_Probe_Resources;
     data, ok := read_entire_file(path);
     defer if data.data != null free(data.data);
@@ -190,21 +193,23 @@ load_reflection_probe_resources :: (path: string) -> Reflection_Probe_Resources,
     result.num_mips = reflection_capture_mip_count(result.cubemap_size);
     if result.num_mips == 0 return result, false;
 
+    TextureTarget: GLenum = cast(GLenum) (ifx gl33_face_array then GL_TEXTURE_2D_ARRAY else GL_TEXTURE_CUBE_MAP_ARRAY);
+    result.cubemap_faces_are_2d_array = gl33_face_array;
     glGenTextures(1, *result.cubemap_array_gl_handle);
-    glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, result.cubemap_array_gl_handle);
+    glBindTexture(TextureTarget, result.cubemap_array_gl_handle);
     for mip: 0..result.num_mips-1 {
         mip_size := max(1, result.cubemap_size >> mip);
-        glTexImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, cast(GLint) mip, cast(GLint) GL_RGBA16F,
+        glTexImage3D(TextureTarget, cast(GLint) mip, cast(GLint) GL_RGBA16F,
             cast(GLsizei) mip_size, cast(GLsizei) mip_size, cast(GLsizei) (result.captures.count * 6),
             0, GL_RGBA, GL_HALF_FLOAT, null);
     }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP_ARRAY, GL_TEXTURE_MAX_LEVEL, result.num_mips - 1);
+    glTexParameteri(TextureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(TextureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(TextureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(TextureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(TextureTarget, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(TextureTarget, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(TextureTarget, GL_TEXTURE_MAX_LEVEL, result.num_mips - 1);
 
     for capture_index: 0..result.captures.count-1 {
         capture_data := *build_data[capture_build_indices[capture_index]];
@@ -232,14 +237,14 @@ load_reflection_probe_resources :: (path: string) -> Reflection_Probe_Resources,
                     deinit(*result);
                     return result, false;
                 }
-                glTexSubImage3D(GL_TEXTURE_CUBE_MAP_ARRAY, cast(GLint) mip, 0, 0,
+                glTexSubImage3D(TextureTarget, cast(GLint) mip, 0, 0,
                     cast(GLint) (capture_index * 6 + face), cast(GLsizei) mip_size, cast(GLsizei) mip_size, 1,
                     GL_RGBA, GL_HALF_FLOAT, cast(*void) (data.data + cast(int) source_offset));
                 local_offset += face_bytes;
             }
         }
     }
-    glBindTexture(GL_TEXTURE_CUBE_MAP_ARRAY, 0);
+    glBindTexture(TextureTarget, 0);
 
     proxy_data: [..] float32;
     defer array_free(proxy_data);
