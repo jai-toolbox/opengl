@@ -18,6 +18,7 @@ OpenGL_UI_Renderer :: struct {
     text_renderer: Multi_Channel_Signed_Distance_Field_Text_Renderer;
     image_renderer: OpenGL_UI_Image_Renderer;
     font_atlas_texture: GLuint;
+    text_screen_pixels_per_distance_range_uniform_location: GLint = -1;
     text_vertex_capacity: s64 = UI.UI_RENDER_BATCH_MAX_VERTICES;
     text_index_capacity: s64 = UI.UI_RENDER_BATCH_MAX_INDICES;
 }
@@ -127,7 +128,7 @@ upload_msdf_font_atlas_to_opengl :: (
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, xx width, xx height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     font.texture_handle = cast(UI.UI_Texture_Handle) renderer.font_atlas_texture;
@@ -141,6 +142,9 @@ init :: (
 ) -> success: bool {
     init(*renderer.geometry_renderer);
     init(*renderer.text_renderer);
+    renderer.text_screen_pixels_per_distance_range_uniform_location = glGetUniformLocation(
+        renderer.text_renderer.shader_program_gl_handle, "screen_pixels_per_distance_range"
+    );
     if !init(*renderer.image_renderer) {
         deinit(renderer);
         return false;
@@ -256,7 +260,10 @@ render_opengl_ui_command_list :: (
                     glBindTexture(GL_TEXTURE_2D, cast(GLuint) font.texture_handle);
                     set_texture_sampler_uniform(text, 0);
                     set_aspect_ratio_uniform(text, .{1.0, 1.0});
-                    set_screen_pixels_per_distance_range_uniform(text, UI.msdf_screen_pixels_per_distance_range(font, command.font_size));
+                    glUniform1f(
+                        renderer.text_screen_pixels_per_distance_range_uniform_location,
+                        UI.msdf_screen_pixels_per_distance_range(font, command.font_size)
+                    );
                     active_type = .TEXT;
                     active_type_is_set = true;
                     active_text_font = font;
@@ -349,7 +356,7 @@ opengl_ui_render_target_ensure_size :: (
     color_texture, depth_buffer, framebuffer: GLuint;
     glGenTextures(1, *color_texture);
     glBindTexture(GL_TEXTURE_2D, color_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, xx width, xx height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -357,7 +364,7 @@ opengl_ui_render_target_ensure_size :: (
 
     glGenRenderbuffers(1, *depth_buffer);
     glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, xx width, xx height);
 
     glGenFramebuffers(1, *framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -385,7 +392,7 @@ opengl_ui_render_target_begin :: (backend_user_data: *void, target: *UI.UI_Rende
     glGetIntegerv(GL_VIEWPORT, target.backend_previous_viewport.data);
     target.backend_previous_framebuffer_handle = cast(u64) previous_framebuffer;
     glBindFramebuffer(GL_FRAMEBUFFER, cast(GLuint) target.backend_framebuffer_handle);
-    glViewport(0, 0, target.width, target.height);
+    glViewport(0, 0, xx target.width, xx target.height);
     target.active = true;
     return true;
 }
@@ -396,8 +403,8 @@ opengl_ui_render_target_end :: (backend_user_data: *void, target: *UI.UI_Render_
     glViewport(
         target.backend_previous_viewport[0],
         target.backend_previous_viewport[1],
-        target.backend_previous_viewport[2],
-        target.backend_previous_viewport[3]
+        xx target.backend_previous_viewport[2],
+        xx target.backend_previous_viewport[3]
     );
     target.active = false;
 }
