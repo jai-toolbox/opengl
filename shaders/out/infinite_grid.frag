@@ -11,7 +11,7 @@ uniform vec3 camera_position;
 
 uniform float grid_size = 100.0; // matches the one in the vertex shader
 uniform float min_pixels_between_cells = 2.0;
-uniform float grid_cell_size = 0.05;
+uniform float grid_cell_size = 0.01;
 uniform vec4 grid_color_thick = vec4(0.5, 0.5, 0.5, 1.0);
 uniform vec4 grid_color_thin = vec4(0.0, 0.0, 0.0, 1.0);
 

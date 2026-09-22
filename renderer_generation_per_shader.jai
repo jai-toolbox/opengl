@@ -310,6 +310,13 @@ legacy_shader_uniform_is_allowed :: (name: string) -> bool {
     if name == "aspect_ratio" return true;
     if name == "packed_textures" return true;
     if name == "packed_texture_bounding_boxes" return true;
+    if name == "lightmap_textures" return true;
+    if name == "static_point_light_count" return true;
+    if name == "reflection_probe_count" return true;
+    if name == "reflection_probe_max_mip" return true;
+    if starts_with(name, "reflection_probe_cubemap_") return true;
+    if name == "exposure" return true;
+    if name == "output_hdr" return true;
     if name == "object_id_texture" return true;
     if name == "selected_object_id" return true;
     if name == "thickness_px" return true;
@@ -502,6 +509,8 @@ legacy_uniform_rank :: (program: Shader_Program_Metadata, name: string) -> s32 {
     if name == "camera_position" return 40;
     if name == "packed_textures" return 50;
     if name == "packed_texture_bounding_boxes" return 60;
+    if name == "exposure" return 65;
+    if name == "output_hdr" return 66;
     if name == "num_active_lights" return 70;
     if name == "default_base_color" return 80;
     if name == "default_metallic" return 90;

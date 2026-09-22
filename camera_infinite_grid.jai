@@ -25,7 +25,7 @@ init :: (using grid: *Camera_Infinite_Grid) {
 
 deinit :: (using grid: *Camera_Infinite_Grid) {
     glDeleteVertexArrays(1, *empty_vao);
-    // TODO: deinit renderer if needed
+    deinit(*renderer);
 }
 
 render :: (using grid: *Camera_Infinite_Grid, 
