@@ -18,6 +18,7 @@ Then for the multi-shader renderable there is also a buffer object / queue rende
 #import "Hash_Table";
 #import "tbx/assets";
 
+#load "better_api.jai";
 #load "renderer_generation_per_shader.jai";
 #load "reflection_probe_resources.jai";
 
@@ -28,9 +29,6 @@ Then for the multi-shader renderable there is also a buffer object / queue rende
 GL_FORWARD_VEC :: Vector3.{0, 0, 1};
 GL_RIGHT_VEC :: Vector3.{1, 0, 0};
 GL_UP_VEC :: Vector3.{0, 1, 0};
-
-enable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
-disable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
 
 // SHADER_PREFIX : string : "#version 330 core";
 SHADER_PREFIX : string : "";
@@ -76,6 +74,8 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";
 #load "renderers/camera_per_object_transforms_packed_texture_renderer.jai"; // bad plural on transforms
 #load "renderers/camera_per_object_transform_packed_texture_light_baked_renderer.jai";
+#load "renderers/camera_per_object_transform_packed_texture_light_baked_reflection_capture_renderer.jai";
+#load "renderers/reflection_probe_ggx_prefilter_renderer.jai";
 #load "renderers/camera_per_object_transform_packed_texture_2_channel_renderer.jai";
 #load "renderers/camera_per_object_transform_pbr_packed_texture_renderer.jai";
 #load "renderers/camera_per_object_transform_texture_renderer.jai";

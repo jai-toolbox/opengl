@@ -85,19 +85,19 @@ Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer :: str
 
 
 set_aspect_ratio_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: Vector2) {
-    glUniform2f(renderer.aspect_ratio_uniform_location, v.x, v.y);
+    gl_set_uniform_2f_on_active_shader_program(renderer.aspect_ratio_uniform_location, v.x, v.y);
 }
 
 set_position_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: s32) {
-    glUniform1i(renderer.position_texture_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.position_texture_uniform_location, v);
 }
 
 set_color_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: s32) {
-    glUniform1i(renderer.color_texture_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.color_texture_uniform_location, v);
 }
 
 set_normal_texture_uniform :: (renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer, v: s32) {
-    glUniform1i(renderer.normal_texture_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.normal_texture_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Per_Object_Transform_Deferred_Lighting_Compute_Light_Pass_Renderer) {

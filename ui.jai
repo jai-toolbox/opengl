@@ -260,7 +260,7 @@ render_opengl_ui_command_list :: (
                     glBindTexture(GL_TEXTURE_2D, cast(GLuint) font.texture_handle);
                     set_texture_sampler_uniform(text, 0);
                     set_aspect_ratio_uniform(text, .{1.0, 1.0});
-                    glUniform1f(
+                    gl_set_uniform_1f_on_active_shader_program(
                         renderer.text_screen_pixels_per_distance_range_uniform_location,
                         UI.msdf_screen_pixels_per_distance_range(font, command.font_size)
                     );
@@ -281,7 +281,7 @@ render_opengl_ui_command_list :: (
                     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, image.index_buffer);
                     glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D, texture);
-                    glUniform1i(image.texture_sampler_uniform_location, 0);
+                    gl_set_uniform_1i_on_active_shader_program(image.texture_sampler_uniform_location, 0);
                     active_type = .IMAGE;
                     active_type_is_set = true;
                     active_image_texture = texture;

@@ -135,9 +135,9 @@ render_skybox :: (using renderer: *Skybox_Renderer, cubemap: Cubemap, world_to_c
     glDepthMask(GL_FALSE);
 
     glUseProgram(shader_program_gl_handle);
-    glUniformMatrix4fv(world_to_camera_uniform_location, 1, GL_TRUE, *view_without_translation.coef[0][0]);
-    glUniformMatrix4fv(camera_to_clip_uniform_location, 1, GL_TRUE, *camera_to_clip.coef[0][0]);
-    glUniform1i(skybox_cubemap_uniform_location, 2);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(world_to_camera_uniform_location, 1, GL_TRUE, *view_without_translation.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(camera_to_clip_uniform_location, 1, GL_TRUE, *camera_to_clip.coef[0][0]);
+    gl_set_uniform_1i_on_active_shader_program(skybox_cubemap_uniform_location, 2);
 
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.texture_gl_handle);

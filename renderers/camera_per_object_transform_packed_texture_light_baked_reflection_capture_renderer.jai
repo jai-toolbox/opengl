@@ -1,8 +1,8 @@
-// auto-generated renderer for shader: Camera_Per_Object_Transform_Packed_Texture_Light_Baked
+// auto-generated renderer for shader: Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture
 // do not edit manually.
 
 
-Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable :: struct {
+Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable :: struct {
     indices : [..] u32;
     object_index : u32;
 
@@ -25,7 +25,7 @@ Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable :: struct {
 }
 
 
-Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Geometry :: struct {
+Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
     normals: [..] Vector3;
@@ -42,7 +42,7 @@ Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Geometry :: struct {
     emissive_and_lightmap_texture_indices: [..] [4] u32;
 }
 
-assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Geometry) {
+assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.normals, geometry.normals);
@@ -59,7 +59,7 @@ assign_geometry_copy :: (renderable: *Camera_Per_Object_Transform_Packed_Texture
     array_copy(*renderable.emissive_and_lightmap_texture_indices, geometry.emissive_and_lightmap_texture_indices);
 }
 
-assign_geometry :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Geometry) {
+assign_geometry :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable, geometry: $T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Geometry) {
     renderable.indices = geometry.indices;
     renderable.positions = geometry.positions;
     renderable.normals = geometry.normals;
@@ -77,7 +77,7 @@ assign_geometry :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Ligh
 }
 
 
-deinit :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable) {
+deinit :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable) {
     array_free(renderable.indices);
     array_free(renderable.positions);
     array_free(renderable.normals);
@@ -99,7 +99,7 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_R
 So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
-deinit :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable, renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer) {
+deinit :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable, renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     free_index(*renderer.ltw_pool, renderable.local_to_world_index);
     renderable.local_to_world_index = 0;
@@ -121,7 +121,7 @@ deinit :: (renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_R
 }
 
 
-unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable) {
+unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, renderable: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable) {
     unbuffer_object(*renderer.psr, renderable.object_index);
     free_index(*renderer.ltw_pool, renderable.local_to_world_index);
     renderable.local_to_world_index = 0;
@@ -129,17 +129,17 @@ unbuffer_object :: (renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_
 }
 
 
-queue_render :: (using renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, renderable: Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable) {
+queue_render :: (using renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, renderable: Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable) {
     queue_render(*renderer.psr, renderable.object_index);
 }
 
 
-set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, renderable: Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable, matrix: Matrix4) {
+set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, renderable: Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable, matrix: Matrix4) {
     set_matrix(*renderer.ltw_pool, renderable.local_to_world_index, matrix);
 }
 
 
-Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer :: struct {
+Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer :: struct {
     using #as psr : Per_Shader_Renderer;
 
 
@@ -150,22 +150,9 @@ Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer :: struct {
 
     camera_to_clip_uniform_location : GLint = -1;
     world_to_camera_uniform_location : GLint = -1;
-    camera_position_uniform_location : GLint = -1;
     packed_textures_uniform_location : GLint = -1;
     packed_texture_bounding_boxes_uniform_location : GLint = -1;
-    exposure_uniform_location : GLint = -1;
     lightmap_textures_uniform_location : GLint = -1;
-    static_point_light_count_uniform_location : GLint = -1;
-    reflection_probe_cubemap_0_uniform_location : GLint = -1;
-    reflection_probe_cubemap_1_uniform_location : GLint = -1;
-    reflection_probe_cubemap_2_uniform_location : GLint = -1;
-    reflection_probe_cubemap_3_uniform_location : GLint = -1;
-    reflection_probe_cubemap_4_uniform_location : GLint = -1;
-    reflection_probe_cubemap_5_uniform_location : GLint = -1;
-    reflection_probe_cubemap_6_uniform_location : GLint = -1;
-    reflection_probe_cubemap_7_uniform_location : GLint = -1;
-    reflection_probe_count_uniform_location : GLint = -1;
-    reflection_probe_max_mip_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     passthrough_normals_buffer_gl_handle: GLuint;
@@ -185,81 +172,29 @@ Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer :: struct {
 }
 
 
-set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: Matrix4) {
+set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, v: Matrix4) {
     gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: Matrix4) {
+set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, v: Matrix4) {
     gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
-set_camera_position_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: Vector3) {
-    gl_set_uniform_3f_on_active_shader_program(renderer.camera_position_uniform_location, v.x, v.y, v.z);
-}
-
-set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
+set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, v: s32) {
     gl_set_uniform_1i_on_active_shader_program(renderer.packed_textures_uniform_location, v);
 }
 
-set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
+set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, v: s32) {
     gl_set_uniform_1i_on_active_shader_program(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
-set_exposure_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: float32) {
-    gl_set_uniform_1f_on_active_shader_program(renderer.exposure_uniform_location, v);
-}
-
-set_lightmap_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
+set_lightmap_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, v: s32) {
     gl_set_uniform_1i_on_active_shader_program(renderer.lightmap_textures_uniform_location, v);
 }
 
-set_static_point_light_count_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.static_point_light_count_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_0_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_0_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_1_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_1_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_2_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_2_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_3_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_3_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_4_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_4_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_5_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_5_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_6_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_6_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_7_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_7_uniform_location, v);
-}
-
-set_reflection_probe_count_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_count_uniform_location, v);
-}
-
-set_reflection_probe_max_mip_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: float32) {
-    gl_set_uniform_1f_on_active_shader_program(renderer.reflection_probe_max_mip_uniform_location, v);
-}
-
-init :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer) {
+init :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer) {
     vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/camera_per_object_transform_packed_texture_light_baked.vert", #filepath));
-    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/camera_per_object_transform_packed_texture_light_baked.frag", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/camera_per_object_transform_packed_texture_light_baked_reflection_capture.frag", #filepath));
 
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
     init_buffers_no_data(renderer);
@@ -268,27 +203,14 @@ init :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Bake
 
     camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
     world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
-    camera_position_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_position");
     packed_textures_uniform_location = glGetUniformLocation(shader_program_gl_handle, "packed_textures");
     packed_texture_bounding_boxes_uniform_location = glGetUniformLocation(shader_program_gl_handle, "packed_texture_bounding_boxes");
-    exposure_uniform_location = glGetUniformLocation(shader_program_gl_handle, "exposure");
     lightmap_textures_uniform_location = glGetUniformLocation(shader_program_gl_handle, "lightmap_textures");
-    static_point_light_count_uniform_location = glGetUniformLocation(shader_program_gl_handle, "static_point_light_count");
-    reflection_probe_cubemap_0_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_0");
-    reflection_probe_cubemap_1_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_1");
-    reflection_probe_cubemap_2_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_2");
-    reflection_probe_cubemap_3_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_3");
-    reflection_probe_cubemap_4_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_4");
-    reflection_probe_cubemap_5_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_5");
-    reflection_probe_cubemap_6_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_6");
-    reflection_probe_cubemap_7_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_cubemap_7");
-    reflection_probe_count_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_count");
-    reflection_probe_max_mip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "reflection_probe_max_mip");
 
 }
 
 
-deinit :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer) {
+deinit :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer) {
     deinit(*ltw_pool);
 
     deinit(*psr);
@@ -311,7 +233,7 @@ deinit :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Ba
 
 
 
-init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer) { // todo change renderer name
+init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer) { // todo change renderer name
 
     glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
     glBindVertexArray(vertex_attribute_array_gl_handle);
@@ -374,7 +296,7 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Packed_Textur
 }
 
 
-buffer_object :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable) -> success: bool {
+buffer_object :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable) -> success: bool {
 
 
     object_index, local_to_world_index, success := buffer_object(renderer,
@@ -405,7 +327,7 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_L
 
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
-        using renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer,
+        using renderer: *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer,
         indices : [..] u32,
         positions : [..] Vector3,
         normals : [..] Vector3,
@@ -532,7 +454,7 @@ if you're rebuffering things and using up more space then you did before you'll 
 will go off the rails.
 
 */
-rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderable) {
+rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderable) {
 
     glBindVertexArray(vertex_attribute_array_gl_handle);
 
@@ -580,7 +502,7 @@ rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture
     glBindVertexArray(0);
 }
 
-render :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
+render :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Reflection_Capture_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 

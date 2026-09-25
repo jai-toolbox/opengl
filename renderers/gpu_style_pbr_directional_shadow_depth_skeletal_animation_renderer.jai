@@ -99,7 +99,7 @@ Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer :: struct {
 
 
 set_world_to_light_clip_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_light_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_light_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 init :: (using renderer : *Gpu_Style_Pbr_Directional_Shadow_Depth_Skeletal_Animation_Renderer) {

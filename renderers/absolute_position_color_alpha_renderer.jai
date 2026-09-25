@@ -81,7 +81,7 @@ Absolute_Position_Color_Alpha_Renderer :: struct {
 
 
 set_aspect_ratio_uniform :: (renderer : *Absolute_Position_Color_Alpha_Renderer, v: Vector2) {
-    glUniform2f(renderer.aspect_ratio_uniform_location, v.x, v.y);
+    gl_set_uniform_2f_on_active_shader_program(renderer.aspect_ratio_uniform_location, v.x, v.y);
 }
 
 init :: (using renderer : *Absolute_Position_Color_Alpha_Renderer) {

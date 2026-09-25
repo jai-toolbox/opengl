@@ -140,59 +140,59 @@ Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer :: struct {
 
 
 set_world_to_camera_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_camera_to_clip_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_light_clip_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_light_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_light_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_camera_position_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: Vector3) {
-    glUniform3f(renderer.camera_position_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.camera_position_uniform_location, v.x, v.y, v.z);
 }
 
 set_ambient_strength_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: float32) {
-    glUniform1f(renderer.ambient_strength_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.ambient_strength_uniform_location, v);
 }
 
 set_directional_light_count_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: s32) {
-    glUniform1i(renderer.directional_light_count_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.directional_light_count_uniform_location, v);
 }
 
 set_directional_light_0_direction_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: Vector3) {
-    glUniform3f(renderer.directional_light_0_direction_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.directional_light_0_direction_uniform_location, v.x, v.y, v.z);
 }
 
 set_directional_light_0_color_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: Vector3) {
-    glUniform3f(renderer.directional_light_0_color_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.directional_light_0_color_uniform_location, v.x, v.y, v.z);
 }
 
 set_directional_light_0_intensity_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: float32) {
-    glUniform1f(renderer.directional_light_0_intensity_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.directional_light_0_intensity_uniform_location, v);
 }
 
 set_directional_shadow_map_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: s32) {
-    glUniform1i(renderer.directional_shadow_map_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.directional_shadow_map_uniform_location, v);
 }
 
 set_use_directional_shadow_map_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: bool) {
-    glUniform1i(renderer.use_directional_shadow_map_uniform_location, xx v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.use_directional_shadow_map_uniform_location, xx v);
 }
 
 set_packed_textures_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: s32) {
-    glUniform1i(renderer.packed_textures_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_textures_uniform_location, v);
 }
 
 set_packed_texture_bounding_boxes_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: s32) {
-    glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
 set_pbr_material_table_uniform :: (renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer, v: s32) {
-    glUniform1i(renderer.pbr_material_table_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.pbr_material_table_uniform_location, v);
 }
 
 init :: (using renderer : *Gpu_Style_Pbr_Directional_Shadows_Skeletal_Animation_Renderer) {

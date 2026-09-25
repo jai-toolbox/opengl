@@ -81,7 +81,7 @@ Transform_Position_Color_Alpha_Renderer :: struct {
 
 
 set_transform_uniform :: (renderer : *Transform_Position_Color_Alpha_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.transform_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.transform_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 init :: (using renderer : *Transform_Position_Color_Alpha_Renderer) {

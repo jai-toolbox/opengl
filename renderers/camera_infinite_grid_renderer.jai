@@ -18,23 +18,23 @@ Camera_Infinite_Grid_Renderer :: struct {
 
 
 set_camera_to_clip_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_camera_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_camera_position_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: Vector3) {
-    glUniform3f(renderer.camera_position_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.camera_position_uniform_location, v.x, v.y, v.z);
 }
 
 set_grid_size_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: float32) {
-    glUniform1f(renderer.grid_size_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.grid_size_uniform_location, v);
 }
 
 set_grid_plane_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: s32) {
-    glUniform1i(renderer.grid_plane_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.grid_plane_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Infinite_Grid_Renderer) {

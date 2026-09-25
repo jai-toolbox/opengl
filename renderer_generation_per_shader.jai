@@ -1881,34 +1881,34 @@ generate_code_for_uniform_setter_function :: (shader : Shader_Metadata, unif_con
     args: string;
     if unif_conf.type_in_jai == {
         case Matrix4;
-            gl_call = "glUniformMatrix4fv";
+            gl_call = "gl_set_uniform_matrix_4fv_on_active_shader_program";
             args = "renderer.%1_uniform_location, 1, GL_TRUE, *v.coef[0][0]";
         case Matrix3;
-            gl_call = "glUniformMatrix3fv";
+            gl_call = "gl_set_uniform_matrix_3fv_on_active_shader_program";
             args = "renderer.%1_uniform_location, 1, GL_TRUE, *v.coef[0][0]";
         case Vector4;
-            gl_call = "glUniform4f";
+            gl_call = "gl_set_uniform_4f_on_active_shader_program";
             args = "renderer.%1_uniform_location, v.x, v.y, v.z, v.w";
         case Vector3;
-            gl_call = "glUniform3f";
+            gl_call = "gl_set_uniform_3f_on_active_shader_program";
             args = "renderer.%1_uniform_location, v.x, v.y, v.z";
         case Vector2;
-            gl_call = "glUniform2f";
+            gl_call = "gl_set_uniform_2f_on_active_shader_program";
             args = "renderer.%1_uniform_location, v.x, v.y";
         case float32;
-            gl_call = "glUniform1f";
+            gl_call = "gl_set_uniform_1f_on_active_shader_program";
             args = "renderer.%1_uniform_location, v";
         case s32;
-            gl_call = "glUniform1i";
+            gl_call = "gl_set_uniform_1i_on_active_shader_program";
             args = "renderer.%1_uniform_location, v";
         case u32;
-            gl_call = "glUniform1ui";
+            gl_call = "gl_set_uniform_1ui_on_active_shader_program";
             args = "renderer.%1_uniform_location, v";
         case bool;
-            gl_call = "glUniform1i";
+            gl_call = "gl_set_uniform_1i_on_active_shader_program";
             args = "renderer.%1_uniform_location, xx v";
         case;
-            gl_call = "glUniform1i";
+            gl_call = "gl_set_uniform_1i_on_active_shader_program";
             args = "renderer.%1_uniform_location, v";
     }
     

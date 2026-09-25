@@ -85,19 +85,19 @@ Lit_Color_Renderer :: struct {
 
 
 set_angle_uniform :: (renderer : *Lit_Color_Renderer, v: float32) {
-    glUniform1f(renderer.angle_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.angle_uniform_location, v);
 }
 
 set_camera_position_uniform :: (renderer : *Lit_Color_Renderer, v: Vector3) {
-    glUniform3f(renderer.camera_position_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.camera_position_uniform_location, v.x, v.y, v.z);
 }
 
 set_light_direction_uniform :: (renderer : *Lit_Color_Renderer, v: Vector3) {
-    glUniform3f(renderer.light_direction_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.light_direction_uniform_location, v.x, v.y, v.z);
 }
 
 set_ambient_uniform :: (renderer : *Lit_Color_Renderer, v: float32) {
-    glUniform1f(renderer.ambient_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.ambient_uniform_location, v);
 }
 
 init :: (using renderer : *Lit_Color_Renderer) {

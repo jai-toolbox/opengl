@@ -49,12 +49,12 @@ init :: (using hdr: *HDR_Post_Process, initial_width: s32, initial_height: s32) 
     glGenVertexArrays(1, *fullscreen_vertex_array);
 
     glUseProgram(bright_extract_shader);
-    glUniform1i(glGetUniformLocation(bright_extract_shader, "hdr_scene_texture"), 0);
+    gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(bright_extract_shader, "hdr_scene_texture"), 0);
     glUseProgram(blur_shader);
-    glUniform1i(glGetUniformLocation(blur_shader, "source_texture"), 0);
+    gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(blur_shader, "source_texture"), 0);
     glUseProgram(tone_map_shader);
-    glUniform1i(glGetUniformLocation(tone_map_shader, "hdr_scene_texture"), 0);
-    glUniform1i(glGetUniformLocation(tone_map_shader, "bloom_texture"), 1);
+    gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "hdr_scene_texture"), 0);
+    gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "bloom_texture"), 1);
     glUseProgram(0);
 
     initialized = true;
@@ -168,10 +168,10 @@ render_hdr_to_default :: (using hdr: *HDR_Post_Process) {
     glBindTexture(GL_TEXTURE_2D, bloom_textures[0]);
 
     glUseProgram(tone_map_shader);
-    glUniform1i(glGetUniformLocation(tone_map_shader, "enable_bloom"), xx enable_bloom);
-    glUniform1f(glGetUniformLocation(tone_map_shader, "bloom_strength"), bloom_strength);
-    glUniform1f(glGetUniformLocation(tone_map_shader, "exposure"), exposure);
-    glUniform1i(glGetUniformLocation(tone_map_shader, "output_mode"), output_mode);
+    gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "enable_bloom"), xx enable_bloom);
+    gl_set_uniform_1f_on_active_shader_program(glGetUniformLocation(tone_map_shader, "bloom_strength"), bloom_strength);
+    gl_set_uniform_1f_on_active_shader_program(glGetUniformLocation(tone_map_shader, "exposure"), exposure);
+    gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "output_mode"), output_mode);
     draw_fullscreen_quad(hdr);
 
     glUseProgram(0);
@@ -187,7 +187,7 @@ render_bloom :: (using hdr: *HDR_Post_Process) {
     glBindTexture(GL_TEXTURE_2D, scene_color_texture);
 
     glUseProgram(bright_extract_shader);
-    glUniform1f(glGetUniformLocation(bright_extract_shader, "bloom_threshold"), bloom_threshold);
+    gl_set_uniform_1f_on_active_shader_program(glGetUniformLocation(bright_extract_shader, "bloom_threshold"), bloom_threshold);
     draw_fullscreen_quad(hdr);
 
     horizontal := true;
@@ -202,9 +202,9 @@ render_bloom :: (using hdr: *HDR_Post_Process) {
 
         glUseProgram(blur_shader);
         if horizontal {
-            glUniform2f(glGetUniformLocation(blur_shader, "texel_step"), 1.0 / cast(float32) width, 0.0);
+            gl_set_uniform_2f_on_active_shader_program(glGetUniformLocation(blur_shader, "texel_step"), 1.0 / cast(float32) width, 0.0);
         } else {
-            glUniform2f(glGetUniformLocation(blur_shader, "texel_step"), 0.0, 1.0 / cast(float32) height);
+            gl_set_uniform_2f_on_active_shader_program(glGetUniformLocation(blur_shader, "texel_step"), 0.0, 1.0 / cast(float32) height);
         }
         draw_fullscreen_quad(hdr);
 

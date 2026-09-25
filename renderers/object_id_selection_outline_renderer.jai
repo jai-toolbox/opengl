@@ -22,19 +22,19 @@ Object_Id_Selection_Outline_Renderer :: struct {
 
 
 set_object_id_texture_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer, v: s32) {
-    glUniform1i(renderer.object_id_texture_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.object_id_texture_uniform_location, v);
 }
 
 set_selected_object_id_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer, v: u32) {
-    glUniform1ui(renderer.selected_object_id_uniform_location, v);
+    gl_set_uniform_1ui_on_active_shader_program(renderer.selected_object_id_uniform_location, v);
 }
 
 set_rgba_color_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer, v: Vector4) {
-    glUniform4f(renderer.rgba_color_uniform_location, v.x, v.y, v.z, v.w);
+    gl_set_uniform_4f_on_active_shader_program(renderer.rgba_color_uniform_location, v.x, v.y, v.z, v.w);
 }
 
 set_thickness_px_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer, v: u32) {
-    glUniform1ui(renderer.thickness_px_uniform_location, v);
+    gl_set_uniform_1ui_on_active_shader_program(renderer.thickness_px_uniform_location, v);
 }
 
 init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {

@@ -138,107 +138,107 @@ Gpu_Style_Blinn_Phong_Renderer :: struct {
 
 
 set_world_to_camera_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_camera_to_clip_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_camera_position_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.camera_position_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.camera_position_uniform_location, v.x, v.y, v.z);
 }
 
 set_ambient_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.ambient_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.ambient_uniform_location, v);
 }
 
 set_specular_strength_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.specular_strength_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.specular_strength_uniform_location, v);
 }
 
 set_fallback_light_direction_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.fallback_light_direction_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.fallback_light_direction_uniform_location, v.x, v.y, v.z);
 }
 
 set_directional_light_count_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: s32) {
-    glUniform1i(renderer.directional_light_count_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.directional_light_count_uniform_location, v);
 }
 
 set_directional_light_0_direction_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.directional_light_0_direction_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.directional_light_0_direction_uniform_location, v.x, v.y, v.z);
 }
 
 set_directional_light_0_color_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.directional_light_0_color_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.directional_light_0_color_uniform_location, v.x, v.y, v.z);
 }
 
 set_directional_light_0_intensity_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.directional_light_0_intensity_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.directional_light_0_intensity_uniform_location, v);
 }
 
 set_point_light_count_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: s32) {
-    glUniform1i(renderer.point_light_count_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.point_light_count_uniform_location, v);
 }
 
 set_point_light_0_position_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.point_light_0_position_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.point_light_0_position_uniform_location, v.x, v.y, v.z);
 }
 
 set_point_light_0_color_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.point_light_0_color_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.point_light_0_color_uniform_location, v.x, v.y, v.z);
 }
 
 set_point_light_0_intensity_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.point_light_0_intensity_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.point_light_0_intensity_uniform_location, v);
 }
 
 set_point_light_0_range_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.point_light_0_range_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.point_light_0_range_uniform_location, v);
 }
 
 set_spot_light_count_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: s32) {
-    glUniform1i(renderer.spot_light_count_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.spot_light_count_uniform_location, v);
 }
 
 set_spot_light_0_position_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.spot_light_0_position_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.spot_light_0_position_uniform_location, v.x, v.y, v.z);
 }
 
 set_spot_light_0_direction_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.spot_light_0_direction_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.spot_light_0_direction_uniform_location, v.x, v.y, v.z);
 }
 
 set_spot_light_0_color_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: Vector3) {
-    glUniform3f(renderer.spot_light_0_color_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.spot_light_0_color_uniform_location, v.x, v.y, v.z);
 }
 
 set_spot_light_0_intensity_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.spot_light_0_intensity_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.spot_light_0_intensity_uniform_location, v);
 }
 
 set_spot_light_0_range_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.spot_light_0_range_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.spot_light_0_range_uniform_location, v);
 }
 
 set_spot_light_0_inner_cos_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.spot_light_0_inner_cos_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.spot_light_0_inner_cos_uniform_location, v);
 }
 
 set_spot_light_0_outer_cos_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: float32) {
-    glUniform1f(renderer.spot_light_0_outer_cos_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.spot_light_0_outer_cos_uniform_location, v);
 }
 
 set_packed_textures_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: s32) {
-    glUniform1i(renderer.packed_textures_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_textures_uniform_location, v);
 }
 
 set_packed_texture_bounding_boxes_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: s32) {
-    glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
 set_blinn_phong_material_table_uniform :: (renderer : *Gpu_Style_Blinn_Phong_Renderer, v: s32) {
-    glUniform1i(renderer.blinn_phong_material_table_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.blinn_phong_material_table_uniform_location, v);
 }
 
 init :: (using renderer : *Gpu_Style_Blinn_Phong_Renderer) {

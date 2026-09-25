@@ -82,11 +82,11 @@ Transform_MSDF_Text_Renderer :: struct {
 
 
 set_transform_uniform :: (renderer : *Transform_MSDF_Text_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.transform_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.transform_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_texture_sampler_uniform :: (renderer : *Transform_MSDF_Text_Renderer, v: s32) {
-    glUniform1i(renderer.texture_sampler_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.texture_sampler_uniform_location, v);
 }
 
 init :: (using renderer : *Transform_MSDF_Text_Renderer) {

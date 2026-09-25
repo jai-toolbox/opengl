@@ -130,19 +130,19 @@ Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer :: struct {
 
 
 set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer, v: s32) {
-    glUniform1i(renderer.packed_textures_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_textures_uniform_location, v);
 }
 
 set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer, v: s32) {
-    glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_2_Channel_Renderer) {

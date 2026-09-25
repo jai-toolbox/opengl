@@ -93,11 +93,11 @@ Gpu_Style_Vertex_Color_Renderer :: struct {
 
 
 set_world_to_camera_uniform :: (renderer : *Gpu_Style_Vertex_Color_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_camera_to_clip_uniform :: (renderer : *Gpu_Style_Vertex_Color_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 init :: (using renderer : *Gpu_Style_Vertex_Color_Renderer) {

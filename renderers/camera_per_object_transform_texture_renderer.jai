@@ -94,15 +94,15 @@ Camera_Per_Object_Transform_Texture_Renderer :: struct {
 
 
 set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Texture_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Texture_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_texture_sampler_uniform :: (renderer : *Camera_Per_Object_Transform_Texture_Renderer, v: s32) {
-    glUniform1i(renderer.texture_sampler_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.texture_sampler_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Per_Object_Transform_Texture_Renderer) {

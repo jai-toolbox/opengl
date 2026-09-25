@@ -94,15 +94,15 @@ Camera_Per_Object_Transform_Object_Id_Renderer :: struct {
 
 
 set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Object_Id_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Object_Id_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_point_size_uniform :: (renderer : *Camera_Per_Object_Transform_Object_Id_Renderer, v: float32) {
-    glUniform1f(renderer.point_size_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.point_size_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Per_Object_Transform_Object_Id_Renderer) {

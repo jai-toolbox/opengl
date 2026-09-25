@@ -90,11 +90,11 @@ Multi_Channel_Signed_Distance_Field_Text_Renderer :: struct {
 
 
 set_aspect_ratio_uniform :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, v: Vector2) {
-    glUniform2f(renderer.aspect_ratio_uniform_location, v.x, v.y);
+    gl_set_uniform_2f_on_active_shader_program(renderer.aspect_ratio_uniform_location, v.x, v.y);
 }
 
 set_texture_sampler_uniform :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, v: s32) {
-    glUniform1i(renderer.texture_sampler_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.texture_sampler_uniform_location, v);
 }
 
 init :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) {

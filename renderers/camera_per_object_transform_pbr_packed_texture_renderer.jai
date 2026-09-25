@@ -209,55 +209,55 @@ Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer :: struct {
 
 
 set_camera_to_clip_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_world_to_camera_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Matrix4) {
-    glUniformMatrix4fv(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
 }
 
 set_camera_position_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Vector3) {
-    glUniform3f(renderer.camera_position_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.camera_position_uniform_location, v.x, v.y, v.z);
 }
 
 set_packed_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
-    glUniform1i(renderer.packed_textures_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_textures_uniform_location, v);
 }
 
 set_packed_texture_bounding_boxes_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
-    glUniform1i(renderer.packed_texture_bounding_boxes_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.packed_texture_bounding_boxes_uniform_location, v);
 }
 
 set_num_active_lights_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
-    glUniform1i(renderer.num_active_lights_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.num_active_lights_uniform_location, v);
 }
 
 set_default_base_color_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: Vector3) {
-    glUniform3f(renderer.default_base_color_uniform_location, v.x, v.y, v.z);
+    gl_set_uniform_3f_on_active_shader_program(renderer.default_base_color_uniform_location, v.x, v.y, v.z);
 }
 
 set_default_metallic_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
-    glUniform1f(renderer.default_metallic_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.default_metallic_uniform_location, v);
 }
 
 set_default_roughness_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
-    glUniform1f(renderer.default_roughness_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.default_roughness_uniform_location, v);
 }
 
 set_default_ambient_occlusion_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
-    glUniform1f(renderer.default_ambient_occlusion_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.default_ambient_occlusion_uniform_location, v);
 }
 
 set_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: s32) {
-    glUniform1i(renderer.reflection_cubemap_uniform_location, v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_cubemap_uniform_location, v);
 }
 
 set_use_reflection_cubemap_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: bool) {
-    glUniform1i(renderer.use_reflection_cubemap_uniform_location, xx v);
+    gl_set_uniform_1i_on_active_shader_program(renderer.use_reflection_cubemap_uniform_location, xx v);
 }
 
 set_reflection_strength_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, v: float32) {
-    glUniform1f(renderer.reflection_strength_uniform_location, v);
+    gl_set_uniform_1f_on_active_shader_program(renderer.reflection_strength_uniform_location, v);
 }
 
 init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) {

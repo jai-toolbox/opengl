@@ -36,8 +36,8 @@ set_lights_uniform :: (shader_program_gl_handle: GLuint, lights: [] Light) {
         pos_loc := glGetUniformLocation(shader_program_gl_handle, position_name.data);
         col_loc := glGetUniformLocation(shader_program_gl_handle, color_name.data);
 
-        glUniform3f(pos_loc, it.position.x, it.position.y, it.position.z);
-        glUniform3f(col_loc, it.color.x, it.color.y, it.color.z);
+        gl_set_uniform_3f_on_active_shader_program(pos_loc, it.position.x, it.position.y, it.position.z);
+        gl_set_uniform_3f_on_active_shader_program(col_loc, it.color.x, it.color.y, it.color.z);
     }
 }
 
@@ -181,7 +181,7 @@ render_lighting_pass :: (using deferred_lighting: *Deferred_Lighting, camera_pos
     glUseProgram(shader);
 
     cam_loc := glGetUniformLocation(shader, "camera_position");
-    glUniform3f(cam_loc, camera_position.x, camera_position.y, camera_position.z);
+    gl_set_uniform_3f_on_active_shader_program(cam_loc, camera_position.x, camera_position.y, camera_position.z);
 
     set_lights_uniform(shader, array_view(lights, 0, num_active_lights));
 
