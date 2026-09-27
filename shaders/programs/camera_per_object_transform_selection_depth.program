@@ -1,0 +1,5 @@
+Shader_Program_Metadata.{
+    per_object_transforms = true,
+    vertex_shader_path = "src/tbx/opengl/shaders/out/camera_per_object_transform_selection_depth.vert",
+    fragment_shader_path = "src/tbx/opengl/shaders/out/directional_shadow_depth.frag"
+}

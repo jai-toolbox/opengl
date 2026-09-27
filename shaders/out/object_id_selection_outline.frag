@@ -2,48 +2,63 @@
 
 out vec4 frag_color;
 
-uniform usampler2D object_id_texture;
-uniform uint selected_object_id;
+uniform sampler2D selected_depth_texture;
+uniform sampler2D scene_depth_texture;
 uniform vec4 rgba_color;
-// doing anything by px is wrong, because it will look different on screen that have different pixel sizes, for now It'll do.
+uniform float occluded_alpha = 0.32;
+// Blender uses three representable steps of a 24-bit depth buffer here.
+uniform float depth_epsilon = 3.0 / 8388608.0;
+// Pixel thickness is retained for compatibility with the existing UI setting.
 uniform uint thickness_px = 2u;
 
 void main() {
     ivec2 pixel = ivec2(gl_FragCoord.xy);
+    ivec2 texture_size = textureSize(selected_depth_texture, 0);
+    float center_depth = texelFetch(selected_depth_texture, pixel, 0).r;
 
-    uint center = texelFetch(object_id_texture, pixel, 0).r;
-
-    // don't draw outline on top of the object itself
-    if (center == selected_object_id) {
+    // Draw outside the selected silhouette, not over its surface.
+    if (center_depth < 1.0) {
         discard;
     }
 
-    bool neighbor_is_selected = false;
+    int thickness = int(thickness_px);
+    bool found_selected_neighbor = false;
+    int closest_distance_squared = thickness * thickness + 1;
+    float selected_depth = 1.0;
+    ivec2 selected_pixel = pixel;
 
-    // given a point, sample all nearby positions except for itself, if any one of those positions
-    // yields the selected object, then we can color this pixel, when outline thickness is 2
-    // then points that are distance 2 away can find that they are neighbors, that's why this works.
-
-    int t = int(thickness_px);
-    for (int x_offset = -t; x_offset <= t; x_offset++) {
-        for (int y_offset = -t; y_offset <= t; y_offset++) {
-
+    for (int x_offset = -thickness; x_offset <= thickness; x_offset++) {
+        for (int y_offset = -thickness; y_offset <= thickness; y_offset++) {
             if (x_offset == 0 && y_offset == 0) continue;
-            // x^2 + y^2 > ot^2 means that this pixel is not close enough and we can stop
-            if (x_offset * x_offset + y_offset * y_offset >  t * t) continue;
 
-            uint neighbor = texelFetch(object_id_texture, pixel + ivec2(x_offset, y_offset), 0).r;
-            if (neighbor == selected_object_id) {
-                neighbor_is_selected = true;
-                break;
+            int distance_squared = x_offset * x_offset + y_offset * y_offset;
+            if (distance_squared > thickness * thickness ||
+                distance_squared >= closest_distance_squared) {
+                continue;
+            }
+
+            ivec2 neighbor_pixel = pixel + ivec2(x_offset, y_offset);
+            if (any(lessThan(neighbor_pixel, ivec2(0))) ||
+                any(greaterThanEqual(neighbor_pixel, texture_size))) {
+                continue;
+            }
+
+            float neighbor_depth = texelFetch(selected_depth_texture, neighbor_pixel, 0).r;
+            if (neighbor_depth < 1.0) {
+                found_selected_neighbor = true;
+                closest_distance_squared = distance_squared;
+                selected_depth = neighbor_depth;
+                selected_pixel = neighbor_pixel;
             }
         }
-        if (neighbor_is_selected) break;
     }
 
-    if (neighbor_is_selected) {
-        frag_color = rgba_color;
-    } else {
+    if (!found_selected_neighbor) {
         discard;
     }
+
+    float scene_depth = texelFetch(scene_depth_texture, selected_pixel, 0).r;
+    bool occluded = selected_depth > scene_depth + depth_epsilon;
+    float alpha = rgba_color.a * (occluded ? occluded_alpha : 1.0);
+    frag_color = vec4(rgba_color.rgb, alpha);
 }

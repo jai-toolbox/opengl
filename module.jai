@@ -70,6 +70,7 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/transform_msdf_text_renderer.jai";
 #load "renderers/camera_per_object_transform_normal_border_renderer.jai";
 #load "renderers/camera_per_object_transform_object_id_renderer.jai";
+#load "renderers/camera_per_object_transform_selection_depth_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
 #load "renderers/camera_per_object_transform_deferred_lighting_compute_light_pass_renderer.jai";
 #load "renderers/camera_per_object_transforms_packed_texture_renderer.jai"; // bad plural on transforms

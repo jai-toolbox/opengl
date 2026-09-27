@@ -13,6 +13,7 @@
 #load "renderers/camera_per_object_transform_deferred_lighting_geometry_pass_renderer.jai";
 #load "renderers/camera_per_object_transform_normal_border_renderer.jai";
 #load "renderers/camera_per_object_transform_object_id_renderer.jai";
+#load "renderers/camera_per_object_transform_selection_depth_renderer.jai";
 #load "renderers/camera_per_object_transform_packed_texture_2_channel_renderer.jai";
 #load "renderers/camera_per_object_transform_pbr_packed_texture_renderer.jai";
 #load "renderers/camera_per_object_transform_pbr_packed_texture_skeletal_animation_renderer.jai";

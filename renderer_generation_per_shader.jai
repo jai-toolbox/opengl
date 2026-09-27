@@ -317,8 +317,10 @@ legacy_shader_uniform_is_allowed :: (name: string) -> bool {
     if starts_with(name, "reflection_probe_cubemap_") return true;
     if name == "exposure" return true;
     if name == "output_hdr" return true;
-    if name == "object_id_texture" return true;
-    if name == "selected_object_id" return true;
+    if name == "selected_depth_texture" return true;
+    if name == "scene_depth_texture" return true;
+    if name == "occluded_alpha" return true;
+    if name == "depth_epsilon" return true;
     if name == "thickness_px" return true;
     if name == "position_texture" return true;
     if name == "color_texture" return true;
@@ -497,10 +499,12 @@ legacy_uniform_rank :: (program: Shader_Program_Metadata, name: string) -> s32 {
     }
 
     if program.name == "Object_Id_Selection_Outline" {
-        if name == "object_id_texture" return 10;
-        if name == "selected_object_id" return 20;
+        if name == "selected_depth_texture" return 10;
+        if name == "scene_depth_texture" return 20;
         if name == "rgba_color" return 30;
-        if name == "thickness_px" return 40;
+        if name == "occluded_alpha" return 40;
+        if name == "depth_epsilon" return 50;
+        if name == "thickness_px" return 60;
     }
 
     if name == "camera_to_clip" return 10;
@@ -526,13 +530,15 @@ legacy_uniform_rank :: (program: Shader_Program_Metadata, name: string) -> s32 {
     if name == "texture_sampler" return 190;
     if name == "rgba_color" return 200;
     if name == "rgb_color" return 210;
-    if name == "object_id_texture" return 220;
-    if name == "selected_object_id" return 230;
-    if name == "thickness_px" return 240;
-    if name == "point_size" return 250;
-    if name == "border_thickness" return 260;
-    if name == "grid_size" return 270;
-    if name == "grid_plane" return 280;
+    if name == "selected_depth_texture" return 220;
+    if name == "scene_depth_texture" return 230;
+    if name == "occluded_alpha" return 240;
+    if name == "depth_epsilon" return 250;
+    if name == "thickness_px" return 260;
+    if name == "point_size" return 270;
+    if name == "border_thickness" return 280;
+    if name == "grid_size" return 290;
+    if name == "grid_plane" return 300;
 
     return 10000;
 }
