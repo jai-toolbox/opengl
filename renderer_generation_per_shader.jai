@@ -305,6 +305,9 @@ legacy_shader_uniform_is_allowed :: (name: string) -> bool {
     if name == "rgba_color" return true;
     if name == "grid_size" return true;
     if name == "grid_plane" return true;
+    if name == "grid_clip_depth_offset" return true;
+    if name == "grid_at_far_depth" return true;
+    if name == "grid_pass_alpha" return true;
     if name == "point_size" return true;
     if name == "border_thickness" return true;
     if name == "aspect_ratio" return true;
@@ -539,6 +542,9 @@ legacy_uniform_rank :: (program: Shader_Program_Metadata, name: string) -> s32 {
     if name == "border_thickness" return 280;
     if name == "grid_size" return 290;
     if name == "grid_plane" return 300;
+    if name == "grid_clip_depth_offset" return 310;
+    if name == "grid_at_far_depth" return 320;
+    if name == "grid_pass_alpha" return 330;
 
     return 10000;
 }

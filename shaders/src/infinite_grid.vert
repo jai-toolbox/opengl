@@ -12,6 +12,8 @@ uniform mat4 world_to_camera = mat4(1.0);
 
 uniform float grid_size = 100.0;  // note that this is also in the fragment shader
 uniform vec3 camera_position;
+uniform float grid_clip_depth_offset = 0.0;
+uniform bool grid_at_far_depth = false;
 
 // 0 = XZ (horizontal, Y=0), 1 = XY (vertical, Z=0), 2 = YZ (vertical, X=0)
 uniform int grid_plane = 0;
@@ -65,5 +67,19 @@ void main() {
     // compute grid lines based on world-space coordinates.
     grid_world_position = grid_position;
 
-    gl_Position = camera_to_clip * world_to_camera * vec4(grid_position, 1.0);
+    vec4 clip_position = camera_to_clip * world_to_camera * vec4(grid_position, 1.0);
+
+    if (grid_at_far_depth) {
+        // Axis-aligned orthographic views treat the grid as a background
+        // reference plane. Placing it at NDC depth 1 makes real geometry win
+        // deterministically instead of competing with a coplanar grid.
+        clip_position.z = clip_position.w;
+    } else {
+        // Perspective/user views draw several passes across a narrow range of
+        // clip-space depths, turning coplanar depth contention into a stable,
+        // controlled grid fade instead of an arbitrary per-fragment winner.
+        clip_position.z += grid_clip_depth_offset;
+    }
+
+    gl_Position = clip_position;
 }

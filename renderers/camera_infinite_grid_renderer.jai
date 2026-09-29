@@ -11,6 +11,9 @@ Camera_Infinite_Grid_Renderer :: struct {
     camera_position_uniform_location : GLint = -1;
     grid_size_uniform_location : GLint = -1;
     grid_plane_uniform_location : GLint = -1;
+    grid_clip_depth_offset_uniform_location : GLint = -1;
+    grid_at_far_depth_uniform_location : GLint = -1;
+    grid_pass_alpha_uniform_location : GLint = -1;
 
 
 
@@ -37,6 +40,18 @@ set_grid_plane_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: s32) {
     gl_set_uniform_1i_on_active_shader_program(renderer.grid_plane_uniform_location, v);
 }
 
+set_grid_clip_depth_offset_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: float32) {
+    gl_set_uniform_1f_on_active_shader_program(renderer.grid_clip_depth_offset_uniform_location, v);
+}
+
+set_grid_at_far_depth_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: bool) {
+    gl_set_uniform_1i_on_active_shader_program(renderer.grid_at_far_depth_uniform_location, xx v);
+}
+
+set_grid_pass_alpha_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: float32) {
+    gl_set_uniform_1f_on_active_shader_program(renderer.grid_pass_alpha_uniform_location, v);
+}
+
 init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
     vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/infinite_grid.vert", #filepath));
     fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/infinite_grid.frag", #filepath));
@@ -49,6 +64,9 @@ init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
     camera_position_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_position");
     grid_size_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_size");
     grid_plane_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_plane");
+    grid_clip_depth_offset_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_clip_depth_offset");
+    grid_at_far_depth_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_at_far_depth");
+    grid_pass_alpha_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_pass_alpha");
 
 }
 

@@ -9,6 +9,13 @@ gl_discard_fragments_that_fail_depth_test :: (enabled: bool) {
     else glDisable(GL_DEPTH_TEST);
 }
 
+gl_enable_blending :: () { glEnable(GL_BLEND); }
+gl_disable_blending :: () { glDisable(GL_BLEND); }
+
+gl_set_blend_function :: (source_factor: GLenum, destination_factor: GLenum) {
+    glBlendFunc(source_factor, destination_factor);
+}
+
 gl_clear_depth_buffer :: () { glClear(GL_DEPTH_BUFFER_BIT); }
 
 gl_set_active_shader_program :: (program: GLuint) { glUseProgram(program); }

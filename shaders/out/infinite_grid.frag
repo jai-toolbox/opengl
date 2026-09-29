@@ -14,6 +14,7 @@ uniform float min_pixels_between_cells = 2.0;
 uniform float grid_cell_size = 0.01;
 uniform vec4 grid_color_thick = vec4(0.5, 0.5, 0.5, 1.0);
 uniform vec4 grid_color_thin = vec4(0.0, 0.0, 0.0, 1.0);
+uniform float grid_pass_alpha = 1.0;
 
 // 0 = XZ (horizontal, Y=0), 1 = XY (vertical, Z=0), 2 = YZ (vertical, X=0)
 // Must match the vertex shader
@@ -152,7 +153,7 @@ void main() {
 
     float opacity_falloff = 1.0 - saturate(length(grid_uv - camera_uv) / grid_size);
 
-    color.a *= opacity_falloff;
+    color.a *= opacity_falloff * grid_pass_alpha;
 
     frag_color = color;
 }

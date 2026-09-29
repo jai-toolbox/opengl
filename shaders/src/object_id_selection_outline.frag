@@ -6,7 +6,8 @@ uniform sampler2D selected_depth_texture;
 uniform sampler2D scene_depth_texture;
 uniform vec4 rgba_color;
 uniform float occluded_alpha = 0.32;
-// Blender uses three representable steps of a 24-bit depth buffer here.
+// Three representable steps of a 24-bit depth buffer cover quantization noise
+// without treating meaningfully separated surfaces as coplanar.
 uniform float depth_epsilon = 3.0 / 8388608.0;
 // Pixel thickness is retained for compatibility with the existing UI setting.
 uniform uint thickness_px = 2u;
