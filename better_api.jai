@@ -16,10 +16,25 @@ gl_set_blend_function :: (source_factor: GLenum, destination_factor: GLenum) {
     glBlendFunc(source_factor, destination_factor);
 }
 
+gl_set_separate_blend_function :: (
+    source_rgb_factor: GLenum,
+    destination_rgb_factor: GLenum,
+    source_alpha_factor: GLenum,
+    destination_alpha_factor: GLenum,
+) {
+    glBlendFuncSeparate(
+        source_rgb_factor,
+        destination_rgb_factor,
+        source_alpha_factor,
+        destination_alpha_factor,
+    );
+}
+
 gl_clear_depth_buffer :: () { glClear(GL_DEPTH_BUFFER_BIT); }
 
 gl_set_active_shader_program :: (program: GLuint) { glUseProgram(program); }
 gl_clear_active_shader_program :: () { glUseProgram(0); }
+gl_delete_shader_program :: (program: GLuint) { glDeleteProgram(program); }
 
 gl_set_active_texture_unit :: (texture_unit: GLenum) {
     glActiveTexture(texture_unit);
@@ -114,6 +129,14 @@ gl_set_float_parameter_for_texture_bound_to_binding_target_of_active_texture_uni
     parameter_value: GLfloat,
 ) {
     glTexParameterf(binding_target, parameter_name, parameter_value);
+}
+
+gl_set_float_vector_parameter_for_texture_bound_to_binding_target_of_active_texture_unit :: (
+    binding_target: GLenum,
+    parameter_name: GLenum,
+    parameter_values: *GLfloat,
+) {
+    glTexParameterfv(binding_target, parameter_name, parameter_values);
 }
 
 gl_get_float_values_for_state_parameter :: (
@@ -298,12 +321,80 @@ gl_get_uniform_location_in_shader_program :: (
 gl_bind_vertex_array :: (vertex_array: GLuint) {
     glBindVertexArray(vertex_array);
 }
+
+gl_bind_buffer_to_binding_target :: (binding_target: GLenum, buffer: GLuint) {
+    glBindBuffer(binding_target, buffer);
+}
+
+gl_update_subdata_in_buffer_bound_to_binding_target :: (
+    binding_target: GLenum,
+    byte_offset: GLintptr,
+    byte_count: GLsizeiptr,
+    data: *void,
+) {
+    glBufferSubData(binding_target, byte_offset, byte_count, data);
+}
+
+gl_get_vertex_attribute_location_in_shader_program :: (
+    shader_program: GLuint,
+    attribute_name: *GLchar,
+) -> GLint {
+    return glGetAttribLocation(shader_program, attribute_name);
+}
+
+gl_enable_vertex_attribute_array :: (attribute_index: GLuint) {
+    glEnableVertexAttribArray(attribute_index);
+}
+
+gl_define_vertex_attribute_pointer :: (
+    attribute_index: GLuint,
+    component_count: GLint,
+    component_type: GLenum,
+    normalized: GLboolean,
+    byte_stride: GLsizei,
+    pointer: *void,
+) {
+    glVertexAttribPointer(
+        attribute_index,
+        component_count,
+        component_type,
+        normalized,
+        byte_stride,
+        pointer,
+    );
+}
+
+gl_define_integer_vertex_attribute_pointer :: (
+    attribute_index: GLuint,
+    component_count: GLint,
+    component_type: GLenum,
+    byte_stride: GLsizei,
+    pointer: *void,
+) {
+    glVertexAttribIPointer(
+        attribute_index,
+        component_count,
+        component_type,
+        byte_stride,
+        pointer,
+    );
+}
+
 gl_draw_vertices_from_bound_vertex_array :: (
     primitive_mode: GLenum,
     first_vertex: GLint,
     vertex_count: GLsizei,
 ) {
     glDrawArrays(primitive_mode, first_vertex, vertex_count);
+}
+
+gl_draw_indexed_vertices_from_bound_vertex_array :: (
+    primitive_mode: GLenum,
+    index_count: GLsizei,
+    index_type: GLenum,
+    indices: *void,
+) {
+    glDrawElements(primitive_mode, index_count, index_type, indices);
 }
 
 GL_Framebuffer_State :: struct {
