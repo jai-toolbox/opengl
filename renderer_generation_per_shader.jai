@@ -4,12 +4,14 @@
 #import "tbx/section_logger";
 #import "tbx/text";
 
-// WARNING: This is a temporary renderer-generator assumption, not a general
-// GLSL truth. Today every ivec4/uvec4 vertex attribute in the generated
-// renderer path is used for skeletal bone indices, so four components maps to
-// four bone influences. If another shader adds an unrelated ivec4/uvec4
-// attribute, this hardcode will produce the wrong Jai buffer type until vector
-// array types are represented generically.
+/*
+warning: This is a temporary renderer-generator assumption, not a general
+GLSL truth. Today every ivec4/uvec4 vertex attribute in the generated
+renderer path is used for skeletal bone indices, so four components maps to
+four bone influences. If another shader adds an unrelated ivec4/uvec4
+attribute, this hardcode will produce the wrong Jai buffer type until vector
+array types are represented generically.
+*/
 BONE_INFLUENCES_PER_VERTEX :: 4;
 
 Shader_Metadata :: struct { // call this Shader_Metadata?
@@ -25,7 +27,7 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
 
 
     /*
-     By default our shaders are in "retained mode", this is when you submit geometry to the GPU 
+     by default our shaders are in "retained mode", this is when you submit geometry to the GPU
      and then we have a handle to that geometry. When we want to draw it, we use the handle to do so.
      The geometry persists on the GPU across frames until explicitly removed.
 
@@ -255,13 +257,16 @@ glsl_type_to_jai_type :: (type_name: string) -> Type {
     if type_name == "vec2" return Vector2;
     if type_name == "vec3" return Vector3;
     if type_name == "vec4" return Vector4;
+    if type_name == "ivec2" return [2] s32;
 
-    // BIG WARNING: This is deliberately incorrect as a general GLSL mapping.
-    // ivec4/uvec4 should not inherently mean "bone influence array"; it only
-    // works for the current shaders because the only ivec4/uvec4 vertex
-    // attributes we generate are bone_transform_indices. The first shader that
-    // uses ivec4/uvec4 for anything else must replace this with a real fixed
-    // vector/array type mapping.
+    /*
+    big warning: This is deliberately incorrect as a general GLSL mapping.
+    ivec4/uvec4 should not inherently mean "bone influence array"; it only
+    works for the current shaders because the only ivec4/uvec4 vertex
+    attributes we generate are bone_transform_indices. The first shader that
+    uses ivec4/uvec4 for anything else must replace this with a real fixed
+    vector/array type mapping.
+    */
     if type_name == "ivec4" return [BONE_INFLUENCES_PER_VERTEX] u32;
     if type_name == "uvec4" return [BONE_INFLUENCES_PER_VERTEX] u32;
 
@@ -275,6 +280,7 @@ glsl_components_per_vertex :: (type_name: string) -> GLint {
     if type_name == "vec2" return 2;
     if type_name == "vec3" return 3;
     if type_name == "vec4" return 4;
+    if type_name == "ivec2" return 2;
     if type_name == "ivec4" return 4;
     if type_name == "uvec4" return 4;
     if type_name == "mat3" return 9;
@@ -286,6 +292,7 @@ glsl_components_per_vertex :: (type_name: string) -> GLint {
 glsl_component_type :: (type_name: string) -> GLenum {
     if type_name == "int" return GL_INT;
     if type_name == "uint" return GL_UNSIGNED_INT;
+    if type_name == "ivec2" return GL_INT;
     if type_name == "ivec4" return GL_INT;
     if type_name == "uvec4" return GL_UNSIGNED_INT;
 
@@ -396,11 +403,13 @@ glsl_variable_to_vertex_attribute_configuration :: (variable: GLSL_Shader_Variab
         components = 4;
     }
 
-    // BIG WARNING: Name-based shader metadata inference. This is intentionally
-    // narrow and only correct for skeletal animation shaders where bone_weights
-    // has exactly BONE_INFLUENCES_PER_VERTEX components. If a shader uses the
-    // same name for different data, or supports a different influence count,
-    // this must become a real declaration/annotation-driven rule.
+    /*
+    big warning: Name-based shader metadata inference. This is intentionally
+    narrow and only correct for skeletal animation shaders where bone_weights
+    has exactly BONE_INFLUENCES_PER_VERTEX components. If a shader uses the
+    same name for different data, or supports a different influence count,
+    this must become a real declaration/annotation-driven rule.
+    */
     if variable.name == "bone_weights" type_in_jai = [BONE_INFLUENCES_PER_VERTEX] float32;
 
     return .{
@@ -574,7 +583,8 @@ sort_legacy_uniform_configs :: (program: Shader_Program_Metadata, uniforms: *[..
 }
 
 legacy_add_pbr_extra_attributes :: (program: Shader_Program_Metadata, attributes: *[..] GL_Vertex_Attribute_Configuration) {
-    if program.name != "Camera_Per_Object_Transform_Pbr_Packed_Texture" return;
+    if program.name != "Camera_Per_Object_Transform_Pbr_Packed_Texture" &&
+       program.name != "Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation" return;
 
     shader_program_add_attribute_config_if_missing(attributes, glsl_variable_to_vertex_attribute_configuration(.{type_name = "vec4", name = "passthrough_material_parameters"}));
     shader_program_add_attribute_config_if_missing(attributes, glsl_variable_to_vertex_attribute_configuration(.{type_name = "vec4", name = "passthrough_glass_parameters"}));
@@ -1163,7 +1173,7 @@ deinit :: (renderable: *%1) {
 
 /*
 
-So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
+so deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
 deinit :: (renderable: *%1, renderer: *%2) {
@@ -1383,8 +1393,10 @@ init_buffers_no_data :: (using apcr : *%1) { // todo change renderer name
 
     glGenBuffers(1, *index_buffer_gl_handle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
-    // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
+    /*
+    note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
+    */
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) *  max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
     // note: we don't have to init the vertex attribute for indices because they used in the shader program for rendering, they're just used during glDrawElements.
 
@@ -1553,9 +1565,11 @@ buffer_object :: (
 %1
         ) -> %2 {
 
-    // note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
-    // the indices use duplicates sometimes to refer to the same vertex multiple times.
-    length := positions.count; // TODO: need to metaprogram this out, but it's pretty safe for now.
+    /*
+    note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
+    the indices use duplicates sometimes to refer to the same vertex multiple times.
+    */
+    length := positions.count; // todo: need to metaprogram this out, but it's pretty safe for now.
     index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
     if !success {
         log("ran out of virtual memory");
@@ -1668,7 +1682,7 @@ ATTR,
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size, 
+so this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
 if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things 
 will go off the rails.
 
@@ -1723,8 +1737,10 @@ render :: (using renderer : *%1, primitive_mode: GLenum = %3) {
 
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
-    // as we will only access the smaller portion
+    /*
+    here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
+    as we will only access the smaller portion
+    */
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
@@ -1794,7 +1810,7 @@ immediate_render :: (
     builder_to_string(*param_list),
     builder_to_string(*upload_code));
 
-    // Geometry convenience overload
+    // geometry convenience overload
     geometry_struct_name := tprint("%1_Geometry", shader.name);
 
     geometry_args: String_Builder;
@@ -1818,7 +1834,7 @@ immediate_render :: (using renderer : *%1, geometry : $T/interface %2) {
     geometry_struct_name,
     builder_to_string(*geometry_args));
 
-    // Combine both
+    // combine both
     result: String_Builder;
     init_string_builder(*result);
     append(*result, slice_version);
@@ -1836,11 +1852,13 @@ GL_Vertex_Attribute_Configuration :: struct { // gl_vac
 
     type_in_jai: Type;
 
-    // I'm pretty sure this is just the enum name right? can I remove this?
+    // i'm pretty sure this is just the enum name right? can I remove this?
     var_name_in_shader : string;
 
-    // the plural name can be automated as well, index -> indices everything else trivial add exceptions when needed.
-    // this is actually what we call something in the code or something.
+    /*
+    the plural name can be automated as well, index -> indices everything else trivial add exceptions when needed.
+    this is actually what we call something in the code or something.
+    */
     plural_name : string;
 
     argument_name_in_buffer_object : string;
@@ -1888,7 +1906,7 @@ GL_Vertex_Uniform_Configuration :: struct { // (i don't give a) gl_vuc
 generate_code_for_uniform_setter_function :: (shader : Shader_Metadata, unif_conf : GL_Vertex_Uniform_Configuration) -> string {
     lower_name := unif_conf.var_name_in_shader;
     
-    // Determine the right glUniform call based on type
+    // determine the right glUniform call based on type
     gl_call: string;
     args: string;
     if unif_conf.type_in_jai == {

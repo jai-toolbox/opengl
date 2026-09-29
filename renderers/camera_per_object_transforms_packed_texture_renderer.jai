@@ -51,7 +51,7 @@ deinit :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable) 
 
 /*
 
-So deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
+so deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
 deinit :: (renderable: *Camera_Per_Object_Transforms_Packed_Texture_Renderable, renderer: *Camera_Per_Object_Transforms_Packed_Texture_Renderer) {
@@ -168,8 +168,10 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Packed_Textu
 
     glGenBuffers(1, *index_buffer_gl_handle);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
-    // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
+    /*
+    note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
+    */
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) *  max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
     // note: we don't have to init the vertex attribute for indices because they used in the shader program for rendering, they're just used during glDrawElements.
 
@@ -222,9 +224,11 @@ buffer_object :: (
 
         ) -> object_index: u32, local_to_world_index: u32, success: bool {
 
-    // note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
-    // the indices use duplicates sometimes to refer to the same vertex multiple times.
-    length := positions.count; // TODO: need to metaprogram this out, but it's pretty safe for now.
+    /*
+    note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
+    the indices use duplicates sometimes to refer to the same vertex multiple times.
+    */
+    length := positions.count; // todo: need to metaprogram this out, but it's pretty safe for now.
     index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
     if !success {
         log("ran out of virtual memory");
@@ -281,7 +285,7 @@ buffer_object :: (
 
 /*
 
-So this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
+so this function is kinda sketchy right now, you can only rebuffer an object if it takes up the exact same size,
 if you're rebuffering things and using up more space then you did before you'll start having undefined behavior in rendering and things
 will go off the rails.
 
@@ -332,8 +336,10 @@ render :: (using renderer : *Camera_Per_Object_Transforms_Packed_Texture_Rendere
 
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
-    // as we will only access the smaller portion
+    /*
+    here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
+    as we will only access the smaller portion
+    */
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
 
     glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);

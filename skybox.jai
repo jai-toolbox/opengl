@@ -17,6 +17,54 @@ Skybox_Renderer :: struct {
     world_to_camera_uniform_location: GLint = -1;
     camera_to_clip_uniform_location: GLint = -1;
     skybox_cubemap_uniform_location: GLint = -1;
+    exposure_uniform_location: GLint = -1;
+}
+
+/*
+upload six tightly-packed, linear RGB float faces in OpenGL cubemap order:
++X, -X, +Y, -Y, +Z, -Z. Preserve the generated float32 values on the GPU;
+this preserves the generated HDR values without half-float quantization.
+*/
+create_cubemap_rgb32f :: (face_size: s32, face_pixels: [6] *float32) -> Cubemap {
+    assert(face_size > 0, "Cubemap face size must be positive");
+    for pixels: face_pixels assert(pixels != null, "Cubemap face pixels must not be null");
+
+    result: Cubemap;
+    glGenTextures(1, *result.texture_gl_handle);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, result.texture_gl_handle);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+    for pixels, face_index: face_pixels {
+        face_target := GL_TEXTURE_CUBE_MAP_POSITIVE_X + cast(GLenum) face_index;
+        glTexImage2D(
+            face_target,
+            0,
+            GL_RGB32F,
+            xx face_size,
+            xx face_size,
+            0,
+            GL_RGB,
+            GL_FLOAT,
+            pixels,
+        );
+    }
+
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+    return result;
+}
+
+deinit :: (cubemap: *Cubemap) {
+    if cubemap.texture_gl_handle != 0 {
+        glDeleteTextures(1, *cubemap.texture_gl_handle);
+        cubemap.texture_gl_handle = 0;
+    }
 }
 
 load_cubemap :: (
@@ -101,6 +149,7 @@ init :: (using renderer: *Skybox_Renderer) {
     world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
     camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
     skybox_cubemap_uniform_location = glGetUniformLocation(shader_program_gl_handle, "skybox_cubemap");
+    exposure_uniform_location = glGetUniformLocation(shader_program_gl_handle, "exposure");
 
     vertices := Vector3.[
         .{-1,  1, -1}, .{-1, -1, -1}, .{ 1, -1, -1}, .{ 1, -1, -1}, .{ 1,  1, -1}, .{-1,  1, -1},
@@ -125,7 +174,13 @@ init :: (using renderer: *Skybox_Renderer) {
     glBindVertexArray(0);
 }
 
-render_skybox :: (using renderer: *Skybox_Renderer, cubemap: Cubemap, world_to_camera: Matrix4, camera_to_clip: Matrix4) {
+render_skybox :: (
+    using renderer: *Skybox_Renderer,
+    cubemap: Cubemap,
+    world_to_camera: Matrix4,
+    camera_to_clip: Matrix4,
+    exposure: float32 = 1.0,
+) {
     view_without_translation := world_to_camera;
     view_without_translation.coef[0][3] = 0;
     view_without_translation.coef[1][3] = 0;
@@ -138,6 +193,7 @@ render_skybox :: (using renderer: *Skybox_Renderer, cubemap: Cubemap, world_to_c
     gl_set_uniform_matrix_4fv_on_active_shader_program(world_to_camera_uniform_location, 1, GL_TRUE, *view_without_translation.coef[0][0]);
     gl_set_uniform_matrix_4fv_on_active_shader_program(camera_to_clip_uniform_location, 1, GL_TRUE, *camera_to_clip.coef[0][0]);
     gl_set_uniform_1i_on_active_shader_program(skybox_cubemap_uniform_location, 2);
+    gl_set_uniform_1f_on_active_shader_program(exposure_uniform_location, exposure);
 
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.texture_gl_handle);

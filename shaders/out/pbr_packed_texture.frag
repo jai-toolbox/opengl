@@ -83,23 +83,18 @@ vec4 sample_packed_texture(
 
 in vec3 world_position;
 in vec3 world_normal;
-in vec3 world_tangent;
-in vec2 texture_coordinate;
+in vec4 world_tangent;
+in vec4 texture_coordinate_0;
+in vec4 texture_coordinate_1;
 flat in vec4 base_color_factor;
+flat in vec4 material_parameters;
 flat in vec2 alpha_parameters;
 in vec4 light_clip_position;
 
-flat in int packed_texture_index_for_base_color;
-flat in int packed_texture_bounding_box_index_for_base_color;
-
-flat in int packed_texture_index_for_normal;
-flat in int packed_texture_bounding_box_index_for_normal;
-
-flat in int packed_texture_index_for_metallic_roughness;
-flat in int packed_texture_bounding_box_index_for_metallic_roughness;
-
-flat in int packed_texture_index_for_ambient_occlusion;
-flat in int packed_texture_bounding_box_index_for_ambient_occlusion;
+flat in ivec2 base_color_texture_binding;
+flat in ivec2 normal_texture_binding;
+flat in ivec2 metallic_roughness_texture_binding;
+flat in ivec2 ambient_occlusion_texture_binding;
 
 #define MAX_LIGHTS 16
 #define MAX_SPOT_LIGHTS 16
@@ -107,15 +102,20 @@ flat in int packed_texture_bounding_box_index_for_ambient_occlusion;
 struct Light {
     vec3 position;
     vec3 color;
+    float intensity;
+    float range;
+    bool enabled;
 };
 
 struct SpotLight {
     vec3 position;
     vec3 direction;
     vec3 color;
+    float intensity;
     float inner_cos;
     float outer_cos;
     float range;
+    bool enabled;
 };
 
 uniform Light lights[MAX_LIGHTS];
@@ -129,6 +129,7 @@ uniform bool use_reflection_cubemap = false;
 uniform float reflection_strength = 1.0;
 uniform sampler2D directional_shadow_map;
 uniform bool use_directional_shadow_map = false;
+uniform bool debug_render_normals = false;
 
 struct DirectionalLight {
     vec3 direction;
@@ -205,49 +206,70 @@ float sample_directional_shadow(vec4 light_clip, vec3 N, vec3 L) {
     return visibility / 9.0;
 }
 
-vec3 get_normal_from_map(vec3 sampled_normal) {
+vec3 get_normal_from_map(vec3 sampled_normal, float normal_scale) {
     vec3 N = normalize(world_normal);
-    vec3 T = normalize(world_tangent - dot(world_tangent, N) * N);
-    vec3 B = cross(N, T);
+    vec3 T = normalize(world_tangent.xyz - dot(world_tangent.xyz, N) * N);
+    vec3 B = normalize(cross(N, T)) * world_tangent.w;
     mat3 TBN = mat3(T, B, N);
 
     vec3 tangent_normal = sampled_normal * 2.0 - 1.0;
+    tangent_normal.xy *= normal_scale;
     return normalize(TBN * tangent_normal);
 }
 
 vec4 sample_channel(vec2 tc, int tex_idx, int bb_idx, vec4 fallback) {
-    if (tex_idx < 0) return fallback;
-    return sample_packed_texture(packed_textures, tc, tex_idx, bb_idx);
+    if (tex_idx < 0 || bb_idx < 0) return fallback;
+
+    /*
+    glTF UVs are local to an image and use an upper-left origin. Atlas
+    images are uploaded in their original row order, so preserve V and map
+    the repeated local coordinate into this material's packed rectangle.
+    */
+    vec4 bounds = get_bounding_box(bb_idx);
+    vec2 local_tc = fract(tc);
+    vec2 packed_tc = bounds.xy + local_tc * bounds.zw;
+
+    /*
+    keep bilinear taps inside the selected rectangle instead of sampling a
+    neighboring material at its outermost texels.
+    */
+    vec2 half_texel = 0.5 / vec2(textureSize(packed_textures, 0).xy);
+    packed_tc = clamp(
+        packed_tc,
+        bounds.xy + half_texel,
+        bounds.xy + bounds.zw - half_texel
+    );
+    return texture(packed_textures, vec3(packed_tc, float(tex_idx)));
 }
 
 void main() {
 
     vec4 base_color_sample = sample_channel(
-        texture_coordinate,
-        packed_texture_index_for_base_color,
-        packed_texture_bounding_box_index_for_base_color,
+        texture_coordinate_0.xy,
+        base_color_texture_binding.x,
+        base_color_texture_binding.y,
         vec4(default_base_color, 1.0)
     );
 
     vec4 normal_sample = sample_channel(
-        texture_coordinate,
-        packed_texture_index_for_normal,
-        packed_texture_bounding_box_index_for_normal,
+        texture_coordinate_0.zw,
+        normal_texture_binding.x,
+        normal_texture_binding.y,
         vec4(0.5, 0.5, 1.0, 1.0)
     );
 
     // glTF metallicRoughness: G = roughness, B = metallic
     vec4 mr_sample = sample_channel(
-        texture_coordinate,
-        packed_texture_index_for_metallic_roughness,
-        packed_texture_bounding_box_index_for_metallic_roughness,
-        vec4(0.0, default_roughness, 0.0, default_metallic)
+        texture_coordinate_1.xy,
+        metallic_roughness_texture_binding.x,
+        metallic_roughness_texture_binding.y,
+        vec4(1.0)
     );
 
     vec4 ao_sample = sample_channel(
-        texture_coordinate,
-        packed_texture_index_for_ambient_occlusion,
-        packed_texture_bounding_box_index_for_ambient_occlusion,
+        texture_coordinate_1.zw,
+        ambient_occlusion_texture_binding.x,
+        ambient_occlusion_texture_binding.y,
         vec4(default_ambient_occlusion)
     );
 
@@ -255,15 +277,23 @@ void main() {
     float alpha      = base_color_sample.a * base_color_factor.a;
     float alpha_mode = alpha_parameters.x;
     float alpha_cutoff = alpha_parameters.y;
-    float metallic   = mr_sample.b;
-    float roughness  = clamp(mr_sample.g, 0.04, 1.0);
-    float ao         = ao_sample.r;
+    float metallic   = clamp(mr_sample.b * material_parameters.x, 0.0, 1.0);
+    float roughness  = clamp(mr_sample.g * material_parameters.y, 0.04, 1.0);
+    float ao         = mix(1.0, ao_sample.r, clamp(material_parameters.w, 0.0, 1.0));
 
     if (alpha_mode == ALPHA_MODE_MASK && alpha < alpha_cutoff) {
         discard;
     }
 
-    vec3 N = get_normal_from_map(normal_sample.rgb);
+    vec3 N = get_normal_from_map(normal_sample.rgb, material_parameters.z);
+    if (debug_render_normals) {
+        /*
+        display the final mapped world-space normal without any lighting,
+        shadows, tone mapping, or gamma correction.
+        */
+        frag_color = vec4(N * 0.5 + 0.5, 1.0);
+        return;
+    }
     vec3 V = normalize(camera_position - world_position);
 
     vec3 F0 = mix(vec3(0.04), base_color, metallic);
@@ -273,13 +303,19 @@ void main() {
 
     for (int i = 0; i < MAX_LIGHTS; i++) {
         if (i >= num_active_lights) break;
+        if (!lights[i].enabled) continue;
 
-        vec3 L = normalize(lights[i].position - world_position);
+        vec3 L_unorm = lights[i].position - world_position;
+        float distance = length(L_unorm);
+        vec3 L = L_unorm / max(distance, 0.0001);
         vec3 H = normalize(V + L);
 
-        float distance    = length(lights[i].position - world_position);
-        float attenuation = 1.0 / (distance * distance);
-        vec3  radiance    = lights[i].color * attenuation;
+        float attenuation = 1.0 / max(distance * distance, 0.0001);
+        float range_fade = 1.0;
+        if (lights[i].range > 0.0) {
+            range_fade = clamp(1.0 - pow(distance / lights[i].range, 4.0), 0.0, 1.0);
+        }
+        vec3 radiance = lights[i].color * lights[i].intensity * attenuation * range_fade;
 
         float D = distribution_ggx(N, H, roughness);
         float G = geometry_smith(N, V, L, roughness);
@@ -300,6 +336,7 @@ void main() {
 
     for (int i = 0; i < MAX_SPOT_LIGHTS; i++) {
         if (i >= num_active_spot_lights) break;
+        if (!spot_lights[i].enabled) continue;
 
         vec3 L_unorm = spot_lights[i].position - world_position;
         float distance = length(L_unorm);
@@ -326,7 +363,7 @@ void main() {
         vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
         float attenuation = 1.0 / max(distance * distance, 0.0001);
-        vec3 radiance = spot_lights[i].color * attenuation * spot_fade * range_fade;
+        vec3 radiance = spot_lights[i].color * spot_lights[i].intensity * attenuation * spot_fade * range_fade;
         float NdotL = max(dot(N, L), 0.0);
 
         diffuse_lighting += (kD * base_color / PI) * radiance * NdotL;
