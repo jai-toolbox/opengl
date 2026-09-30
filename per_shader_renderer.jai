@@ -148,7 +148,7 @@ invalidate_cached_index_buffer :: (using psr: *Per_Shader_Renderer) {
     array_reset(*object_indices_in_cached_index_buffer);
 }
 
-// Rebuild the renderer's combined element buffer only when the queued object
+// rebuild the renderer's combined element buffer only when the queued object
 // sequence changes. The exact order is part of the cache key because it is the
 // order in which the objects' triangles are submitted to OpenGL.
 prepare_index_buffer_for_queued_objects :: (

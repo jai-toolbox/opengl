@@ -1393,7 +1393,7 @@ init_buffers_no_data :: (using apcr : *%1) { // todo change renderer name
 
     index_buffer_gl_handle = gl_create_buffer();
     gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    // note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
     // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
     gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
     index_buffer_capacity_in_indices = cast(int) max_num_elements_in_each_buffer;
