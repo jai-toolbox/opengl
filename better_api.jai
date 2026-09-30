@@ -203,6 +203,25 @@ gl_delete_vertex_array :: (vertex_array: GLuint) {
     glDeleteVertexArrays(1, *vertex_array);
 }
 
+gl_create_buffer :: () -> GLuint {
+    buffer: GLuint;
+    glGenBuffers(1, *buffer);
+    return buffer;
+}
+
+gl_delete_buffer :: (buffer: GLuint) {
+    glDeleteBuffers(1, *buffer);
+}
+
+gl_allocate_storage_for_buffer_bound_to_binding_target :: (
+    binding_target: GLenum,
+    byte_count: GLsizeiptr,
+    initial_data: *void,
+    usage: GLenum,
+) {
+    glBufferData(binding_target, byte_count, initial_data, usage);
+}
+
 gl_bind_framebuffer_to_binding_target :: (
     binding_target: GLenum,
     framebuffer: GLuint,

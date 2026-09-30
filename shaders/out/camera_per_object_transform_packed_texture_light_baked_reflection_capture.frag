@@ -220,9 +220,14 @@ LightBakedSurface sample_light_baked_surface() {
     );
 
     LightBakedSurface surface;
-    surface.base_color = srgb_to_linear(sampled_base_color.rgb)
-        * base_color_factor.rgb;
-    surface.emissive = srgb_to_linear(sampled_emissive.rgb) * emissive_factor;
+    surface.base_color = packed_texture_index_for_base_color
+        == INVALID_TEXTURE_INDEX
+        ? base_color_factor.rgb
+        : srgb_to_linear(sampled_base_color.rgb) * base_color_factor.rgb;
+    surface.emissive = packed_texture_index_for_emissive
+        == INVALID_TEXTURE_INDEX
+        ? emissive_factor
+        : srgb_to_linear(sampled_emissive.rgb) * emissive_factor;
     surface.alpha = sampled_base_color.a * base_color_factor.a;
     surface.alpha_mode = alpha_parameters.x;
     surface.alpha_cutoff = alpha_parameters.y;

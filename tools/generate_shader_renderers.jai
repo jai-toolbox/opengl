@@ -7,6 +7,7 @@
 #import "Hash_Table";
 
 #import,file "../first_fit_virtual_allocator.jai";
+#load "../better_api.jai";
 
 create_shader_program :: (vertex_source: string, fragment_source: string) -> program_handle: GLuint, success: bool {
     return 0, false;

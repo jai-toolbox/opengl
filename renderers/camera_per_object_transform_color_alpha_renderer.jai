@@ -109,8 +109,8 @@ init :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer) {
 
     init(*renderer.ltw_pool);
 
-    camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
-    world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
+    camera_to_clip_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "camera_to_clip");
+    world_to_camera_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "world_to_camera");
 
 }
 
@@ -120,17 +120,17 @@ deinit :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer) {
 
     deinit(*psr);
 
-    glDeleteBuffers(1, *positions_buffer_gl_handle);
-    glDeleteBuffers(1, *passthrough_rgba_colors_buffer_gl_handle);
-    glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);
+    gl_delete_buffer(positions_buffer_gl_handle);
+    gl_delete_buffer(passthrough_rgba_colors_buffer_gl_handle);
+    gl_delete_buffer(local_to_world_index_buffer_gl_handle);
 }
 
 
 
 init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Alpha_Renderer) { // todo change renderer name
 
-    glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    vertex_attribute_array_gl_handle = gl_create_vertex_array();
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
 
     generate_buffer_for_vertex_attribute(*local_to_world_index_buffer_gl_handle, u32, max_num_elements_in_each_buffer);
@@ -138,13 +138,12 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Alpha_R
 
 
 
-    glGenBuffers(1, *index_buffer_gl_handle);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    /*
-    note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
-    could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
-    */
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) *  max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
+    index_buffer_gl_handle = gl_create_buffer();
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
+    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
+    gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
+    index_buffer_capacity_in_indices = cast(int) max_num_elements_in_each_buffer;
     // note: we don't have to init the vertex attribute for indices because they used in the shader program for rendering, they're just used during glDrawElements.
 
     generate_buffer_for_vertex_attribute(*positions_buffer_gl_handle, Vector3, max_num_elements_in_each_buffer);
@@ -155,7 +154,7 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Alpha_R
 
 
 
-	glBindBuffer (GL_ARRAY_BUFFER, 0);
+	gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, 0);
 }
 
 
@@ -202,17 +201,18 @@ buffer_object :: (
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
+    invalidate_cached_index_buffer(*renderer.psr);
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-
-
-    glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
 
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector4), rgba_colors.count * size_of(Vector4), rgba_colors.data);
+
+
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), rgba_colors.count * size_of(Vector4), rgba_colors.data);
 
 
     ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
@@ -224,13 +224,13 @@ buffer_object :: (
     local_to_world_indices: [..] u32;
     for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
-    glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
 
     array_free(local_to_world_indices);
 
 
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 
     return index, ltw_index_we_used, true;
 }
@@ -244,56 +244,39 @@ will go off the rails.
 */
 rebuffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Color_Alpha_Renderable) {
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
-    glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector3), renderable.positions.count * size_of(Vector3), renderable.positions.data);
 
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.rgba_colors.count * size_of(Vector4), renderable.rgba_colors.data);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_rgba_colors_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector4), renderable.rgba_colors.count * size_of(Vector4), renderable.rgba_colors.data);
 
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, 0);
+    gl_bind_vertex_array(0);
 }
 
 render :: (using renderer : *Camera_Per_Object_Transform_Color_Alpha_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 
-    glUseProgram(shader_program_gl_handle);
+    gl_set_active_shader_program(shader_program_gl_handle);
 
 
     upload_to_gpu(*ltw_pool);
 
 
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-    // todo: reserve so we don't get a ton of reallocations in this for loop
-    geom_indices_to_render : [..] u32;  // can we just use temp storage?
-    defer array_free(geom_indices_to_render);
-    // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
-    for object_indices_to_render_this_frame {
-        success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
-        if !success log("couldn't find the global indices of object with id: GL_TRIANGLES", it);
-        for geom_indices
-            array_add(*geom_indices_to_render, it);
-    }
-
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    /*
-    here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
-    as we will only access the smaller portion
-    */
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
-
-    glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
-
-    // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
-
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
+    index_count := prepare_index_buffer_for_queued_objects(*renderer.psr);
+    gl_draw_indexed_vertices_from_bound_vertex_array(
+        primitive_mode,
+        index_count,
+        GL_UNSIGNED_INT,
+        cast(*void) 0);
     array_reset(*object_indices_to_render_this_frame);
 
-    glBindVertexArray(0);
-    glUseProgram(0);
+    gl_bind_vertex_array(0);
+    gl_clear_active_shader_program();
 }

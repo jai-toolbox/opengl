@@ -1239,7 +1239,7 @@ generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> stri
     uniforms := shader_uniform_configurations(shader);
     for uniforms {
         print_to_builder(*builder, 
-            "    %_uniform_location = glGetUniformLocation(shader_program_gl_handle, \"%\");\n",
+            "    %_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, \"%\");\n",
             it.var_name_in_shader, it.var_name_in_shader);
     }
 
@@ -1311,25 +1311,25 @@ generate_code_for_deinit_renderer :: (shader: Shader_Metadata) -> string {
     // delete per-attribute GL buffers
     attributes := shader_attribute_configurations(shader);
     for attributes {
-        print_to_builder(*builder, "    glDeleteBuffers(1, *%_buffer_gl_handle);\n", it.plural_name);
+        print_to_builder(*builder, "    gl_delete_buffer(%_buffer_gl_handle);\n", it.plural_name);
     }
 
     // delete the local_to_world_index buffer if applicable
     if shader.per_object_transforms {
-        print_to_builder(*builder, "    glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);\n");
+        print_to_builder(*builder, "    gl_delete_buffer(local_to_world_index_buffer_gl_handle);\n");
     }
 
     // delete immediate-mode GL resources if applicable
     if shader.immediate_mode_support {
         print_to_builder(*builder, "\n    // immediate-mode cleanup\n");
-        print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_index_buffer_gl_handle);\n");
+        print_to_builder(*builder, "    gl_delete_buffer(immediate_index_buffer_gl_handle);\n");
         if shader.per_object_transforms {
-            print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_local_to_world_index_buffer_gl_handle);\n");
+            print_to_builder(*builder, "    gl_delete_buffer(immediate_local_to_world_index_buffer_gl_handle);\n");
         }
         for attributes {
-            print_to_builder(*builder, "    glDeleteBuffers(1, *immediate_%_buffer_gl_handle);\n", it.plural_name);
+            print_to_builder(*builder, "    gl_delete_buffer(immediate_%_buffer_gl_handle);\n", it.plural_name);
         }
-        print_to_builder(*builder, "    glDeleteVertexArrays(1, *immediate_vertex_attribute_array_gl_handle);\n");
+        print_to_builder(*builder, "    gl_delete_vertex_array(immediate_vertex_attribute_array_gl_handle);\n");
     }
 
     return tprint(#string END
@@ -1386,23 +1386,22 @@ generate_init_buffers_no_data :: (shader : Shader_Metadata) -> string {
 
 init_buffers_no_data :: (using apcr : *%1) { // todo change renderer name
 
-    glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    vertex_attribute_array_gl_handle = gl_create_vertex_array();
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
 %2
 
-    glGenBuffers(1, *index_buffer_gl_handle);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    /*
-    note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
-    could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
-    */
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) *  max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
+    index_buffer_gl_handle = gl_create_buffer();
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
+    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
+    gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
+    index_buffer_capacity_in_indices = cast(int) max_num_elements_in_each_buffer;
     // note: we don't have to init the vertex attribute for indices because they used in the shader program for rendering, they're just used during glDrawElements.
 
 %3
 
-	glBindBuffer (GL_ARRAY_BUFFER, 0);
+	gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, 0);
 }
 
     END, 
@@ -1423,9 +1422,9 @@ generate_init_immediate_buffers :: (shader : Shader_Metadata) -> string {
     defer array_free(immediate_local_to_world_indices);
     array_resize(*immediate_local_to_world_indices, %);
     for * immediate_local_to_world_indices it.* = 0;
-    glGenBuffers(1, *immediate_local_to_world_index_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, immediate_local_to_world_index_buffer_gl_handle);
-    glBufferData(GL_ARRAY_BUFFER, size_of(u32) * immediate_local_to_world_indices.count, immediate_local_to_world_indices.data, GL_STATIC_DRAW);
+    immediate_local_to_world_index_buffer_gl_handle = gl_create_buffer();
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, immediate_local_to_world_index_buffer_gl_handle);
+    gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, size_of(u32) * immediate_local_to_world_indices.count, immediate_local_to_world_indices.data, GL_STATIC_DRAW);
     init_vertex_attribute(shader_program_gl_handle, immediate_vertex_attribute_array_gl_handle, immediate_local_to_world_index_buffer_gl_handle, "local_to_world_index", 1, GL_UNSIGNED_INT, GL_FALSE, 0, null);
 
     END, shader.num_elements_in_each_immediate_buffer);
@@ -1459,17 +1458,17 @@ generate_init_immediate_buffers :: (shader : Shader_Metadata) -> string {
 
 init_immediate_buffers :: (using renderer : *%1) {
 
-    glGenVertexArrays(1, *immediate_vertex_attribute_array_gl_handle);
-    glBindVertexArray(immediate_vertex_attribute_array_gl_handle);
+    immediate_vertex_attribute_array_gl_handle = gl_create_vertex_array();
+    gl_bind_vertex_array(immediate_vertex_attribute_array_gl_handle);
 
-    glGenBuffers(1, *immediate_index_buffer_gl_handle);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * %2, null, GL_STREAM_DRAW);
+    immediate_index_buffer_gl_handle = gl_create_buffer();
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
+    gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * %2, null, GL_STREAM_DRAW);
 
 %3
 %4
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, 0);
 }
 
     END, 
@@ -1483,8 +1482,8 @@ init_immediate_buffers :: (using renderer : *%1) {
 generate_buffer_vertex_attribute_data_at_index_code :: (attr_conf: GL_Vertex_Attribute_Configuration) -> string {
     return tprint(#string END
 
-    glBindBuffer(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(%2), %3.count * size_of(%2), %3.data);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(%2), %3.count * size_of(%2), %3.data);
 
     END, attr_conf.plural_name, attr_conf.type_in_jai, attr_conf.argument_name_in_buffer_object);
 }
@@ -1500,8 +1499,8 @@ code_to_buffer_local_to_world_indices :: #string END
     local_to_world_indices: [..] u32;
     for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
-    glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
 
     array_free(local_to_world_indices);
 END;
@@ -1581,12 +1580,13 @@ buffer_object :: (
         array_add(*global_indices_for_object, xx index + it);
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
+    invalidate_cached_index_buffer(*renderer.psr);
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
 %4
 
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 
     %5
 }
@@ -1669,8 +1669,8 @@ generate_rebuffer_object :: (shader : Shader_Metadata) -> string {
     attributes := shader_attribute_configurations(shader);
     for attr_conf: attributes {
         print_to_builder(*upload_code, #string ATTR
-    glBindBuffer(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
-    glBufferSubData(GL_ARRAY_BUFFER, renderable.object_index * size_of(%2), renderable.%3.count * size_of(%2), renderable.%3.data);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, renderable.object_index * size_of(%2), renderable.%3.count * size_of(%2), renderable.%3.data);
 
 ATTR,
             attr_conf.plural_name,
@@ -1689,11 +1689,11 @@ will go off the rails.
 */
 rebuffer_object :: (using renderer : *%1, renderable : $T/interface %2) {
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
 %3
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, 0);
+    gl_bind_vertex_array(0);
 }
 
     END,
@@ -1719,38 +1719,21 @@ render :: (using renderer : *%1, primitive_mode: GLenum = %3) {
 
     // todo think about if we should be using temporary storage.
 
-    glUseProgram(shader_program_gl_handle);
+    gl_set_active_shader_program(shader_program_gl_handle);
 
 %2
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-    // todo: reserve so we don't get a ton of reallocations in this for loop
-    geom_indices_to_render : [..] u32;  // can we just use temp storage?
-    defer array_free(geom_indices_to_render);
-    // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
-    for object_indices_to_render_this_frame {
-        success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
-        if !success log("couldn't find the global indices of object with id: %", it);
-        for geom_indices 
-            array_add(*geom_indices_to_render, it);
-    }
-
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    /*
-    here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
-    as we will only access the smaller portion
-    */
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
-
-    glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
-
-    // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
-
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
+    index_count := prepare_index_buffer_for_queued_objects(*renderer.psr);
+    gl_draw_indexed_vertices_from_bound_vertex_array(
+        primitive_mode,
+        index_count,
+        GL_UNSIGNED_INT,
+        cast(*void) 0);
     array_reset(*object_indices_to_render_this_frame);
 
-    glBindVertexArray(0);
-    glUseProgram(0);
+    gl_bind_vertex_array(0);
+    gl_clear_active_shader_program();
 }
 
     END, 
@@ -1778,7 +1761,7 @@ generate_immediate_render :: (shader : Shader_Metadata) -> string {
     init_string_builder(*upload_code);
     for attr_conf: attributes {
         print_to_builder(*upload_code,
-            "    glBindBuffer(GL_ARRAY_BUFFER, immediate_%1_buffer_gl_handle);\n    glBufferSubData(GL_ARRAY_BUFFER, 0, %2.count * size_of(%3), %2.data);\n\n",
+            "    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, immediate_%1_buffer_gl_handle);\n    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, 0, %2.count * size_of(%3), %2.data);\n\n",
             attr_conf.plural_name, attr_conf.argument_name_in_buffer_object, attr_conf.type_in_jai);
     }
 
@@ -1792,17 +1775,17 @@ immediate_render :: (
 
     assert(indices.count > 0, "No indices to render.");
 
-    glUseProgram(shader_program_gl_handle);
-    glBindVertexArray(immediate_vertex_attribute_array_gl_handle);
+    gl_set_active_shader_program(shader_program_gl_handle);
+    gl_bind_vertex_array(immediate_vertex_attribute_array_gl_handle);
 
 %3
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, indices.count * size_of(u32), indices.data);
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, immediate_index_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, 0, indices.count * size_of(u32), indices.data);
 
-    glDrawElements(GL_TRIANGLES, xx indices.count, GL_UNSIGNED_INT, cast(*void) 0);
+    gl_draw_indexed_vertices_from_bound_vertex_array(GL_TRIANGLES, xx indices.count, GL_UNSIGNED_INT, cast(*void) 0);
 
-    glBindVertexArray(0);
-    glUseProgram(0);
+    gl_bind_vertex_array(0);
+    gl_clear_active_shader_program();
 }
 
     END,
@@ -1843,9 +1826,9 @@ immediate_render :: (using renderer : *%1, geometry : $T/interface %2) {
 }
 
 generate_buffer_for_vertex_attribute :: (attribute_buffer_gl_handle : *GLuint, $attribute_type : Type, num_elements: u32) {
-    glGenBuffers(1, attribute_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, attribute_buffer_gl_handle.*);
-    glBufferData(GL_ARRAY_BUFFER, size_of(attribute_type) * num_elements, null, GL_DYNAMIC_DRAW);
+    attribute_buffer_gl_handle.* = gl_create_buffer();
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, attribute_buffer_gl_handle.*);
+    gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, size_of(attribute_type) * num_elements, null, GL_DYNAMIC_DRAW);
 }
 
 GL_Vertex_Attribute_Configuration :: struct { // gl_vac
@@ -1983,25 +1966,25 @@ init_vertex_attribute :: (
         pointer_offset_to_start_of_data: *void
     ) {
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, attribute_buffer_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, attribute_buffer_gl_handle);
 
-    vertex_attribute_gl_handle : s32 = glGetAttribLocation(shader_program_gl_handle, temp_c_string(var_name_in_shader));
+    vertex_attribute_gl_handle : s32 = gl_get_vertex_attribute_location_in_shader_program(shader_program_gl_handle, temp_c_string(var_name_in_shader));
     if vertex_attribute_gl_handle < 0 return;
 
-    glEnableVertexAttribArray(xx vertex_attribute_gl_handle);
+    gl_enable_vertex_attribute_array(xx vertex_attribute_gl_handle);
 
     // todo: there are probably more integer types right?
     data_type_is_integer : bool = data_type_of_component == GL_INT || data_type_of_component == GL_UNSIGNED_INT;
 
     if (data_type_is_integer) { 
         // doesn't take in the normalize value.
-        glVertexAttribIPointer(xx vertex_attribute_gl_handle, components_per_vertex, data_type_of_component, stride, pointer_offset_to_start_of_data);
+        gl_define_integer_vertex_attribute_pointer(xx vertex_attribute_gl_handle, components_per_vertex, data_type_of_component, stride, pointer_offset_to_start_of_data);
     } else {
-        glVertexAttribPointer(xx vertex_attribute_gl_handle, components_per_vertex, data_type_of_component, normalize, stride, pointer_offset_to_start_of_data);
+        gl_define_vertex_attribute_pointer(xx vertex_attribute_gl_handle, components_per_vertex, data_type_of_component, normalize, stride, pointer_offset_to_start_of_data);
     }
 
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 }
 
 #load "per_shader_renderer.jai";

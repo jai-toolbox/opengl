@@ -55,12 +55,12 @@ init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
 
     init(*renderer.ltw_pool);
 
-    selected_depth_texture_uniform_location = glGetUniformLocation(shader_program_gl_handle, "selected_depth_texture");
-    scene_depth_texture_uniform_location = glGetUniformLocation(shader_program_gl_handle, "scene_depth_texture");
-    rgba_color_uniform_location = glGetUniformLocation(shader_program_gl_handle, "rgba_color");
-    occluded_alpha_uniform_location = glGetUniformLocation(shader_program_gl_handle, "occluded_alpha");
-    depth_epsilon_uniform_location = glGetUniformLocation(shader_program_gl_handle, "depth_epsilon");
-    thickness_px_uniform_location = glGetUniformLocation(shader_program_gl_handle, "thickness_px");
+    selected_depth_texture_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "selected_depth_texture");
+    scene_depth_texture_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "scene_depth_texture");
+    rgba_color_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "rgba_color");
+    occluded_alpha_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "occluded_alpha");
+    depth_epsilon_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "depth_epsilon");
+    thickness_px_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "thickness_px");
 
 }
 
@@ -70,5 +70,5 @@ deinit :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
 
     deinit(*psr);
 
-    glDeleteBuffers(1, *local_to_world_index_buffer_gl_handle);
+    gl_delete_buffer(local_to_world_index_buffer_gl_handle);
 }

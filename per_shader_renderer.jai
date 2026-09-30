@@ -54,9 +54,12 @@ Per_Shader_Renderer :: struct { // this should be called a per object shader ren
     // the size of this index buffer could actually technically be larger than max_num_elements_in_each_buffer 
     // this is because a regular quad has 4 positions, but 6 indices, so indices.count >= positions.count
     index_buffer_gl_handle : GLuint;
+    index_buffer_capacity_in_indices: int;
 
-    object_indices_to_render_this_frame : [..] u32;
-    object_indices_we_rendered_last_frame : [..] u32;
+    object_indices_to_render_this_frame: [..] u32;
+    object_indices_in_cached_index_buffer: [..] u32;
+    num_indices_in_cached_index_buffer: GLsizei;
+    cached_index_buffer_is_valid: bool;
 
     // this is how we manage the memory in all the attribute buffers and index buffer
     first_fit_virtual_allocator : First_Fit_Virtual_Allocator;
@@ -84,18 +87,18 @@ init :: (psr : *Per_Shader_Renderer, vertex_shader_source : string, fragment_sha
 deinit :: (using psr : *Per_Shader_Renderer) {
 
     // delete the shader program
-    glDeleteProgram(shader_program_gl_handle);
+    gl_delete_shader_program(shader_program_gl_handle);
     shader_program_gl_handle = 0;
 
     // delete the VAO and index buffer
-    glDeleteVertexArrays(1, *vertex_attribute_array_gl_handle);
-    glDeleteBuffers(1, *index_buffer_gl_handle);
+    gl_delete_vertex_array(vertex_attribute_array_gl_handle);
+    gl_delete_buffer(index_buffer_gl_handle);
     vertex_attribute_array_gl_handle = 0;
     index_buffer_gl_handle = 0;
 
     // free the render queue arrays
     array_free(object_indices_to_render_this_frame);
-    array_free(object_indices_we_rendered_last_frame);
+    array_free(object_indices_in_cached_index_buffer);
 
     // free all the dynamic arrays stored as values in the table, then free the table itself
     for buffered_object_index_to_global_indices {
@@ -109,11 +112,11 @@ deinit :: (using psr : *Per_Shader_Renderer) {
 
 
 set_active_program :: (renderer: Per_Shader_Renderer) {
-    glUseProgram(renderer.shader_program_gl_handle);
+    gl_set_active_shader_program(renderer.shader_program_gl_handle);
 }
 
 clear_active_program :: () {
-    glUseProgram(0);
+    gl_clear_active_shader_program();
 }
 
 queue_render :: (using psr : *Per_Shader_Renderer, object_index : u32) { 
@@ -125,36 +128,91 @@ queue_render :: (using psr : *Per_Shader_Renderer, object_index : u32) {
    // add it to the per frame thing, which gets emptied when rendering.
 }
 
-render :: (using psr : *Per_Shader_Renderer, primitive_mode : GLenum = GL_TRIANGLES) {
+queued_objects_match_cached_index_buffer :: (
+    using psr: *Per_Shader_Renderer,
+) -> bool {
+    if !cached_index_buffer_is_valid return false;
+    if object_indices_to_render_this_frame.count
+        != object_indices_in_cached_index_buffer.count return false;
 
-    glUseProgram(shader_program_gl_handle);
+    for object_index, queue_index: object_indices_to_render_this_frame {
+        if object_index
+            != object_indices_in_cached_index_buffer[queue_index] return false;
+    }
+    return true;
+}
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
-    // todo: reserve so we don't get a ton of reallocations in this for loop
-    geom_indices_to_render : [..] u32; 
-    // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
-    for object_indices_to_render_this_frame {
-        success, geom_indices := table_find(*buffered_object_index_to_global_indices, it);
-        if !success log("couldn't find the global indices of object with id: %", it);
-        for geom_indices 
-            array_add(*geom_indices_to_render, it);
+invalidate_cached_index_buffer :: (using psr: *Per_Shader_Renderer) {
+    cached_index_buffer_is_valid = false;
+    num_indices_in_cached_index_buffer = 0;
+    array_reset(*object_indices_in_cached_index_buffer);
+}
+
+// Rebuild the renderer's combined element buffer only when the queued object
+// sequence changes. The exact order is part of the cache key because it is the
+// order in which the objects' triangles are submitted to OpenGL.
+prepare_index_buffer_for_queued_objects :: (
+    using psr: *Per_Shader_Renderer,
+) -> GLsizei {
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
+    if queued_objects_match_cached_index_buffer(psr) {
+        return num_indices_in_cached_index_buffer;
     }
 
+    combined_global_indices: [..] u32;
+    defer array_free(combined_global_indices);
+    for object_index: object_indices_to_render_this_frame {
+        success, object_global_indices := table_find(
+            *buffered_object_index_to_global_indices,
+            object_index);
+        if !success {
+            log("couldn't find the global indices of object with id: %", object_index);
+            continue;
+        }
+        for global_index: object_global_indices {
+            array_add(*combined_global_indices, global_index);
+        }
+    }
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
-    // as we will only access the smaller portion
-    glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
-    array_free(geom_indices_to_render);
+    if combined_global_indices.count > index_buffer_capacity_in_indices {
+        index_buffer_capacity_in_indices = max(
+            combined_global_indices.count,
+            max(index_buffer_capacity_in_indices * 2, 1));
+        gl_allocate_storage_for_buffer_bound_to_binding_target(
+            GL_ELEMENT_ARRAY_BUFFER,
+            index_buffer_capacity_in_indices * size_of(u32),
+            null,
+            GL_DYNAMIC_DRAW);
+    }
+    gl_update_subdata_in_buffer_bound_to_binding_target(
+        GL_ELEMENT_ARRAY_BUFFER,
+        0,
+        combined_global_indices.count * size_of(u32),
+        combined_global_indices.data);
 
-    glDrawElements(primitive_mode, xx geom_indices_to_render.count, GL_UNSIGNED_INT, cast (*void) 0);
+    array_reset(*object_indices_in_cached_index_buffer);
+    for object_index: object_indices_to_render_this_frame {
+        array_add(*object_indices_in_cached_index_buffer, object_index);
+    }
+    num_indices_in_cached_index_buffer = cast(GLsizei) combined_global_indices.count;
+    cached_index_buffer_is_valid = true;
+    return num_indices_in_cached_index_buffer;
+}
 
-    // the rendering the same objects test as last frame test is a worthwhile optimization that should occur.
+render :: (using psr : *Per_Shader_Renderer, primitive_mode : GLenum = GL_TRIANGLES) {
+    gl_set_active_shader_program(shader_program_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
+    index_count := prepare_index_buffer_for_queued_objects(psr);
+    gl_draw_indexed_vertices_from_bound_vertex_array(
+        primitive_mode,
+        index_count,
+        GL_UNSIGNED_INT,
+        cast(*void) 0);
     array_reset(*object_indices_to_render_this_frame);
 
-    glBindVertexArray(0);
-    glUseProgram(0);
+    gl_bind_vertex_array(0);
+    gl_clear_active_shader_program();
 }
 
 
@@ -178,6 +236,7 @@ unbuffer_object :: (using psr: *Per_Shader_Renderer, object_index: u32) {
     if found {
         array_free(global_indices);
         table_remove(*buffered_object_index_to_global_indices, object_index);
+        invalidate_cached_index_buffer(psr);
     } else {
         log("unbuffer_object: couldn't find global indices for object_index %", object_index);
     }

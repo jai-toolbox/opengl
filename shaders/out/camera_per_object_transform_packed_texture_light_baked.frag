@@ -220,9 +220,14 @@ LightBakedSurface sample_light_baked_surface() {
     );
 
     LightBakedSurface surface;
-    surface.base_color = srgb_to_linear(sampled_base_color.rgb)
-        * base_color_factor.rgb;
-    surface.emissive = srgb_to_linear(sampled_emissive.rgb) * emissive_factor;
+    surface.base_color = packed_texture_index_for_base_color
+        == INVALID_TEXTURE_INDEX
+        ? base_color_factor.rgb
+        : srgb_to_linear(sampled_base_color.rgb) * base_color_factor.rgb;
+    surface.emissive = packed_texture_index_for_emissive
+        == INVALID_TEXTURE_INDEX
+        ? emissive_factor
+        : srgb_to_linear(sampled_emissive.rgb) * emissive_factor;
     surface.alpha = sampled_base_color.a * base_color_factor.a;
     surface.alpha_mode = alpha_parameters.x;
     surface.alpha_cutoff = alpha_parameters.y;
@@ -256,9 +261,10 @@ vec3 sample_baked_irradiance() {
 // End include: light_baked_surface.glsl
 // Begin include: light_baked_pbr.glsl
 #define MAX_STATIC_POINT_LIGHTS 16
+#define MAX_DYNAMIC_POINT_LIGHTS 16
 #define MAX_REFLECTION_PROBES 8
 
-struct StaticPointLight {
+struct PointLight {
     vec3 position;
     vec3 color;
     float intensity;
@@ -271,10 +277,14 @@ struct ReflectionProbe {
     float average_brightness;
 };
 
-uniform StaticPointLight static_point_lights[MAX_STATIC_POINT_LIGHTS];
+uniform PointLight static_point_lights[MAX_STATIC_POINT_LIGHTS];
 uniform int static_point_light_count;
-uniform sampler2DArray static_point_light_visibility_textures;
-uniform int static_point_light_visibility_group_count;
+uniform int can_static_point_light_reach_surface_group_indices[MAX_STATIC_POINT_LIGHTS / 4];
+uniform bool use_can_static_point_light_reach_surface_texture;
+uniform sampler2DArray can_static_point_light_reach_surface_textures;
+uniform int can_static_point_light_reach_surface_rgba_group_count;
+uniform PointLight dynamic_point_lights[MAX_DYNAMIC_POINT_LIGHTS];
+uniform int dynamic_point_light_count;
 
 uniform samplerCube reflection_probe_cubemap_0;
 uniform samplerCube reflection_probe_cubemap_1;
@@ -292,19 +302,13 @@ uniform vec3 camera_position;
 
 const float PI = 3.14159265359;
 
-float static_point_light_visibility(int light_index) {
-    int group_index = light_index / 4;
-    int channel_index = light_index - group_index * 4;
+vec4 sample_can_static_point_lights_reach_surface(int group_index) {
     int texture_layer = int(lightmap_atlas_index)
-        * static_point_light_visibility_group_count
+        * can_static_point_light_reach_surface_rgba_group_count
         + group_index;
-    vec4 visibility = texture(
-        static_point_light_visibility_textures,
+    return texture(
+        can_static_point_light_reach_surface_textures,
         vec3(lightmap_texture_coordinate, float(texture_layer)));
-    if (channel_index == 0) return visibility.r;
-    if (channel_index == 1) return visibility.g;
-    if (channel_index == 2) return visibility.b;
-    return visibility.a;
 }
 
 vec3 linear_to_srgb(vec3 value) {
@@ -314,40 +318,26 @@ vec3 linear_to_srgb(vec3 value) {
     return mix(upper, lower, lessThanEqual(value, vec3(0.0031308)));
 }
 
-float distribution_ggx(vec3 normal, vec3 halfway, float roughness) {
-    float alpha = roughness * roughness;
-    float alpha_squared = alpha * alpha;
-    float normal_dot_halfway = max(dot(normal, halfway), 0.0);
+float distribution_ggx(
+    float normal_dot_halfway,
+    float alpha_squared
+) {
     float denominator = normal_dot_halfway * normal_dot_halfway
         * (alpha_squared - 1.0) + 1.0;
     return alpha_squared / max(PI * denominator * denominator, 0.0000001);
 }
 
-float geometry_schlick_ggx(float normal_dot_direction, float roughness) {
-    float r = roughness + 1.0;
-    float k = r * r / 8.0;
+float geometry_schlick_ggx(float normal_dot_direction, float k) {
     return normal_dot_direction
         / max(normal_dot_direction * (1.0 - k) + k, 0.0001);
 }
 
-float geometry_smith(
-    vec3 normal,
-    vec3 view_direction,
-    vec3 light_direction,
-    float roughness
-) {
-    return geometry_schlick_ggx(
-        max(dot(normal, view_direction), 0.0),
-        roughness
-    ) * geometry_schlick_ggx(
-        max(dot(normal, light_direction), 0.0),
-        roughness
-    );
-}
-
 vec3 fresnel_schlick(float cosine, vec3 f0) {
-    return f0 + (vec3(1.0) - f0)
-        * pow(clamp(1.0 - cosine, 0.0, 1.0), 5.0);
+    float one_minus_cosine = clamp(1.0 - cosine, 0.0, 1.0);
+    float one_minus_cosine_squared = one_minus_cosine * one_minus_cosine;
+    float one_minus_cosine_fifth = one_minus_cosine_squared
+        * one_minus_cosine_squared * one_minus_cosine;
+    return f0 + (vec3(1.0) - f0) * one_minus_cosine_fifth;
 }
 
 vec3 normal_from_material_texture(vec3 sampled_normal) {
@@ -362,12 +352,15 @@ vec3 normal_from_material_texture(vec3 sampled_normal) {
 }
 
 vec3 point_light_specular(
-    StaticPointLight light,
-    int light_index,
+    PointLight light,
+    float light_reaches_surface_factor,
     vec3 normal,
     vec3 view_direction,
     vec3 f0,
-    float roughness
+    float normal_dot_view,
+    float alpha_squared,
+    float geometry_k,
+    float geometry_view
 ) {
     vec3 to_light = light.position - world_position;
     float distance_squared = dot(to_light, to_light);
@@ -387,27 +380,80 @@ vec3 point_light_specular(
     vec3 radiance = light.color * light.intensity
         * range_fade / (distance_squared + 0.0001);
 
-    vec3 halfway = normalize(view_direction + light_direction);
-    float distribution = distribution_ggx(normal, halfway, roughness);
-    float geometry = geometry_smith(
-        normal,
-        view_direction,
-        light_direction,
-        roughness
-    );
+    float view_dot_light = dot(view_direction, light_direction);
+    float inverse_halfway_length = inversesqrt(
+        max(2.0 + 2.0 * view_dot_light, 0.00000001));
+    float normal_dot_halfway = max(
+        (normal_dot_view + normal_dot_light) * inverse_halfway_length,
+        0.0);
+    float halfway_dot_view = max(
+        (1.0 + view_dot_light) * inverse_halfway_length,
+        0.0);
+    float distribution = distribution_ggx(
+        normal_dot_halfway, alpha_squared);
+    float geometry = geometry_view
+        * geometry_schlick_ggx(normal_dot_light, geometry_k);
     vec3 fresnel = fresnel_schlick(
-        max(dot(halfway, view_direction), 0.0),
+        halfway_dot_view,
         f0
     );
     float denominator = 4.0
-        * max(dot(normal, view_direction), 0.0)
-        * normal_dot_light
+        * normal_dot_view * normal_dot_light
         + 0.0001;
-    // Fetch the baked shadow value only after the inexpensive range and
-    // facing tests establish that this light can contribute to the fragment.
-    float visibility = static_point_light_visibility(light_index);
     return distribution * geometry * fresnel
-        / denominator * radiance * normal_dot_light * visibility;
+        / denominator * radiance * normal_dot_light * light_reaches_surface_factor;
+}
+
+vec3 dynamic_point_light_direct(
+    PointLight light,
+    vec3 normal,
+    vec3 view_direction,
+    vec3 base_color,
+    float metallic,
+    vec3 f0,
+    float normal_dot_view,
+    float alpha_squared,
+    float geometry_k,
+    float geometry_view
+) {
+    vec3 to_light = light.position - world_position;
+    float distance_squared = dot(to_light, to_light);
+    if (distance_squared <= 0.00000001) return vec3(0.0);
+    float range_squared = light.range * light.range;
+    if (distance_squared >= range_squared) return vec3(0.0);
+
+    vec3 light_direction = to_light * inversesqrt(distance_squared);
+    float normal_dot_light = max(dot(normal, light_direction), 0.0);
+    if (normal_dot_light <= 0.0) return vec3(0.0);
+
+    float normalized_distance_squared = distance_squared / range_squared;
+    float range_fade = 1.0
+        - normalized_distance_squared * normalized_distance_squared;
+    range_fade *= range_fade;
+    vec3 radiance = light.color * light.intensity
+        * range_fade / (distance_squared + 0.0001);
+
+    float view_dot_light = dot(view_direction, light_direction);
+    float inverse_halfway_length = inversesqrt(
+        max(2.0 + 2.0 * view_dot_light, 0.00000001));
+    float normal_dot_halfway = max(
+        (normal_dot_view + normal_dot_light) * inverse_halfway_length,
+        0.0);
+    float halfway_dot_view = max(
+        (1.0 + view_dot_light) * inverse_halfway_length,
+        0.0);
+    vec3 fresnel = fresnel_schlick(
+        halfway_dot_view, f0);
+    vec3 diffuse_brdf = (vec3(1.0) - fresnel)
+        * (1.0 - metallic) * base_color / PI;
+    float distribution = distribution_ggx(
+        normal_dot_halfway, alpha_squared);
+    float geometry = geometry_view
+        * geometry_schlick_ggx(normal_dot_light, geometry_k);
+    float denominator = 4.0
+        * normal_dot_view * normal_dot_light + 0.0001;
+    vec3 specular_brdf = distribution * geometry * fresnel / denominator;
+    return (diffuse_brdf + specular_brdf) * radiance * normal_dot_light;
 }
 
 vec3 sample_reflection_probe(int probe_index, vec3 direction, float mip) {
@@ -547,7 +593,34 @@ vec3 reflection_probe_specular(
 // End include: light_baked_pbr.glsl
 
 uniform float exposure;
+uniform bool use_light_volume;
+uniform vec3 light_volume_coefficients[9];
 out vec4 frag_color;
+
+vec3 light_volume_diffuse_irradiance(vec3 normal) {
+    normal = normalize(normal);
+    float basis[9];
+    basis[0] = 0.282095;
+    basis[1] = 0.488603 * normal.y;
+    basis[2] = 0.488603 * normal.z;
+    basis[3] = 0.488603 * normal.x;
+    basis[4] = 1.092548 * normal.x * normal.y;
+    basis[5] = 1.092548 * normal.y * normal.z;
+    basis[6] = 0.315392 * (3.0 * normal.z * normal.z - 1.0);
+    basis[7] = 1.092548 * normal.x * normal.z;
+    basis[8] = 0.546274 * (normal.x * normal.x - normal.y * normal.y);
+
+    vec3 result = light_volume_coefficients[0] * basis[0] * PI;
+    for (int coefficient_index = 1; coefficient_index <= 3; ++coefficient_index) {
+        result += light_volume_coefficients[coefficient_index]
+            * basis[coefficient_index] * (2.0 * PI / 3.0);
+    }
+    for (int coefficient_index = 4; coefficient_index <= 8; ++coefficient_index) {
+        result += light_volume_coefficients[coefficient_index]
+            * basis[coefficient_index] * (PI / 4.0);
+    }
+    return max(result, vec3(0.0));
+}
 
 void main() {
     LightBakedSurface surface = sample_light_baked_surface();
@@ -560,23 +633,63 @@ void main() {
     vec3 normal = normal_from_material_texture(sampled_normal.rgb);
     vec3 view_direction = normalize(camera_position - world_position);
     vec3 f0 = mix(vec3(0.04), surface.base_color, surface.metallic);
+    float normal_dot_view = max(dot(normal, view_direction), 0.0);
+    float alpha = surface.roughness * surface.roughness;
+    float alpha_squared = alpha * alpha;
+    float roughness_plus_one = surface.roughness + 1.0;
+    float geometry_k = roughness_plus_one * roughness_plus_one / 8.0;
+    float geometry_view = geometry_schlick_ggx(
+        normal_dot_view, geometry_k);
 
-    vec3 baked_irradiance = sample_baked_irradiance();
+    vec3 baked_irradiance = use_light_volume
+        ? light_volume_diffuse_irradiance(normal)
+        : sample_baked_irradiance();
     vec3 diffuse_color = surface.base_color * (1.0 - surface.metallic);
     vec3 baked_diffuse = baked_irradiance
         * diffuse_color
         * surface.ambient_occlusion;
 
     vec3 direct_specular = vec3(0.0);
-    for (int light_index = 0; light_index < MAX_STATIC_POINT_LIGHTS; ++light_index) {
-        if (light_index >= static_point_light_count) break;
-        direct_specular += point_light_specular(
-            static_point_lights[light_index],
-            light_index,
+    for (int group_slot = 0; group_slot < MAX_STATIC_POINT_LIGHTS / 4; ++group_slot) {
+        int first_light_index = group_slot * 4;
+        if (first_light_index >= static_point_light_count) break;
+        int source_group_index =
+            can_static_point_light_reach_surface_group_indices[group_slot];
+        vec4 static_lights_reach_surface_factors = use_can_static_point_light_reach_surface_texture
+            ? sample_can_static_point_lights_reach_surface(source_group_index)
+            : vec4(1.0);
+        for (int channel_index = 0; channel_index < 4; ++channel_index) {
+            int light_index = first_light_index + channel_index;
+            if (light_index >= static_point_light_count) break;
+            if (static_lights_reach_surface_factors[channel_index] <= 0.0) continue;
+            direct_specular += point_light_specular(
+                static_point_lights[light_index],
+                static_lights_reach_surface_factors[channel_index],
+                normal,
+                view_direction,
+                f0,
+                normal_dot_view,
+                alpha_squared,
+                geometry_k,
+                geometry_view
+            );
+        }
+    }
+
+    vec3 dynamic_direct = vec3(0.0);
+    for (int light_index = 0; light_index < MAX_DYNAMIC_POINT_LIGHTS; ++light_index) {
+        if (light_index >= dynamic_point_light_count) break;
+        dynamic_direct += dynamic_point_light_direct(
+            dynamic_point_lights[light_index],
             normal,
             view_direction,
+            surface.base_color,
+            surface.metallic,
             f0,
-            surface.roughness
+            normal_dot_view,
+            alpha_squared,
+            geometry_k,
+            geometry_view
         );
     }
 
@@ -589,7 +702,8 @@ void main() {
         baked_irradiance
     );
     vec3 hdr_lighting = max(
-        baked_diffuse + direct_specular + indirect_specular + surface.emissive,
+        baked_diffuse + direct_specular + dynamic_direct
+            + indirect_specular + surface.emissive,
         vec3(0.0)
     );
 

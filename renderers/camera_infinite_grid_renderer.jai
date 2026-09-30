@@ -59,14 +59,14 @@ init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
     init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
 
 
-    camera_to_clip_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_to_clip");
-    world_to_camera_uniform_location = glGetUniformLocation(shader_program_gl_handle, "world_to_camera");
-    camera_position_uniform_location = glGetUniformLocation(shader_program_gl_handle, "camera_position");
-    grid_size_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_size");
-    grid_plane_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_plane");
-    grid_clip_depth_offset_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_clip_depth_offset");
-    grid_at_far_depth_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_at_far_depth");
-    grid_pass_alpha_uniform_location = glGetUniformLocation(shader_program_gl_handle, "grid_pass_alpha");
+    camera_to_clip_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "camera_to_clip");
+    world_to_camera_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "world_to_camera");
+    camera_position_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "camera_position");
+    grid_size_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "grid_size");
+    grid_plane_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "grid_plane");
+    grid_clip_depth_offset_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "grid_clip_depth_offset");
+    grid_at_far_depth_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "grid_at_far_depth");
+    grid_pass_alpha_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "grid_pass_alpha");
 
 }
 
