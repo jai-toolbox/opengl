@@ -139,8 +139,8 @@ load_nature_cubemap :: () -> Cubemap, bool {
 }
 
 init :: (using renderer: *Skybox_Renderer) {
-    vertex_shader_source := #run read_entire_file(tprint("%shaders/out/skybox.vert", #filepath));
-    fragment_shader_source := #run read_entire_file(tprint("%shaders/out/skybox.frag", #filepath));
+    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/skybox.vert", #filepath));
+    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/skybox.frag", #filepath));
 
     shader_program_handle, success := create_shader_program(vertex_shader_source, fragment_shader_source);
     assert(success, "Failed to create skybox shader program");

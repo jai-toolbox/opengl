@@ -318,7 +318,7 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
 
     index_buffer_gl_handle = gl_create_buffer();
     gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    // note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
     // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
     gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
     index_buffer_capacity_in_indices = cast(int) max_num_elements_in_each_buffer;
@@ -378,7 +378,11 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Pbr_Packed_Te
 }
 
 
-buffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable) -> success: bool {
+buffer_object :: (
+    using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderer,
+    renderable : *$T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Skeletal_Animation_Renderable,
+    budgeter: *GL_Budgeter = null,
+) -> success: bool {
 
 
     object_index, local_to_world_index, success := buffer_object(renderer,
@@ -399,7 +403,8 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Textu
             renderable.base_color_texture_bindings,
             renderable.normal_texture_bindings,
             renderable.metallic_roughness_texture_bindings,
-            renderable.ambient_occlusion_texture_bindings
+            renderable.ambient_occlusion_texture_bindings,
+            budgeter
     );
 
     if success {
@@ -429,7 +434,9 @@ buffer_object :: (
         base_color_texture_bindings : [..] [2] s32,
         normal_texture_bindings : [..] [2] s32,
         metallic_roughness_texture_bindings : [..] [2] s32,
-        ambient_occlusion_texture_bindings : [..] [2] s32
+        ambient_occlusion_texture_bindings : [..] [2] s32,
+
+        budgeter: *GL_Budgeter = null
 
         ) -> object_index: u32, local_to_world_index: u32, success: bool {
 
@@ -444,6 +451,14 @@ buffer_object :: (
         return 0, 0, false;
     }
 
+    ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
+    if !ltw_success {
+        virtual_free(*first_fit_virtual_allocator, index);
+        return 0, 0, false;
+    }
+
+
+
     global_indices_for_object : [..] u32;
     for indices
         array_add(*global_indices_for_object, xx index + it);
@@ -455,95 +470,89 @@ buffer_object :: (
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, bone_transform_indices_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([4] u32), bone_transform_indices.count * size_of([4] u32), bone_transform_indices.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([4] u32), bone_transform_indices.count * size_of([4] u32), bone_transform_indices.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, bone_weights_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([4] float32), bone_weights.count * size_of([4] float32), bone_weights.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([4] float32), bone_weights.count * size_of([4] float32), bone_weights.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_normals_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_tangents_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), tangents.count * size_of(Vector4), tangents.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector4), tangents.count * size_of(Vector4), tangents.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_texture_coordinates_0_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), texture_coordinates_0.count * size_of(Vector4), texture_coordinates_0.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector4), texture_coordinates_0.count * size_of(Vector4), texture_coordinates_0.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_texture_coordinates_1_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), texture_coordinates_1.count * size_of(Vector4), texture_coordinates_1.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector4), texture_coordinates_1.count * size_of(Vector4), texture_coordinates_1.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_base_color_factors_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), base_color_factors.count * size_of(Vector4), base_color_factors.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector4), base_color_factors.count * size_of(Vector4), base_color_factors.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_material_parameters_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), material_parameters.count * size_of(Vector4), material_parameters.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector4), material_parameters.count * size_of(Vector4), material_parameters.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_glass_parameters_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), glass_parameters.count * size_of(Vector4), glass_parameters.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector4), glass_parameters.count * size_of(Vector4), glass_parameters.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_volume_parameters_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector4), volume_parameters.count * size_of(Vector4), volume_parameters.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector4), volume_parameters.count * size_of(Vector4), volume_parameters.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_alpha_parameters_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector2), alpha_parameters.count * size_of(Vector2), alpha_parameters.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector2), alpha_parameters.count * size_of(Vector2), alpha_parameters.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_base_color_texture_bindings_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([2] s32), base_color_texture_bindings.count * size_of([2] s32), base_color_texture_bindings.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([2] s32), base_color_texture_bindings.count * size_of([2] s32), base_color_texture_bindings.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_normal_texture_bindings_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([2] s32), normal_texture_bindings.count * size_of([2] s32), normal_texture_bindings.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([2] s32), normal_texture_bindings.count * size_of([2] s32), normal_texture_bindings.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_metallic_roughness_texture_bindings_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([2] s32), metallic_roughness_texture_bindings.count * size_of([2] s32), metallic_roughness_texture_bindings.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([2] s32), metallic_roughness_texture_bindings.count * size_of([2] s32), metallic_roughness_texture_bindings.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_ambient_occlusion_texture_bindings_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([2] s32), ambient_occlusion_texture_bindings.count * size_of([2] s32), ambient_occlusion_texture_bindings.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([2] s32), ambient_occlusion_texture_bindings.count * size_of([2] s32), ambient_occlusion_texture_bindings.data);
 
-
-    ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
-    if !ltw_success {
-        virtual_free(*first_fit_virtual_allocator, index);
-        return 0, 0, false;
-    }
 
     local_to_world_indices: [..] u32;
     for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data, .COPY);
 
     array_free(local_to_world_indices);
 

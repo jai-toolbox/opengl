@@ -308,6 +308,7 @@ GL_State_Metadata :: struct {
     integer_pixel_storage_parameters: [..] GL_Integer_State_Metadata;
 }
 
+// Read-only from the user's point of view; Better API wrappers are the only writers.
 gl_state_metadata: GL_State_Metadata;
 
 gl_track_buffer_binding :: (binding_target: GLenum, buffer: GLuint) {
@@ -395,10 +396,6 @@ gl_track_integer_pixel_storage_parameter :: (
         parameter_name = parameter_name,
         value = value,
     });
-}
-
-gl_get_tracked_state_metadata :: () -> *GL_State_Metadata {
-    return *gl_state_metadata;
 }
 
 gl_get_tracked_buffer_bound_to_binding_target :: (

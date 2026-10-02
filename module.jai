@@ -13,15 +13,15 @@ Then for the multi-shader renderable there is also a buffer object / queue rende
 #import "Basic";
 #import "Math";
 
-#import,file "first_fit_virtual_allocator.jai";
+#import,file "generation/first_fit_virtual_allocator.jai";
 
 #import "Hash_Table";
 #import "tbx/assets";
 
 #load "better_api.jai";
 #load "frame_budgeted.jai";
-#load "renderer_generation_per_shader.jai";
-#load "reflection_probe_resources.jai";
+#load "generation/renderer_generation_per_shader.jai";
+#load "utilities/reflection_probe_resources.jai";
 
 // opengl's coordinate system is only NDC space, everything else is something that you make up
 // and ndc space we have the following, the misconception can be understood here:
@@ -93,10 +93,10 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/gpu_style_pbr_directional_shadow_depth_skeletal_animation_renderer.jai";
 
 // #load "deferred_lighting.jai";
-#load "camera_infinite_grid.jai";
-#load "local_to_world_matrix_pool.jai";
-#load "skybox.jai";
-#load "hdr_post_process.jai";
+#load "utilities/camera_infinite_grid.jai";
+#load "generation/local_to_world_matrix_pool.jai";
+#load "utilities/skybox.jai";
+#load "utilities/hdr_post_process.jai";
 
 #if OS == .LINUX {
     X11 :: #import "X11";
@@ -216,4 +216,4 @@ set_vsync :: (value : bool) {
 
 // The shared tbx/ui module produces backend-neutral draw buffers. This file
 // owns the OpenGL implementation that uploads and renders those buffers.
-#load "ui.jai";
+#load "utilities/ui.jai";

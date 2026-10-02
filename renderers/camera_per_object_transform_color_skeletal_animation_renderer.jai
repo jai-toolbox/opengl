@@ -156,7 +156,7 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Skeleta
 
     index_buffer_gl_handle = gl_create_buffer();
     gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    // note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
     // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
     gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
     index_buffer_capacity_in_indices = cast(int) max_num_elements_in_each_buffer;
@@ -180,7 +180,11 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transform_Color_Skeleta
 }
 
 
-buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer, renderable : *$T/interface Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable) -> success: bool {
+buffer_object :: (
+    using renderer : *Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderer,
+    renderable : *$T/interface Camera_Per_Object_Transform_Color_Skeletal_Animation_Renderable,
+    budgeter: *GL_Budgeter = null,
+) -> success: bool {
 
 
     object_index, local_to_world_index, success := buffer_object(renderer,
@@ -189,7 +193,8 @@ buffer_object :: (using renderer : *Camera_Per_Object_Transform_Color_Skeletal_A
             renderable.positions,
             renderable.rgb_colors,
             renderable.bone_transform_indices,
-            renderable.bone_weights
+            renderable.bone_weights,
+            budgeter
     );
 
     if success {
@@ -207,7 +212,9 @@ buffer_object :: (
         positions : [..] Vector3,
         rgb_colors : [..] Vector3,
         bone_transform_indices : [..] [4] u32,
-        bone_weights : [..] [4] float32
+        bone_weights : [..] [4] float32,
+
+        budgeter: *GL_Budgeter = null
 
         ) -> object_index: u32, local_to_world_index: u32, success: bool {
 
@@ -222,6 +229,14 @@ buffer_object :: (
         return 0, 0, false;
     }
 
+    ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
+    if !ltw_success {
+        virtual_free(*first_fit_virtual_allocator, index);
+        return 0, 0, false;
+    }
+
+
+
     global_indices_for_object : [..] u32;
     for indices
         array_add(*global_indices_for_object, xx index + it);
@@ -233,35 +248,29 @@ buffer_object :: (
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_rgb_colors_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), rgb_colors.count * size_of(Vector3), rgb_colors.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector3), rgb_colors.count * size_of(Vector3), rgb_colors.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, bone_transform_indices_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([4] u32), bone_transform_indices.count * size_of([4] u32), bone_transform_indices.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([4] u32), bone_transform_indices.count * size_of([4] u32), bone_transform_indices.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, bone_weights_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of([4] float32), bone_weights.count * size_of([4] float32), bone_weights.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of([4] float32), bone_weights.count * size_of([4] float32), bone_weights.data);
 
-
-    ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
-    if !ltw_success {
-        virtual_free(*first_fit_virtual_allocator, index);
-        return 0, 0, false;
-    }
 
     local_to_world_indices: [..] u32;
     for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data, .COPY);
 
     array_free(local_to_world_indices);
 

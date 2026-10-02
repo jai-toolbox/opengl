@@ -815,7 +815,7 @@ shader_program_generation_visitor :: (info: *File_Visit_Info, _: *void) {
 
 create_code_to_render_stuff_with_shader_program_files :: (program_directory: string = "") {
     directory := program_directory;
-    if directory.count == 0 directory = tprint("%shaders/programs", #filepath);
+    if directory.count == 0 directory = tprint("%../shaders/programs", #filepath);
     visit_files(directory, recursive = false, null, shader_program_generation_visitor, visit_directories = false);
 }
 
@@ -964,7 +964,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
 
     output := normalize_generated_jai_source(builder_to_string(*builder));
 
-    renderers_dir := tprint("%/renderers", #filepath);
+    renderers_dir := tprint("%../renderers", #filepath);
     make_directory_if_it_does_not_exist(renderers_dir);
 
     filename := tprint("%/%_renderer.jai", renderers_dir, to_lower_copy(shader.name));
@@ -1495,7 +1495,7 @@ code_to_buffer_local_to_world_indices :: #string END
     for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data, .COPY_FOR_BUDGETER);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data, .COPY);
 
     array_free(local_to_world_indices);
 END;

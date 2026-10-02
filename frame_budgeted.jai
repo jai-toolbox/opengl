@@ -1,21 +1,16 @@
 /*
-Frame-budgeted OpenGL resource operations.
+Because you cannot just use a job system on opengl stuff because it can only 
+happen in the main thread then we need a system that can still allow us to run
+asynchronous logic when it comes to working with opengl. 
 
-The budgeter captures the object selected by the Better API when work is added. A
-later bind therefore cannot redirect an operation to the wrong buffer or
-texture. Processing still happens on the OpenGL/context thread, but only for a
-small time budget each frame.
-
-OpenGL calls themselves are atomic from the application's point of view. Large
-buffer updates are split into chunks before they reach OpenGL. Texture updates
-can likewise be split by row when bytes_per_row is supplied. Storage allocation
-and unsupported texture layouts remain one indivisible driver call.
-
-Borrowed source memory must remain valid until gl_budgeted_operations_complete
-returns true. COPY_FOR_BUDGETER is intended for stack data or other short-lived
-staging memory.
+This system is a solution to that. The solution is simple, break down big calls
+into a sequence of small calls which can make progress at realtime scale.
 */
 
+/*
+When you borrow source memory it must remain valid until gl_budgeted_operations_complete
+returns true. COPY is intended for stack data or other short-lived staging memory.
+*/
 GL_Budgeted_Data_Lifetime :: enum {
     BORROW_UNTIL_COMPLETE;
     COPY;
@@ -146,7 +141,7 @@ gl_budgeted_allocate_storage_for_buffer_bound_to_binding_target :: (
         kind = .ALLOCATE_BUFFER_STORAGE,
         binding_target = binding_target,
         captured_object = buffer,
-        captured_vertex_array = gl_get_tracked_state_metadata().vertex_array,
+        captured_vertex_array = gl_state_metadata.vertex_array,
         storage_byte_count = byte_count,
         usage = usage,
         data = copied_data,
@@ -211,7 +206,7 @@ gl_budgeted_update_subdata_in_buffer_bound_to_binding_target :: (
         kind = .UPDATE_BUFFER_SUBDATA,
         binding_target = binding_target,
         captured_object = buffer,
-        captured_vertex_array = gl_get_tracked_state_metadata().vertex_array,
+        captured_vertex_array = gl_state_metadata.vertex_array,
         byte_offset = byte_offset,
         data = budgeted_data,
         data_byte_count = cast(s64) byte_count,
@@ -270,7 +265,7 @@ gl_budgeted_define_1d_image_for_texture_bound_to_binding_target_of_active_textur
         kind = .DEFINE_TEXTURE_1D,
         binding_target = binding_target,
         captured_object = texture,
-        captured_texture_unit = gl_get_tracked_state_metadata().active_texture_unit,
+        captured_texture_unit = gl_state_metadata.active_texture_unit,
         mipmap_level = mipmap_level,
         internal_format = internal_format,
         width = width,
@@ -356,7 +351,7 @@ gl_budgeted_define_3d_image_for_texture_bound_to_binding_target_of_active_textur
         kind = .DEFINE_TEXTURE_3D,
         binding_target = binding_target,
         captured_object = texture,
-        captured_texture_unit = gl_get_tracked_state_metadata().active_texture_unit,
+        captured_texture_unit = gl_state_metadata.active_texture_unit,
         mipmap_level = mipmap_level,
         internal_format = internal_format,
         width = width,
@@ -454,7 +449,7 @@ gl_budgeted_update_3d_subimage_of_texture_bound_to_binding_target_of_active_text
         kind = .UPDATE_TEXTURE_3D_SUBIMAGE,
         binding_target = binding_target,
         captured_object = texture,
-        captured_texture_unit = gl_get_tracked_state_metadata().active_texture_unit,
+        captured_texture_unit = gl_state_metadata.active_texture_unit,
         mipmap_level = mipmap_level,
         x_offset = x_offset,
         y_offset = y_offset,
@@ -540,7 +535,7 @@ gl_budgeted_with_captured_buffer_bound :: (
     byte_count: GLsizeiptr,
     data: *void,
 ) {
-    previous_vertex_array := gl_get_tracked_state_metadata().vertex_array;
+    previous_vertex_array := gl_state_metadata.vertex_array;
     if operation.binding_target == GL_ELEMENT_ARRAY_BUFFER &&
        previous_vertex_array != operation.captured_vertex_array {
         gl_bind_vertex_array(operation.captured_vertex_array);
@@ -561,7 +556,7 @@ gl_budgeted_with_captured_buffer_bound :: (
 gl_budgeted_bind_captured_texture :: (
     operation: *GL_Budgeted_Operation,
 ) -> previous_active_unit: GLenum, previous_texture: GLuint {
-    active_unit := gl_get_tracked_state_metadata().active_texture_unit;
+    active_unit := gl_state_metadata.active_texture_unit;
     bound_texture := gl_get_tracked_texture_bound_to_binding_target_of_texture_unit(
         operation.binding_target, operation.captured_texture_unit);
     gl_set_active_texture_unit(operation.captured_texture_unit);
@@ -645,7 +640,7 @@ gl_process_one_budgeted_operation :: (budgeter: *GL_Budgeter) {
     }
 
     if operation.kind == .ALLOCATE_BUFFER_STORAGE {
-        previous_vertex_array := gl_get_tracked_state_metadata().vertex_array;
+        previous_vertex_array := gl_state_metadata.vertex_array;
         if operation.binding_target == GL_ELEMENT_ARRAY_BUFFER &&
            previous_vertex_array != operation.captured_vertex_array {
             gl_bind_vertex_array(operation.captured_vertex_array);

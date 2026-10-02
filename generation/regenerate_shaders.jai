@@ -4,10 +4,10 @@
 #import "Process";
 
 // Loading this file runs the legacy GLSL include preprocessor first.
-#load "shaders/compile_shaders.jai";
+#load "../shaders/compile_shaders.jai";
 
 run_opengl_shader_generation_tool :: (source_path: string, output_name: string) {
-    output_directory := tprint("%../../../.build/opengl_shader_tools/", #filepath);
+    output_directory := tprint("%../../../../.build/opengl_shader_tools/", #filepath);
     make_directory_if_it_does_not_exist(output_directory, recursive = true);
 
     workspace := compiler_create_workspace(output_name);
@@ -19,7 +19,7 @@ run_opengl_shader_generation_tool :: (source_path: string, output_name: string) 
 
     import_path: [..] string;
     array_add(*import_path, ..options.import_path);
-    array_add(*import_path, tprint("%../../", #filepath));
+    array_add(*import_path, tprint("%../../../", #filepath));
     options.import_path = import_path;
     set_build_options(options, workspace);
 
@@ -38,7 +38,7 @@ run_opengl_shader_generation_tool :: (source_path: string, output_name: string) 
 
     executable_path := tprint("%%", output_directory, output_name);
     #if OS == .WINDOWS executable_path = tprint("%.exe", executable_path);
-    project_root := tprint("%../../../", #filepath);
+    project_root := tprint("%../../../../", #filepath);
     result := run_command(executable_path, working_directory = project_root);
     if result.exit_code != 0 {
         log_error("% failed with exit code %", output_name, result.exit_code);
@@ -49,11 +49,11 @@ run_opengl_shader_generation_tool :: (source_path: string, output_name: string) 
 #run {
     set_build_options_dc(.{do_output = false});
     run_opengl_shader_generation_tool(
-        tprint("%tools/generate_gpu_style_shaders.jai", #filepath),
+        tprint("%../tools/generate_gpu_style_shaders.jai", #filepath),
         "generate_gpu_style_shaders"
     );
     run_opengl_shader_generation_tool(
-        tprint("%tools/generate_shader_renderers.jai", #filepath),
+        tprint("%../tools/generate_shader_renderers.jai", #filepath),
         "generate_shader_renderers"
     );
 }

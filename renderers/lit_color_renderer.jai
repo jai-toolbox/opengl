@@ -135,7 +135,7 @@ init_buffers_no_data :: (using apcr : *Lit_Color_Renderer) { // todo change rend
 
     index_buffer_gl_handle = gl_create_buffer();
     gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
-    // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
+    // note: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
     // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
     gl_allocate_storage_for_buffer_bound_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) * max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
     index_buffer_capacity_in_indices = cast(int) max_num_elements_in_each_buffer;
@@ -156,7 +156,11 @@ init_buffers_no_data :: (using apcr : *Lit_Color_Renderer) { // todo change rend
 }
 
 
-buffer_object :: (using renderer : *Lit_Color_Renderer, renderable : *$T/interface Lit_Color_Renderable) -> success: bool {
+buffer_object :: (
+    using renderer : *Lit_Color_Renderer,
+    renderable : *$T/interface Lit_Color_Renderable,
+    budgeter: *GL_Budgeter = null,
+) -> success: bool {
 
 
     object_index, success := buffer_object(renderer,
@@ -164,7 +168,8 @@ buffer_object :: (using renderer : *Lit_Color_Renderer, renderable : *$T/interfa
 
             renderable.positions,
             renderable.normals,
-            renderable.colors
+            renderable.colors,
+            budgeter
     );
 
     if success {
@@ -180,7 +185,9 @@ buffer_object :: (
         indices : [..] u32,
         positions : [..] Vector3,
         normals : [..] Vector3,
-        colors : [..] Vector3
+        colors : [..] Vector3,
+
+        budgeter: *GL_Budgeter = null
 
         ) -> object_index: u32, success: bool {
 
@@ -195,6 +202,8 @@ buffer_object :: (
         return 0, false;
     }
 
+
+
     global_indices_for_object : [..] u32;
     for indices
         array_add(*global_indices_for_object, xx index + it);
@@ -206,17 +215,17 @@ buffer_object :: (
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, normals_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector3), normals.count * size_of(Vector3), normals.data);
 
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, colors_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(Vector3), colors.count * size_of(Vector3), colors.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(Vector3), colors.count * size_of(Vector3), colors.data);
 
 
 
