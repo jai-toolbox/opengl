@@ -93,9 +93,9 @@ Reflection_Probe_Resources :: struct {
 }
 
 deinit :: (resources: *Reflection_Probe_Resources) {
-    if resources.cubemap_array_gl_handle != 0 glDeleteTextures(1, *resources.cubemap_array_gl_handle);
-    if resources.proxy_texture_gl_handle != 0 glDeleteTextures(1, *resources.proxy_texture_gl_handle);
-    if resources.proxy_buffer_gl_handle != 0 glDeleteBuffers(1, *resources.proxy_buffer_gl_handle);
+    if resources.cubemap_array_gl_handle != 0 gl_delete_texture(resources.cubemap_array_gl_handle);
+    if resources.proxy_texture_gl_handle != 0 gl_delete_texture(resources.proxy_texture_gl_handle);
+    if resources.proxy_buffer_gl_handle != 0 gl_delete_buffer(resources.proxy_buffer_gl_handle);
     array_free(resources.captures);
     resources.* = .{};
 }
@@ -196,7 +196,7 @@ load_reflection_probe_resources :: (path: string, gl33_face_array: bool = false)
     TextureTarget: GLenum = cast(GLenum) (ifx gl33_face_array then GL_TEXTURE_2D_ARRAY else GL_TEXTURE_CUBE_MAP_ARRAY);
     result.cubemap_faces_are_2d_array = gl33_face_array;
     glGenTextures(1, *result.cubemap_array_gl_handle);
-    glBindTexture(TextureTarget, result.cubemap_array_gl_handle);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(TextureTarget, result.cubemap_array_gl_handle);
     for mip: 0..result.num_mips-1 {
         mip_size := max(1, result.cubemap_size >> mip);
         glTexImage3D(TextureTarget, cast(GLint) mip, cast(GLint) GL_RGBA16F,
@@ -244,7 +244,7 @@ load_reflection_probe_resources :: (path: string, gl33_face_array: bool = false)
             }
         }
     }
-    glBindTexture(TextureTarget, 0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(TextureTarget, 0);
 
     proxy_data: [..] float32;
     defer array_free(proxy_data);
@@ -263,12 +263,12 @@ load_reflection_probe_resources :: (path: string, gl33_face_array: bool = false)
     }
 
     glGenBuffers(1, *result.proxy_buffer_gl_handle);
-    glBindBuffer(GL_TEXTURE_BUFFER, result.proxy_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_TEXTURE_BUFFER, result.proxy_buffer_gl_handle);
     glBufferData(GL_TEXTURE_BUFFER, proxy_data.count * size_of(float32), proxy_data.data, GL_STATIC_DRAW);
     glGenTextures(1, *result.proxy_texture_gl_handle);
-    glBindTexture(GL_TEXTURE_BUFFER, result.proxy_texture_gl_handle);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_BUFFER, result.proxy_texture_gl_handle);
     glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, result.proxy_buffer_gl_handle);
-    glBindTexture(GL_TEXTURE_BUFFER, 0);
-    glBindBuffer(GL_TEXTURE_BUFFER, 0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_BUFFER, 0);
+    gl_bind_buffer_to_binding_target(GL_TEXTURE_BUFFER, 0);
     return result, true;
 }

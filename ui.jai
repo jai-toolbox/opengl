@@ -55,19 +55,19 @@ init_opengl_ui_image_renderer_attribute :: (
     name: *u8,
     component_count: GLint
 ) {
-    glBindVertexArray(vertex_array);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    gl_bind_vertex_array(vertex_array);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, buffer);
     location := glGetAttribLocation(shader_program, name);
     if location >= 0 {
         glEnableVertexAttribArray(cast(GLuint) location);
         glVertexAttribPointer(cast(GLuint) location, component_count, GL_FLOAT, GL_FALSE, 0, null);
     }
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 }
 
 init_opengl_ui_image_renderer_buffer :: (buffer: *GLuint, element_size: s64) {
     glGenBuffers(1, buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer.*);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, buffer.*);
     glBufferData(GL_ARRAY_BUFFER, UI.UI_RENDER_BATCH_MAX_VERTICES * element_size, null, GL_STREAM_DRAW);
 }
 
@@ -78,9 +78,9 @@ init :: (renderer: *OpenGL_UI_Image_Renderer) -> success: bool {
     renderer.texture_sampler_uniform_location = glGetUniformLocation(shader_program, "texture_sampler");
 
     glGenVertexArrays(1, *renderer.vertex_array);
-    glBindVertexArray(renderer.vertex_array);
+    gl_bind_vertex_array(renderer.vertex_array);
     glGenBuffers(1, *renderer.index_buffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renderer.index_buffer);
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, renderer.index_buffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, UI.UI_RENDER_BATCH_MAX_INDICES * size_of(u32), null, GL_STREAM_DRAW);
 
     init_opengl_ui_image_renderer_buffer(*renderer.position_buffer, size_of(Vector3));
@@ -90,18 +90,18 @@ init :: (renderer: *OpenGL_UI_Image_Renderer) -> success: bool {
     init_opengl_ui_image_renderer_buffer(*renderer.rgba_color_buffer, size_of(Vector4));
     init_opengl_ui_image_renderer_attribute(shader_program, renderer.vertex_array, renderer.rgba_color_buffer, "rgba_color_in", 4);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, 0);
+    gl_bind_vertex_array(0);
     return true;
 }
 
 deinit :: (renderer: *OpenGL_UI_Image_Renderer) {
-    if renderer.shader_program           glDeleteProgram(renderer.shader_program);
-    if renderer.vertex_array             glDeleteVertexArrays(1, *renderer.vertex_array);
-    if renderer.index_buffer             glDeleteBuffers(1, *renderer.index_buffer);
-    if renderer.position_buffer          glDeleteBuffers(1, *renderer.position_buffer);
-    if renderer.texture_coordinate_buffer glDeleteBuffers(1, *renderer.texture_coordinate_buffer);
-    if renderer.rgba_color_buffer        glDeleteBuffers(1, *renderer.rgba_color_buffer);
+    if renderer.shader_program           gl_delete_shader_program(renderer.shader_program);
+    if renderer.vertex_array             gl_delete_vertex_array(renderer.vertex_array);
+    if renderer.index_buffer             gl_delete_buffer(renderer.index_buffer);
+    if renderer.position_buffer          gl_delete_buffer(renderer.position_buffer);
+    if renderer.texture_coordinate_buffer gl_delete_buffer(renderer.texture_coordinate_buffer);
+    if renderer.rgba_color_buffer        gl_delete_buffer(renderer.rgba_color_buffer);
     renderer.* = .{};
 }
 
@@ -121,15 +121,15 @@ upload_msdf_font_atlas_to_opengl :: (
     defer stbi_image_free(pixels);
 
     glGenTextures(1, *renderer.font_atlas_texture);
-    glBindTexture(GL_TEXTURE_2D, renderer.font_atlas_texture);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, renderer.font_atlas_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    gl_set_integer_pixel_storage_parameter(GL_UNPACK_ALIGNMENT, 4);
+    gl_set_integer_pixel_storage_parameter(GL_UNPACK_ROW_LENGTH, 0);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, xx width, xx height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, 0);
 
     font.texture_handle = cast(UI.UI_Texture_Handle) renderer.font_atlas_texture;
     return true;
@@ -157,7 +157,7 @@ init :: (
 }
 
 deinit :: (renderer: *OpenGL_UI_Renderer) {
-    if renderer.font_atlas_texture glDeleteTextures(1, *renderer.font_atlas_texture);
+    if renderer.font_atlas_texture gl_delete_texture(renderer.font_atlas_texture);
     deinit(*renderer.image_renderer);
     deinit(*renderer.text_renderer);
     deinit(*renderer.geometry_renderer);
@@ -167,54 +167,54 @@ deinit :: (renderer: *OpenGL_UI_Renderer) {
 upload_opengl_ui_draw_buffers :: (renderer: *OpenGL_UI_Renderer, buffers: *UI.UI_Frame_Draw_Buffers) {
     if buffers.geometry_indices.count > 0 {
         geometry := *renderer.geometry_renderer;
-        glBindVertexArray(geometry.immediate_vertex_attribute_array_gl_handle);
-        glBindBuffer(GL_ARRAY_BUFFER, geometry.immediate_positions_buffer_gl_handle);
+        gl_bind_vertex_array(geometry.immediate_vertex_attribute_array_gl_handle);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, geometry.immediate_positions_buffer_gl_handle);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.geometry_positions.count * size_of(Vector3), buffers.geometry_positions.data);
-        glBindBuffer(GL_ARRAY_BUFFER, geometry.immediate_passthrough_rgba_colors_buffer_gl_handle);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, geometry.immediate_passthrough_rgba_colors_buffer_gl_handle);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.geometry_rgba_colors.count * size_of(Vector4), buffers.geometry_rgba_colors.data);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry.immediate_index_buffer_gl_handle);
+        gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, geometry.immediate_index_buffer_gl_handle);
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, buffers.geometry_indices.count * size_of(u32), buffers.geometry_indices.data);
     }
 
     if buffers.image_indices.count > 0 {
         image := *renderer.image_renderer;
-        glBindVertexArray(image.vertex_array);
-        glBindBuffer(GL_ARRAY_BUFFER, image.position_buffer);
+        gl_bind_vertex_array(image.vertex_array);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, image.position_buffer);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.image_positions.count * size_of(Vector3), buffers.image_positions.data);
-        glBindBuffer(GL_ARRAY_BUFFER, image.texture_coordinate_buffer);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, image.texture_coordinate_buffer);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.image_texture_coordinates.count * size_of(Vector2), buffers.image_texture_coordinates.data);
-        glBindBuffer(GL_ARRAY_BUFFER, image.rgba_color_buffer);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, image.rgba_color_buffer);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.image_rgba_colors.count * size_of(Vector4), buffers.image_rgba_colors.data);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, image.index_buffer);
+        gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, image.index_buffer);
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, buffers.image_indices.count * size_of(u32), buffers.image_indices.data);
     }
 
     if buffers.text_indices.count > 0 {
         text := *renderer.text_renderer;
-        glBindVertexArray(text.immediate_vertex_attribute_array_gl_handle);
+        gl_bind_vertex_array(text.immediate_vertex_attribute_array_gl_handle);
 
         if buffers.text_positions.count > renderer.text_vertex_capacity {
             while renderer.text_vertex_capacity < buffers.text_positions.count renderer.text_vertex_capacity *= 2;
-            glBindBuffer(GL_ARRAY_BUFFER, text.immediate_positions_buffer_gl_handle);
+            gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, text.immediate_positions_buffer_gl_handle);
             glBufferData(GL_ARRAY_BUFFER, renderer.text_vertex_capacity * size_of(Vector3), null, GL_STREAM_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, text.immediate_passthrough_texture_coordinates_buffer_gl_handle);
+            gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, text.immediate_passthrough_texture_coordinates_buffer_gl_handle);
             glBufferData(GL_ARRAY_BUFFER, renderer.text_vertex_capacity * size_of(Vector2), null, GL_STREAM_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, text.immediate_passthrough_rgba_colors_buffer_gl_handle);
+            gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, text.immediate_passthrough_rgba_colors_buffer_gl_handle);
             glBufferData(GL_ARRAY_BUFFER, renderer.text_vertex_capacity * size_of(Vector4), null, GL_STREAM_DRAW);
         }
         if buffers.text_indices.count > renderer.text_index_capacity {
             while renderer.text_index_capacity < buffers.text_indices.count renderer.text_index_capacity *= 2;
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, text.immediate_index_buffer_gl_handle);
+            gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, text.immediate_index_buffer_gl_handle);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, renderer.text_index_capacity * size_of(u32), null, GL_STREAM_DRAW);
         }
 
-        glBindBuffer(GL_ARRAY_BUFFER, text.immediate_positions_buffer_gl_handle);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, text.immediate_positions_buffer_gl_handle);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.text_positions.count * size_of(Vector3), buffers.text_positions.data);
-        glBindBuffer(GL_ARRAY_BUFFER, text.immediate_passthrough_texture_coordinates_buffer_gl_handle);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, text.immediate_passthrough_texture_coordinates_buffer_gl_handle);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.text_texture_coordinates.count * size_of(Vector2), buffers.text_texture_coordinates.data);
-        glBindBuffer(GL_ARRAY_BUFFER, text.immediate_passthrough_rgba_colors_buffer_gl_handle);
+        gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, text.immediate_passthrough_rgba_colors_buffer_gl_handle);
         glBufferSubData(GL_ARRAY_BUFFER, 0, buffers.text_rgba_colors.count * size_of(Vector4), buffers.text_rgba_colors.data);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, text.immediate_index_buffer_gl_handle);
+        gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, text.immediate_index_buffer_gl_handle);
         glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, buffers.text_indices.count * size_of(u32), buffers.text_indices.data);
     }
 }
@@ -239,10 +239,10 @@ render_opengl_ui_command_list :: (
                 if command.index_count == 0 continue;
                 if !active_type_is_set || active_type != .GEOMETRY {
                     geometry := *renderer.geometry_renderer;
-                    glUseProgram(geometry.shader_program_gl_handle);
+                    gl_set_active_shader_program(geometry.shader_program_gl_handle);
                     set_aspect_ratio_uniform(geometry, .{1.0, 1.0});
-                    glBindVertexArray(geometry.immediate_vertex_attribute_array_gl_handle);
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, geometry.immediate_index_buffer_gl_handle);
+                    gl_bind_vertex_array(geometry.immediate_vertex_attribute_array_gl_handle);
+                    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, geometry.immediate_index_buffer_gl_handle);
                     active_type = .GEOMETRY;
                     active_type_is_set = true;
                 }
@@ -253,11 +253,11 @@ render_opengl_ui_command_list :: (
                 font := ifx command.font != null then command.font else ui_context.font;
                 if !active_type_is_set || active_type != .TEXT || active_text_font != font || active_text_size != command.font_size {
                     text := *renderer.text_renderer;
-                    glUseProgram(text.shader_program_gl_handle);
-                    glBindVertexArray(text.immediate_vertex_attribute_array_gl_handle);
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, text.immediate_index_buffer_gl_handle);
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, cast(GLuint) font.texture_handle);
+                    gl_set_active_shader_program(text.shader_program_gl_handle);
+                    gl_bind_vertex_array(text.immediate_vertex_attribute_array_gl_handle);
+                    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, text.immediate_index_buffer_gl_handle);
+                    gl_set_active_texture_unit(GL_TEXTURE0);
+                    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, cast(GLuint) font.texture_handle);
                     set_texture_sampler_uniform(text, 0);
                     set_aspect_ratio_uniform(text, .{1.0, 1.0});
                     gl_set_uniform_1f_on_active_shader_program(
@@ -276,11 +276,11 @@ render_opengl_ui_command_list :: (
                 texture := cast(GLuint) command.texture_handle;
                 if !active_type_is_set || active_type != .IMAGE || active_image_texture != texture {
                     image := *renderer.image_renderer;
-                    glUseProgram(image.shader_program);
-                    glBindVertexArray(image.vertex_array);
-                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, image.index_buffer);
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, texture);
+                    gl_set_active_shader_program(image.shader_program);
+                    gl_bind_vertex_array(image.vertex_array);
+                    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, image.index_buffer);
+                    gl_set_active_texture_unit(GL_TEXTURE0);
+                    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, texture);
                     gl_set_uniform_1i_on_active_shader_program(image.texture_sampler_uniform_location, 0);
                     active_type = .IMAGE;
                     active_type_is_set = true;
@@ -321,8 +321,8 @@ render_ui_draw_data_with_opengl :: (renderer: *OpenGL_UI_Renderer, ui_context: *
     }
 
     glDisable(GL_SCISSOR_TEST);
-    glBindVertexArray(0);
-    glUseProgram(0);
+    gl_bind_vertex_array(0);
+    gl_clear_active_shader_program();
     if depth_test_was_enabled glEnable(GL_DEPTH_TEST);
     else glDisable(GL_DEPTH_TEST);
     glDepthMask(depth_write_was_enabled);
@@ -332,9 +332,9 @@ opengl_ui_render_target_deinit :: (backend_user_data: *void, target: *UI.UI_Rend
     framebuffer := cast(GLuint) target.backend_framebuffer_handle;
     color_texture := cast(GLuint) target.texture_handle;
     depth_buffer := cast(GLuint) target.backend_depth_buffer_handle;
-    if framebuffer glDeleteFramebuffers(1, *framebuffer);
-    if color_texture glDeleteTextures(1, *color_texture);
-    if depth_buffer glDeleteRenderbuffers(1, *depth_buffer);
+    if framebuffer gl_delete_framebuffer(framebuffer);
+    if color_texture gl_delete_texture(color_texture);
+    if depth_buffer gl_delete_renderbuffer(depth_buffer);
     target.texture_handle = UI.UI_TEXTURE_HANDLE_NONE;
     target.backend_framebuffer_handle = 0;
     target.backend_depth_buffer_handle = 0;
@@ -355,7 +355,7 @@ opengl_ui_render_target_ensure_size :: (
 
     color_texture, depth_buffer, framebuffer: GLuint;
     glGenTextures(1, *color_texture);
-    glBindTexture(GL_TEXTURE_2D, color_texture);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, color_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, xx width, xx height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -363,15 +363,15 @@ opengl_ui_render_target_ensure_size :: (
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glGenRenderbuffers(1, *depth_buffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer);
+    gl_bind_renderbuffer(depth_buffer);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, xx width, xx height);
 
     glGenFramebuffers(1, *framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, framebuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_texture, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer);
     complete := glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, 0);
     if !complete {
         opengl_ui_render_target_deinit(backend_user_data, target);
         return false;
@@ -391,7 +391,7 @@ opengl_ui_render_target_begin :: (backend_user_data: *void, target: *UI.UI_Rende
     glGetIntegerv(GL_FRAMEBUFFER_BINDING, *previous_framebuffer);
     glGetIntegerv(GL_VIEWPORT, target.backend_previous_viewport.data);
     target.backend_previous_framebuffer_handle = cast(u64) previous_framebuffer;
-    glBindFramebuffer(GL_FRAMEBUFFER, cast(GLuint) target.backend_framebuffer_handle);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, cast(GLuint) target.backend_framebuffer_handle);
     glViewport(0, 0, xx target.width, xx target.height);
     target.active = true;
     return true;
@@ -399,7 +399,7 @@ opengl_ui_render_target_begin :: (backend_user_data: *void, target: *UI.UI_Rende
 
 opengl_ui_render_target_end :: (backend_user_data: *void, target: *UI.UI_Render_Target) {
     if !target.active return;
-    glBindFramebuffer(GL_FRAMEBUFFER, cast(GLuint) target.backend_previous_framebuffer_handle);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, cast(GLuint) target.backend_previous_framebuffer_handle);
     glViewport(
         target.backend_previous_viewport[0],
         target.backend_previous_viewport[1],

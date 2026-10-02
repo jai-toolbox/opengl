@@ -6,18 +6,21 @@ uniform sampler2D selected_depth_texture;
 uniform sampler2D scene_depth_texture;
 uniform vec4 rgba_color;
 uniform float occluded_alpha = 0.32;
-// Three representable steps of a 24-bit depth buffer cover quantization noise
-// without treating meaningfully separated surfaces as coplanar.
+/*
+three representable steps of a 24-bit depth buffer cover quantization noise
+without treating meaningfully separated surfaces as coplanar.
+*/
 uniform float depth_epsilon = 3.0 / 8388608.0;
-// Pixel thickness is retained for compatibility with the existing UI setting.
+// pixel thickness is retained for compatibility with the existing ui setting.
 uniform uint thickness_px = 2u;
+uniform vec2 viewport_origin;
 
 void main() {
-    ivec2 pixel = ivec2(gl_FragCoord.xy);
+    ivec2 pixel = ivec2(gl_FragCoord.xy - viewport_origin);
     ivec2 texture_size = textureSize(selected_depth_texture, 0);
     float center_depth = texelFetch(selected_depth_texture, pixel, 0).r;
 
-    // Draw outside the selected silhouette, not over its surface.
+    // draw outside the selected silhouette, not over its surface.
     if (center_depth < 1.0) {
         discard;
     }

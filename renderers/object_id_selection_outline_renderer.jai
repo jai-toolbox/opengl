@@ -17,6 +17,7 @@ Object_Id_Selection_Outline_Renderer :: struct {
     occluded_alpha_uniform_location : GLint = -1;
     depth_epsilon_uniform_location : GLint = -1;
     thickness_px_uniform_location : GLint = -1;
+    viewport_origin_uniform_location : GLint = -1;
 
 
 
@@ -47,6 +48,10 @@ set_thickness_px_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer, v
     gl_set_uniform_1ui_on_active_shader_program(renderer.thickness_px_uniform_location, v);
 }
 
+set_viewport_origin_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer, v: Vector2) {
+    gl_set_uniform_2f_on_active_shader_program(renderer.viewport_origin_uniform_location, v.x, v.y);
+}
+
 init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
     vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/fullscreen_quad.vert", #filepath));
     fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/object_id_selection_outline.frag", #filepath));
@@ -61,6 +66,7 @@ init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
     occluded_alpha_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "occluded_alpha");
     depth_epsilon_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "depth_epsilon");
     thickness_px_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "thickness_px");
+    viewport_origin_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "viewport_origin");
 
 }
 

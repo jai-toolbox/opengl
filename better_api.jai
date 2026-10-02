@@ -1,10 +1,21 @@
 /*
+
+motivation:
+    When you use opengl the function calls are annoying because they assume that you remember what internal
+    state that they modify. When you use opengl all the time that's not a problem, but when you take a break from it
+    or come back to some old code, sometimes you forget what its actually doing.
+
+    Additionally as vulkan is becoming the future, remembering this api becomes less and less appealing.
+
+    Instead we take a different approach, make proc names that are super long and detailed so you can free up
+    your brain to think about real problems rather than an arbitrary api.
+
+    Additionally we cheaply keep track of the opengl state in a mirrored state struct so that you can query it
+    without having to ask the gpu about it all the time. Yes two source of truths is bad, but this data is read only
+    from your pov so who cares.
+
+
 terminology used by this OpenGL wrapper file
-
-the definitions are ordered so each definition only depends on terminology
-introduced above it.
-
-fundamental OpenGL concepts
 
 - driver or implementation: the software that implements OpenGL and translates
   API calls into work for the graphics hardware.
@@ -240,6 +251,215 @@ these explicit names expose state that the original OpenGL function names leave
 implicit.
 */
 
+/*
+The metadata below shadows the binding state changed through this wrapper. It
+is intentionally small and CPU-only. Deferred OpenGL work can use it to capture
+the object selected when work is queued, without calling glGet* or depending on
+the bindings that happen to exist when that work is later resumed.
+
+This metadata is authoritative only when state-changing calls go through this
+file. It currently represents one OpenGL context, which matches the way the
+module is used today.
+*/
+
+GL_Buffer_Binding_Metadata :: struct {
+    binding_target: GLenum;
+    buffer: GLuint;
+}
+
+GL_Indexed_Buffer_Binding_Metadata :: struct {
+    binding_target: GLenum;
+    binding_point: GLuint;
+    buffer: GLuint;
+}
+
+GL_Texture_Binding_Metadata :: struct {
+    texture_unit: GLenum;
+    binding_target: GLenum;
+    texture: GLuint;
+}
+
+GL_Vertex_Array_Binding_Metadata :: struct {
+    vertex_array: GLuint;
+    element_array_buffer: GLuint;
+}
+
+GL_Integer_State_Metadata :: struct {
+    parameter_name: GLenum;
+    value: GLint;
+}
+
+GL_State_Metadata :: struct {
+    active_shader_program: GLuint;
+    active_texture_unit: GLenum = GL_TEXTURE0;
+
+    buffer_bindings: [..] GL_Buffer_Binding_Metadata;
+    indexed_buffer_bindings: [..] GL_Indexed_Buffer_Binding_Metadata;
+    texture_bindings: [..] GL_Texture_Binding_Metadata;
+
+    vertex_array: GLuint;
+    element_array_buffer: GLuint;
+    vertex_array_bindings: [..] GL_Vertex_Array_Binding_Metadata;
+
+    draw_framebuffer: GLuint;
+    read_framebuffer: GLuint;
+    renderbuffer: GLuint;
+
+    integer_pixel_storage_parameters: [..] GL_Integer_State_Metadata;
+}
+
+gl_state_metadata: GL_State_Metadata;
+
+gl_track_buffer_binding :: (binding_target: GLenum, buffer: GLuint) {
+    if binding_target == GL_ELEMENT_ARRAY_BUFFER {
+        gl_state_metadata.element_array_buffer = buffer;
+
+        for *binding: gl_state_metadata.vertex_array_bindings {
+            if binding.vertex_array == gl_state_metadata.vertex_array {
+                binding.element_array_buffer = buffer;
+                return;
+            }
+        }
+
+        array_add(*gl_state_metadata.vertex_array_bindings, .{
+            vertex_array = gl_state_metadata.vertex_array,
+            element_array_buffer = buffer,
+        });
+        return;
+    }
+
+    for *binding: gl_state_metadata.buffer_bindings {
+        if binding.binding_target == binding_target {
+            binding.buffer = buffer;
+            return;
+        }
+    }
+
+    array_add(*gl_state_metadata.buffer_bindings, .{
+        binding_target = binding_target,
+        buffer = buffer,
+    });
+}
+
+gl_track_indexed_buffer_binding :: (
+    binding_target: GLenum,
+    binding_point: GLuint,
+    buffer: GLuint,
+) {
+    for *binding: gl_state_metadata.indexed_buffer_bindings {
+        if binding.binding_target == binding_target &&
+           binding.binding_point == binding_point {
+            binding.buffer = buffer;
+            return;
+        }
+    }
+
+    array_add(*gl_state_metadata.indexed_buffer_bindings, .{
+        binding_target = binding_target,
+        binding_point = binding_point,
+        buffer = buffer,
+    });
+}
+
+gl_track_texture_binding_of_active_texture_unit :: (
+    binding_target: GLenum,
+    texture: GLuint,
+) {
+    for *binding: gl_state_metadata.texture_bindings {
+        if binding.texture_unit == gl_state_metadata.active_texture_unit &&
+           binding.binding_target == binding_target {
+            binding.texture = texture;
+            return;
+        }
+    }
+
+    array_add(*gl_state_metadata.texture_bindings, .{
+        texture_unit = gl_state_metadata.active_texture_unit,
+        binding_target = binding_target,
+        texture = texture,
+    });
+}
+
+gl_track_integer_pixel_storage_parameter :: (
+    parameter_name: GLenum,
+    value: GLint,
+) {
+    for *parameter: gl_state_metadata.integer_pixel_storage_parameters {
+        if parameter.parameter_name == parameter_name {
+            parameter.value = value;
+            return;
+        }
+    }
+
+    array_add(*gl_state_metadata.integer_pixel_storage_parameters, .{
+        parameter_name = parameter_name,
+        value = value,
+    });
+}
+
+gl_get_tracked_state_metadata :: () -> *GL_State_Metadata {
+    return *gl_state_metadata;
+}
+
+gl_get_tracked_buffer_bound_to_binding_target :: (
+    binding_target: GLenum,
+) -> GLuint {
+    if binding_target == GL_ELEMENT_ARRAY_BUFFER {
+        return gl_state_metadata.element_array_buffer;
+    }
+
+    for binding: gl_state_metadata.buffer_bindings {
+        if binding.binding_target == binding_target return binding.buffer;
+    }
+    return 0;
+}
+
+gl_get_tracked_buffer_bound_to_indexed_binding_point_of_binding_target :: (
+    binding_target: GLenum,
+    binding_point: GLuint,
+) -> GLuint {
+    for binding: gl_state_metadata.indexed_buffer_bindings {
+        if binding.binding_target == binding_target &&
+           binding.binding_point == binding_point {
+            return binding.buffer;
+        }
+    }
+    return 0;
+}
+
+gl_get_tracked_texture_bound_to_binding_target_of_texture_unit :: (
+    binding_target: GLenum,
+    texture_unit: GLenum,
+) -> GLuint {
+    for binding: gl_state_metadata.texture_bindings {
+        if binding.texture_unit == texture_unit &&
+           binding.binding_target == binding_target {
+            return binding.texture;
+        }
+    }
+    return 0;
+}
+
+gl_get_tracked_texture_bound_to_binding_target_of_active_texture_unit :: (
+    binding_target: GLenum,
+) -> GLuint {
+    return gl_get_tracked_texture_bound_to_binding_target_of_texture_unit(
+        binding_target,
+        gl_state_metadata.active_texture_unit,
+    );
+}
+
+gl_get_tracked_integer_pixel_storage_parameter :: (
+    parameter_name: GLenum,
+) -> value: GLint, was_set: bool {
+    for parameter: gl_state_metadata.integer_pixel_storage_parameters {
+        if parameter.parameter_name == parameter_name {
+            return parameter.value, true;
+        }
+    }
+    return 0, false;
+}
+
 enable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
 disable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
 
@@ -274,16 +494,25 @@ gl_set_separate_blend_function :: (
 
 gl_clear_depth_buffer :: () { glClear(GL_DEPTH_BUFFER_BIT); }
 
-gl_set_active_shader_program :: (program: GLuint) { glUseProgram(program); }
-gl_clear_active_shader_program :: () { glUseProgram(0); }
+gl_set_active_shader_program :: (program: GLuint) {
+    glUseProgram(program);
+    gl_state_metadata.active_shader_program = program;
+}
+
+gl_clear_active_shader_program :: () {
+    glUseProgram(0);
+    gl_state_metadata.active_shader_program = 0;
+}
 gl_delete_shader_program :: (program: GLuint) { glDeleteProgram(program); }
 
 gl_set_active_texture_unit :: (texture_unit: GLenum) {
     glActiveTexture(texture_unit);
+    gl_state_metadata.active_texture_unit = texture_unit;
 }
 
 gl_bind_texture_to_binding_target_of_active_texture_unit :: (target: GLenum, texture: GLuint) {
     glBindTexture(target, texture);
+    gl_track_texture_binding_of_active_texture_unit(target, texture);
 }
 
 gl_define_texture_2d_image_for_active_texture_unit :: glTexImage2D;
@@ -407,6 +636,7 @@ gl_set_integer_pixel_storage_parameter :: (
     parameter_value: GLint,
 ) {
     glPixelStorei(parameter_name, parameter_value);
+    gl_track_integer_pixel_storage_parameter(parameter_name, parameter_value);
 }
 
 gl_create_texture :: () -> GLuint {
@@ -422,11 +652,19 @@ gl_create_textures :: (textures: [] GLuint) {
 
 gl_delete_texture :: (texture: GLuint) {
     glDeleteTextures(1, *texture);
+    for *binding: gl_state_metadata.texture_bindings {
+        if binding.texture == texture binding.texture = 0;
+    }
 }
 
 gl_delete_textures :: (textures: [] GLuint) {
     if textures.count == 0 return;
     glDeleteTextures(cast(GLsizei) textures.count, textures.data);
+    for texture: textures {
+        for *binding: gl_state_metadata.texture_bindings {
+            if binding.texture == texture binding.texture = 0;
+        }
+    }
 }
 
 gl_create_framebuffer :: () -> GLuint {
@@ -437,6 +675,12 @@ gl_create_framebuffer :: () -> GLuint {
 
 gl_delete_framebuffer :: (framebuffer: GLuint) {
     glDeleteFramebuffers(1, *framebuffer);
+    if gl_state_metadata.draw_framebuffer == framebuffer {
+        gl_state_metadata.draw_framebuffer = 0;
+    }
+    if gl_state_metadata.read_framebuffer == framebuffer {
+        gl_state_metadata.read_framebuffer = 0;
+    }
 }
 
 gl_create_renderbuffer :: () -> GLuint {
@@ -447,6 +691,9 @@ gl_create_renderbuffer :: () -> GLuint {
 
 gl_delete_renderbuffer :: (renderbuffer: GLuint) {
     glDeleteRenderbuffers(1, *renderbuffer);
+    if gl_state_metadata.renderbuffer == renderbuffer {
+        gl_state_metadata.renderbuffer = 0;
+    }
 }
 
 gl_create_vertex_array :: () -> GLuint {
@@ -457,6 +704,16 @@ gl_create_vertex_array :: () -> GLuint {
 
 gl_delete_vertex_array :: (vertex_array: GLuint) {
     glDeleteVertexArrays(1, *vertex_array);
+    for *binding: gl_state_metadata.vertex_array_bindings {
+        if binding.vertex_array == vertex_array {
+            binding.element_array_buffer = 0;
+            break;
+        }
+    }
+    if gl_state_metadata.vertex_array == vertex_array {
+        gl_state_metadata.vertex_array = 0;
+        gl_state_metadata.element_array_buffer = 0;
+    }
 }
 
 gl_create_buffer :: () -> GLuint {
@@ -467,6 +724,41 @@ gl_create_buffer :: () -> GLuint {
 
 gl_delete_buffer :: (buffer: GLuint) {
     glDeleteBuffers(1, *buffer);
+    for *binding: gl_state_metadata.buffer_bindings {
+        if binding.buffer == buffer binding.buffer = 0;
+    }
+    for *binding: gl_state_metadata.indexed_buffer_bindings {
+        if binding.buffer == buffer binding.buffer = 0;
+    }
+    for *binding: gl_state_metadata.vertex_array_bindings {
+        if binding.element_array_buffer == buffer {
+            binding.element_array_buffer = 0;
+        }
+    }
+    if gl_state_metadata.element_array_buffer == buffer {
+        gl_state_metadata.element_array_buffer = 0;
+    }
+}
+
+gl_delete_buffers :: (buffers: [] GLuint) {
+    if buffers.count == 0 return;
+    glDeleteBuffers(cast(GLsizei) buffers.count, buffers.data);
+    for buffer: buffers {
+        for *binding: gl_state_metadata.buffer_bindings {
+            if binding.buffer == buffer binding.buffer = 0;
+        }
+        for *binding: gl_state_metadata.indexed_buffer_bindings {
+            if binding.buffer == buffer binding.buffer = 0;
+        }
+        for *binding: gl_state_metadata.vertex_array_bindings {
+            if binding.element_array_buffer == buffer {
+                binding.element_array_buffer = 0;
+            }
+        }
+        if gl_state_metadata.element_array_buffer == buffer {
+            gl_state_metadata.element_array_buffer = 0;
+        }
+    }
 }
 
 gl_allocate_storage_for_buffer_bound_to_binding_target :: (
@@ -483,10 +775,17 @@ gl_bind_framebuffer_to_binding_target :: (
     framebuffer: GLuint,
 ) {
     glBindFramebuffer(binding_target, framebuffer);
+    if binding_target == GL_FRAMEBUFFER || binding_target == GL_DRAW_FRAMEBUFFER {
+        gl_state_metadata.draw_framebuffer = framebuffer;
+    }
+    if binding_target == GL_FRAMEBUFFER || binding_target == GL_READ_FRAMEBUFFER {
+        gl_state_metadata.read_framebuffer = framebuffer;
+    }
 }
 
 gl_bind_renderbuffer :: (renderbuffer: GLuint) {
     glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer);
+    gl_state_metadata.renderbuffer = renderbuffer;
 }
 
 gl_allocate_storage_for_bound_renderbuffer :: (
@@ -584,7 +883,7 @@ gl_read_pixels_from_bound_read_framebuffer :: (
 }
 
 gl_set_pixel_readback_row_alignment :: (alignment: GLint) {
-    glPixelStorei(GL_PACK_ALIGNMENT, alignment);
+    gl_set_integer_pixel_storage_parameter(GL_PACK_ALIGNMENT, alignment);
 }
 
 gl_get_uniform_location_in_shader_program :: (
@@ -595,10 +894,29 @@ gl_get_uniform_location_in_shader_program :: (
 }
 gl_bind_vertex_array :: (vertex_array: GLuint) {
     glBindVertexArray(vertex_array);
+    gl_state_metadata.vertex_array = vertex_array;
+    gl_state_metadata.element_array_buffer = 0;
+    for binding: gl_state_metadata.vertex_array_bindings {
+        if binding.vertex_array == vertex_array {
+            gl_state_metadata.element_array_buffer = binding.element_array_buffer;
+            break;
+        }
+    }
 }
 
 gl_bind_buffer_to_binding_target :: (binding_target: GLenum, buffer: GLuint) {
     glBindBuffer(binding_target, buffer);
+    gl_track_buffer_binding(binding_target, buffer);
+}
+
+gl_bind_buffer_to_indexed_binding_point_of_binding_target :: (
+    binding_target: GLenum,
+    binding_point: GLuint,
+    buffer: GLuint,
+) {
+    glBindBufferBase(binding_target, binding_point, buffer);
+    gl_track_buffer_binding(binding_target, buffer);
+    gl_track_indexed_buffer_binding(binding_target, binding_point, buffer);
 }
 
 gl_update_subdata_in_buffer_bound_to_binding_target :: (

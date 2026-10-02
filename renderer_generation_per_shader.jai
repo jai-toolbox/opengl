@@ -332,6 +332,7 @@ legacy_shader_uniform_is_allowed :: (name: string) -> bool {
     if name == "occluded_alpha" return true;
     if name == "depth_epsilon" return true;
     if name == "thickness_px" return true;
+    if name == "viewport_origin" return true;
     if name == "position_texture" return true;
     if name == "color_texture" return true;
     if name == "normal_texture" return true;
@@ -1483,27 +1484,33 @@ generate_buffer_vertex_attribute_data_at_index_code :: (attr_conf: GL_Vertex_Att
     return tprint(#string END
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, %1_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(%2), %3.count * size_of(%2), %3.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(%2), %3.count * size_of(%2), %3.data);
 
     END, attr_conf.plural_name, attr_conf.type_in_jai, attr_conf.argument_name_in_buffer_object);
 }
 
 
 code_to_buffer_local_to_world_indices :: #string END
+    local_to_world_indices: [..] u32;
+    for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
+
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data, .COPY_FOR_BUDGETER);
+
+    array_free(local_to_world_indices);
+END;
+
+generate_code_for_early_local_to_world_allocation :: (shader: Shader_Metadata) -> string {
+    if !shader.per_object_transforms return "";
+    return #string END
     ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
     if !ltw_success {
         virtual_free(*first_fit_virtual_allocator, index);
         return 0, 0, false;
     }
 
-    local_to_world_indices: [..] u32;
-    for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
-
-    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
-
-    array_free(local_to_world_indices);
 END;
+}
 
 generate_buffer_vertex_attributes_code :: (shader : Shader_Metadata) -> string {
     push_allocator(temp);
@@ -1527,14 +1534,14 @@ generate_parameter_list_for_buffer_object :: (shader : Shader_Metadata) -> strin
 
     attributes := shader_attribute_configurations(shader);
     for attributes {
-        print_to_builder(*builder, "        % : [..] %", it.argument_name_in_buffer_object, it.type_in_jai); 
-        if it_index < attributes.count-1 print_to_builder(*builder, ",\n");
+        print_to_builder(*builder, "        % : [..] %,\n", it.argument_name_in_buffer_object, it.type_in_jai);
     }
 
     return tprint(#string END
         using renderer: *%1,
         indices : [..] u32,
 %2
+        budgeter: *GL_Budgeter = null
     END, get_renderer_struct_name(shader), builder_to_string(*builder));
 }
 
@@ -1575,6 +1582,8 @@ buffer_object :: (
         %3
     }
 
+%4
+
     global_indices_for_object : [..] u32;
     for indices 
         array_add(*global_indices_for_object, xx index + it);
@@ -1584,16 +1593,17 @@ buffer_object :: (
 
     gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
-%4
+%5
 
     gl_bind_vertex_array(0);
 
-    %5
+    %6
 }
     END, 
     generate_parameter_list_for_buffer_object(shader), 
     generate_code_for_return_type_of_buffer_object(shader), 
     generate_code_for_return_in_failure_case(shader),
+    generate_code_for_early_local_to_world_allocation(shader),
     generate_buffer_vertex_attributes_code(shader),
     generate_code_for_final_return(shader)
     );
@@ -1625,13 +1635,9 @@ generate_code_for_buffer_object_from_renderable :: (shader : Shader_Metadata) ->
 
     attributes := shader_attribute_configurations(shader);
     for attributes {
-        print_to_builder(*buffer_object_call_code, "            renderable.%", it.argument_name_in_buffer_object); 
-        if it_index < attributes.count-1 {
-            print_to_builder(*buffer_object_call_code, ",\n");
-        } else {
-            print_to_builder(*buffer_object_call_code, "\n    );");
-        }
+        print_to_builder(*buffer_object_call_code, "            renderable.%,\n", it.argument_name_in_buffer_object);
     }
+    print_to_builder(*buffer_object_call_code, "            budgeter\n    );");
 
     success_assignment_code : String_Builder;
     print_to_builder(*success_assignment_code, "        renderable.object_index = object_index;\n");
@@ -1639,7 +1645,11 @@ generate_code_for_buffer_object_from_renderable :: (shader : Shader_Metadata) ->
 
     return tprint(#string END
 
-buffer_object :: (using renderer : *%1, renderable : *$T/interface %2) -> success: bool {
+buffer_object :: (
+    using renderer : *%1,
+    renderable : *$T/interface %2,
+    budgeter: *GL_Budgeter = null,
+) -> success: bool {
 
 %3
 

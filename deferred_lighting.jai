@@ -2,14 +2,14 @@
 
 Here we have deferred rendering, we use it like this per frame:
 
-glUseProgram(deferred_lighting.geometry_pass_renderer.shader_program_gl_handle);
+gl_set_active_shader_program(deferred_lighting.geometry_pass_renderer.shader_program_gl_handle);
 set_world_to_camera_uniform(*deferred_lighting.geometry_pass_renderer, windowed_program_3d.camera.world_to_camera);
 set_camera_to_clip_uniform(*deferred_lighting.geometry_pass_renderer, windowed_program_3d.camera.camera_to_clip);
-glUseProgram(0);
+gl_clear_active_shader_program();
 
-glUseProgram(deferred_lighting.compute_light_pass_renderer.shader_program_gl_handle);
+gl_set_active_shader_program(deferred_lighting.compute_light_pass_renderer.shader_program_gl_handle);
 set_aspect_ratio_uniform(*deferred_lighting.compute_light_pass_renderer, Vector2.{xx windowed_program_3d.window_width, xx windowed_program_3d.window_height});
-glUseProgram(0);
+gl_clear_active_shader_program();
 
 for map_renderables queue_render(*deferred_lighting.geometry_pass_renderer, it.object_index);
 
@@ -42,13 +42,13 @@ set_lights_uniform :: (shader_program_gl_handle: GLuint, lights: [] Light) {
 }
 
 set_sampler_uniforms :: (using deferred_lighting : *Deferred_Lighting) {
-    glUseProgram(compute_light_pass_renderer.shader_program_gl_handle);
+    gl_set_active_shader_program(compute_light_pass_renderer.shader_program_gl_handle);
 
     set_position_texture_uniform(*compute_light_pass_renderer, 0);
     set_normal_texture_uniform  (*compute_light_pass_renderer, 1);
     set_color_texture_uniform   (*compute_light_pass_renderer, 2);
 
-    glUseProgram(0);
+    gl_clear_active_shader_program();
 }
 
 Deferred_Lighting :: struct {
@@ -79,11 +79,11 @@ init :: (using deferred_lighting : *Deferred_Lighting, width: s32, height: s32) 
     init(*compute_light_pass_renderer);
 
     glGenFramebuffers(1, *deferred_lighting_frame_buffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, deferred_lighting_frame_buffer);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, deferred_lighting_frame_buffer);
 
     // position texture (GL_COLOR_ATTACHMENT0)
     glGenTextures(1, *position_texture);
-    glBindTexture(GL_TEXTURE_2D, position_texture);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, position_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, xx window_width, xx window_height, 0, GL_RGBA, GL_FLOAT, null);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -91,7 +91,7 @@ init :: (using deferred_lighting : *Deferred_Lighting, width: s32, height: s32) 
 
     // normal texture (GL_COLOR_ATTACHMENT1)
     glGenTextures(1, *normal_texture);
-    glBindTexture(GL_TEXTURE_2D, normal_texture);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, normal_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, xx window_width, xx window_height, 0, GL_RGBA, GL_FLOAT, null);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -99,7 +99,7 @@ init :: (using deferred_lighting : *Deferred_Lighting, width: s32, height: s32) 
 
     // color texture (GL_COLOR_ATTACHMENT2)
     glGenTextures(1, *color_texture);
-    glBindTexture(GL_TEXTURE_2D, color_texture);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, color_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, xx window_width, xx window_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, null);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -111,7 +111,7 @@ init :: (using deferred_lighting : *Deferred_Lighting, width: s32, height: s32) 
 
     // depth renderbuffer
     glGenRenderbuffers(1, *depth_render_buffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depth_render_buffer);
+    gl_bind_renderbuffer(depth_render_buffer);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, xx window_width, xx window_height);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_render_buffer);
 
@@ -120,7 +120,7 @@ init :: (using deferred_lighting : *Deferred_Lighting, width: s32, height: s32) 
         log("Framebuffer not complete!");
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, 0);
 
     set_sampler_uniforms(deferred_lighting);
 
@@ -158,42 +158,42 @@ render :: (using deferred_lighting: *Deferred_Lighting, camera_position: Vector3
 }
 
 render_geometry_pass :: (using deferred_lighting: *Deferred_Lighting) {
-    glBindFramebuffer(GL_FRAMEBUFFER, deferred_lighting_frame_buffer);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, deferred_lighting_frame_buffer);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     render(*geometry_pass_renderer);
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, 0);
 }
 
 render_lighting_pass :: (using deferred_lighting: *Deferred_Lighting, camera_position: Vector3) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // this is usually know as the g-buffer, or geometry buffer
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, position_texture);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, normal_texture);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, color_texture);
+    gl_set_active_texture_unit(GL_TEXTURE0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, position_texture);
+    gl_set_active_texture_unit(GL_TEXTURE1);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, normal_texture);
+    gl_set_active_texture_unit(GL_TEXTURE2);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, color_texture);
 
     shader := compute_light_pass_renderer.shader_program_gl_handle;
-    glUseProgram(shader);
+    gl_set_active_shader_program(shader);
 
     cam_loc := glGetUniformLocation(shader, "camera_position");
     gl_set_uniform_3f_on_active_shader_program(cam_loc, camera_position.x, camera_position.y, camera_position.z);
 
     set_lights_uniform(shader, array_view(lights, 0, num_active_lights));
 
-    glUseProgram(0);
+    gl_clear_active_shader_program();
 
     queue_render(*compute_light_pass_renderer.psr, deferred_lighting_screen.object_index);
     render(*compute_light_pass_renderer);
 }
 
 copy_depth_information_into_default_framebuffer :: (using deferred_lighting: *Deferred_Lighting) {
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, deferred_lighting_frame_buffer);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    gl_bind_framebuffer_to_binding_target(GL_READ_FRAMEBUFFER, deferred_lighting_frame_buffer);
+    gl_bind_framebuffer_to_binding_target(GL_DRAW_FRAMEBUFFER, 0);
 
     glBlitFramebuffer(
         0, 0, xx window_width, xx window_height,
@@ -201,15 +201,15 @@ copy_depth_information_into_default_framebuffer :: (using deferred_lighting: *De
         GL_DEPTH_BUFFER_BIT, GL_NEAREST
     );
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, 0);
 }
 
 deinit :: (using deferred_lighting: *Deferred_Lighting) {
-    glDeleteFramebuffers(1, *deferred_lighting_frame_buffer);
-    glDeleteTextures(1, *position_texture);
-    glDeleteTextures(1, *normal_texture);
-    glDeleteTextures(1, *color_texture);
-    glDeleteRenderbuffers(1, *depth_render_buffer);
+    gl_delete_framebuffer(deferred_lighting_frame_buffer);
+    gl_delete_texture(position_texture);
+    gl_delete_texture(normal_texture);
+    gl_delete_texture(color_texture);
+    gl_delete_renderbuffer(depth_render_buffer);
 
     deinit(*deferred_lighting_screen, *compute_light_pass_renderer);
 }

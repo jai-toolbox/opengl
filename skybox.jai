@@ -31,8 +31,8 @@ create_cubemap_rgb32f :: (face_size: s32, face_pixels: [6] *float32) -> Cubemap 
 
     result: Cubemap;
     glGenTextures(1, *result.texture_gl_handle);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, result.texture_gl_handle);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_CUBE_MAP, result.texture_gl_handle);
+    gl_set_integer_pixel_storage_parameter(GL_UNPACK_ALIGNMENT, 4);
 
     for pixels, face_index: face_pixels {
         face_target := GL_TEXTURE_CUBE_MAP_POSITIVE_X + cast(GLenum) face_index;
@@ -55,14 +55,14 @@ create_cubemap_rgb32f :: (face_size: s32, face_pixels: [6] *float32) -> Cubemap 
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_CUBE_MAP, 0);
 
     return result;
 }
 
 deinit :: (cubemap: *Cubemap) {
     if cubemap.texture_gl_handle != 0 {
-        glDeleteTextures(1, *cubemap.texture_gl_handle);
+        gl_delete_texture(cubemap.texture_gl_handle);
         cubemap.texture_gl_handle = 0;
     }
 }
@@ -86,17 +86,17 @@ load_cubemap :: (
         negative_z,
     ];
 
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    gl_set_integer_pixel_storage_parameter(GL_UNPACK_ALIGNMENT, 1);
     stbi_set_flip_vertically_on_load(0);
 
     glGenTextures(1, *result.texture_gl_handle);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, result.texture_gl_handle);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_CUBE_MAP, result.texture_gl_handle);
 
     for face_path, face_index: face_paths {
         image_loaded, image_data := load_asset(face_path);
         if !image_loaded {
             log_error("Failed to load cubemap face: %", face_path);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_CUBE_MAP, 0);
             return result, false;
         }
 
@@ -104,7 +104,7 @@ load_cubemap :: (
         pixels := stbi_load_from_memory(image_data.data, xx image_data.count, *w, *h, *channels, 4);
         if pixels == null {
             log_error("Failed to decode cubemap face: %", face_path);
-            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_CUBE_MAP, 0);
             return result, false;
         }
 
@@ -120,8 +120,8 @@ load_cubemap :: (
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
     glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
 
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_CUBE_MAP, 0);
+    gl_set_integer_pixel_storage_parameter(GL_UNPACK_ALIGNMENT, 4);
 
     return result, true;
 }
@@ -161,17 +161,17 @@ init :: (using renderer: *Skybox_Renderer) {
     ];
 
     glGenVertexArrays(1, *vertex_array_gl_handle);
-    glBindVertexArray(vertex_array_gl_handle);
+    gl_bind_vertex_array(vertex_array_gl_handle);
 
     glGenBuffers(1, *position_buffer_gl_handle);
-    glBindBuffer(GL_ARRAY_BUFFER, position_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, position_buffer_gl_handle);
     glBufferData(GL_ARRAY_BUFFER, vertices.count * size_of(Vector3), vertices.data, GL_STATIC_DRAW);
 
     position_location := glGetAttribLocation(shader_program_gl_handle, "position");
     glEnableVertexAttribArray(xx position_location);
     glVertexAttribPointer(xx position_location, 3, GL_FLOAT, GL_FALSE, 0, null);
 
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 }
 
 render_skybox :: (
@@ -189,26 +189,26 @@ render_skybox :: (
     glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_FALSE);
 
-    glUseProgram(shader_program_gl_handle);
+    gl_set_active_shader_program(shader_program_gl_handle);
     gl_set_uniform_matrix_4fv_on_active_shader_program(world_to_camera_uniform_location, 1, GL_TRUE, *view_without_translation.coef[0][0]);
     gl_set_uniform_matrix_4fv_on_active_shader_program(camera_to_clip_uniform_location, 1, GL_TRUE, *camera_to_clip.coef[0][0]);
     gl_set_uniform_1i_on_active_shader_program(skybox_cubemap_uniform_location, 2);
     gl_set_uniform_1f_on_active_shader_program(exposure_uniform_location, exposure);
 
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemap.texture_gl_handle);
+    gl_set_active_texture_unit(GL_TEXTURE2);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_CUBE_MAP, cubemap.texture_gl_handle);
 
-    glBindVertexArray(vertex_array_gl_handle);
+    gl_bind_vertex_array(vertex_array_gl_handle);
     glDrawArrays(GL_TRIANGLES, 0, 36);
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 
-    glUseProgram(0);
+    gl_clear_active_shader_program();
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LESS);
 }
 
 deinit :: (using renderer: *Skybox_Renderer) {
-    glDeleteProgram(shader_program_gl_handle);
-    glDeleteVertexArrays(1, *vertex_array_gl_handle);
-    glDeleteBuffers(1, *position_buffer_gl_handle);
+    gl_delete_shader_program(shader_program_gl_handle);
+    gl_delete_vertex_array(vertex_array_gl_handle);
+    gl_delete_buffer(position_buffer_gl_handle);
 }

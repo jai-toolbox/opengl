@@ -48,14 +48,14 @@ init :: (using hdr: *HDR_Post_Process, initial_width: s32, initial_height: s32) 
 
     glGenVertexArrays(1, *fullscreen_vertex_array);
 
-    glUseProgram(bright_extract_shader);
+    gl_set_active_shader_program(bright_extract_shader);
     gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(bright_extract_shader, "hdr_scene_texture"), 0);
-    glUseProgram(blur_shader);
+    gl_set_active_shader_program(blur_shader);
     gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(blur_shader, "source_texture"), 0);
-    glUseProgram(tone_map_shader);
+    gl_set_active_shader_program(tone_map_shader);
     gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "hdr_scene_texture"), 0);
     gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "bloom_texture"), 1);
-    glUseProgram(0);
+    gl_clear_active_shader_program();
 
     initialized = true;
     resize(hdr, initial_width, initial_height);
@@ -71,7 +71,7 @@ resize :: (using hdr: *HDR_Post_Process, new_width: s32, new_height: s32) {
     delete_framebuffer_textures(hdr);
 
     glGenFramebuffers(1, *scene_framebuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, scene_framebuffer);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, scene_framebuffer);
 
     scene_color_texture = create_hdr_color_texture(width, height, true);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, scene_color_texture, 0);
@@ -88,7 +88,7 @@ resize :: (using hdr: *HDR_Post_Process, new_width: s32, new_height: s32) {
 
     for i: 0..1 {
         glGenFramebuffers(1, *bloom_framebuffers[i]);
-        glBindFramebuffer(GL_FRAMEBUFFER, bloom_framebuffers[i]);
+        gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, bloom_framebuffers[i]);
         bloom_textures[i] = create_hdr_color_texture(width, height, true);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bloom_textures[i], 0);
 
@@ -97,17 +97,17 @@ resize :: (using hdr: *HDR_Post_Process, new_width: s32, new_height: s32) {
         }
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, 0);
 }
 
 delete_framebuffer_textures :: (using hdr: *HDR_Post_Process) {
-    if scene_framebuffer != 0 glDeleteFramebuffers(1, *scene_framebuffer);
-    if scene_color_texture != 0 glDeleteTextures(1, *scene_color_texture);
-    if scene_depth_texture != 0 glDeleteTextures(1, *scene_depth_texture);
+    if scene_framebuffer != 0 gl_delete_framebuffer(scene_framebuffer);
+    if scene_color_texture != 0 gl_delete_texture(scene_color_texture);
+    if scene_depth_texture != 0 gl_delete_texture(scene_depth_texture);
 
     for i: 0..1 {
-        if bloom_framebuffers[i] != 0 glDeleteFramebuffers(1, *bloom_framebuffers[i]);
-        if bloom_textures[i] != 0 glDeleteTextures(1, *bloom_textures[i]);
+        if bloom_framebuffers[i] != 0 gl_delete_framebuffer(bloom_framebuffers[i]);
+        if bloom_textures[i] != 0 gl_delete_texture(bloom_textures[i]);
         bloom_framebuffers[i] = 0;
         bloom_textures[i] = 0;
     }
@@ -120,7 +120,7 @@ delete_framebuffer_textures :: (using hdr: *HDR_Post_Process) {
 create_hdr_color_texture :: (width: s32, height: s32, linear_filter: bool) -> GLuint {
     result: GLuint;
     glGenTextures(1, *result);
-    glBindTexture(GL_TEXTURE_2D, result);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, result);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, xx width, xx height, 0, GL_RGBA, GL_FLOAT, null);
     filter: GLint = xx GL_NEAREST;
     if linear_filter filter = xx GL_LINEAR;
@@ -134,7 +134,7 @@ create_hdr_color_texture :: (width: s32, height: s32, linear_filter: bool) -> GL
 create_depth_texture :: (width: s32, height: s32) -> GLuint {
     result: GLuint;
     glGenTextures(1, *result);
-    glBindTexture(GL_TEXTURE_2D, result);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, result);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, xx width, xx height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, null);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -144,7 +144,7 @@ create_depth_texture :: (width: s32, height: s32) -> GLuint {
 }
 
 begin_hdr_scene :: (using hdr: *HDR_Post_Process, clear_color: Vector4) {
-    glBindFramebuffer(GL_FRAMEBUFFER, scene_framebuffer);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, scene_framebuffer);
     glViewport(0, 0, xx width, xx height);
     glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -158,35 +158,35 @@ render_hdr_to_default :: (using hdr: *HDR_Post_Process) {
         render_bloom(hdr);
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, xx width, xx height);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, scene_color_texture);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, bloom_textures[0]);
+    gl_set_active_texture_unit(GL_TEXTURE0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, scene_color_texture);
+    gl_set_active_texture_unit(GL_TEXTURE1);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, bloom_textures[0]);
 
-    glUseProgram(tone_map_shader);
+    gl_set_active_shader_program(tone_map_shader);
     gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "enable_bloom"), xx enable_bloom);
     gl_set_uniform_1f_on_active_shader_program(glGetUniformLocation(tone_map_shader, "bloom_strength"), bloom_strength);
     gl_set_uniform_1f_on_active_shader_program(glGetUniformLocation(tone_map_shader, "exposure"), exposure);
     gl_set_uniform_1i_on_active_shader_program(glGetUniformLocation(tone_map_shader, "output_mode"), output_mode);
     draw_fullscreen_quad(hdr);
 
-    glUseProgram(0);
+    gl_clear_active_shader_program();
     glDepthMask(GL_TRUE);
     glEnable(GL_DEPTH_TEST);
 }
 
 render_bloom :: (using hdr: *HDR_Post_Process) {
-    glBindFramebuffer(GL_FRAMEBUFFER, bloom_framebuffers[0]);
+    gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, bloom_framebuffers[0]);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, scene_color_texture);
+    gl_set_active_texture_unit(GL_TEXTURE0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, scene_color_texture);
 
-    glUseProgram(bright_extract_shader);
+    gl_set_active_shader_program(bright_extract_shader);
     gl_set_uniform_1f_on_active_shader_program(glGetUniformLocation(bright_extract_shader, "bloom_threshold"), bloom_threshold);
     draw_fullscreen_quad(hdr);
 
@@ -195,12 +195,12 @@ render_bloom :: (using hdr: *HDR_Post_Process) {
         target_index := ifx horizontal then 1 else 0;
         source_index := ifx horizontal then 0 else 1;
 
-        glBindFramebuffer(GL_FRAMEBUFFER, bloom_framebuffers[target_index]);
+        gl_bind_framebuffer_to_binding_target(GL_FRAMEBUFFER, bloom_framebuffers[target_index]);
         glClear(GL_COLOR_BUFFER_BIT);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, bloom_textures[source_index]);
+        gl_set_active_texture_unit(GL_TEXTURE0);
+        gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D, bloom_textures[source_index]);
 
-        glUseProgram(blur_shader);
+        gl_set_active_shader_program(blur_shader);
         if horizontal {
             gl_set_uniform_2f_on_active_shader_program(glGetUniformLocation(blur_shader, "texel_step"), 1.0 / cast(float32) width, 0.0);
         } else {
@@ -212,22 +212,22 @@ render_bloom :: (using hdr: *HDR_Post_Process) {
     }
 
     if (blur_iterations % 2) != 0 {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, bloom_framebuffers[1]);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, bloom_framebuffers[0]);
+        gl_bind_framebuffer_to_binding_target(GL_READ_FRAMEBUFFER, bloom_framebuffers[1]);
+        gl_bind_framebuffer_to_binding_target(GL_DRAW_FRAMEBUFFER, bloom_framebuffers[0]);
         glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
     }
 }
 
 draw_fullscreen_quad :: (using hdr: *HDR_Post_Process) {
-    glBindVertexArray(fullscreen_vertex_array);
+    gl_bind_vertex_array(fullscreen_vertex_array);
     glDrawArrays(GL_TRIANGLES, 0, 6);
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 }
 
 deinit :: (using hdr: *HDR_Post_Process) {
     delete_framebuffer_textures(hdr);
-    if fullscreen_vertex_array != 0 glDeleteVertexArrays(1, *fullscreen_vertex_array);
-    if bright_extract_shader != 0 glDeleteProgram(bright_extract_shader);
-    if blur_shader != 0 glDeleteProgram(blur_shader);
-    if tone_map_shader != 0 glDeleteProgram(tone_map_shader);
+    if fullscreen_vertex_array != 0 gl_delete_vertex_array(fullscreen_vertex_array);
+    if bright_extract_shader != 0 gl_delete_shader_program(bright_extract_shader);
+    if blur_shader != 0 gl_delete_shader_program(blur_shader);
+    if tone_map_shader != 0 gl_delete_shader_program(tone_map_shader);
 }

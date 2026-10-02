@@ -19,6 +19,7 @@ Then for the multi-shader renderable there is also a buffer object / queue rende
 #import "tbx/assets";
 
 #load "better_api.jai";
+#load "frame_budgeted.jai";
 #load "renderer_generation_per_shader.jai";
 #load "reflection_probe_resources.jai";
 
@@ -181,7 +182,7 @@ create_shader_program :: (vertex_source : string, fragment_source : string) -> p
 
 	if !ok {
 		log_error ("Could not link shader program: %", info_log);
-		glDeleteProgram (result);
+		gl_delete_shader_program(result);
 		return 0, false;
 	}
 

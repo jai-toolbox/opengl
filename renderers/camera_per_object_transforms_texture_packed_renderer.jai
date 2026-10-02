@@ -111,13 +111,13 @@ init :: (using renderer : *Camera_Per_Object_Transforms_Texture_Packed_Renderer)
 init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Texture_Packed_Renderer) { // todo change renderer name
 
     glGenVertexArrays(1, *vertex_attribute_array_gl_handle);
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
 
     glGenBuffers(1, *local_to_world_gl_uniform_buffer_handle);
-    glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
+    gl_bind_buffer_to_binding_target(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
     glBufferData(GL_UNIFORM_BUFFER, local_to_world_matrices.count * size_of(Matrix4), local_to_world_matrices.data, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
+    gl_bind_buffer_to_indexed_binding_point_of_binding_target(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
 
     generate_buffer_for_vertex_attribute(*local_to_world_index_buffer_gl_handle, u32, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_index_buffer_gl_handle, .LOCAL_TO_WORLD_INDEX);
@@ -125,7 +125,7 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Texture_Pack
 
 
     glGenBuffers(1, *index_buffer_gl_handle);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
     // NOTE: it's probably wrong to use  max_num_elements_in_each_buffer because as noted before the number of indices
     // could be larger than this value if we try and render all objects, but we won't care about that until it's a problem.
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, size_of(u32) *  max_num_elements_in_each_buffer, null, GL_DYNAMIC_DRAW);
@@ -145,7 +145,7 @@ init_buffers_no_data :: (using apcr : *Camera_Per_Object_Transforms_Texture_Pack
 
 
 
-	glBindBuffer (GL_ARRAY_BUFFER, 0);
+	gl_bind_buffer_to_binding_target (GL_ARRAY_BUFFER, 0);
 }
 
 
@@ -195,25 +195,25 @@ buffer_object :: (
 
     table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
     
-    glBindBuffer(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, positions_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector3), positions.count * size_of(Vector3), positions.data);
 
 
     
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_packed_texture_indices_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s64), packed_texture_index.count * size_of(s64), packed_texture_index.data);
 
 
     
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_texture_coordinates_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(Vector2), texture_coordinates.count * size_of(Vector2), texture_coordinates.data);
 
 
     
-    glBindBuffer(GL_ARRAY_BUFFER, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, passthrough_packed_texture_bounding_box_indices_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(s64), packed_texture_bounding_box_index.count * size_of(s64), packed_texture_bounding_box_index.data);
 
 
@@ -227,11 +227,11 @@ buffer_object :: (
     ltw_index_we_used := current_local_to_world_index;
     current_local_to_world_index += 1;
 
-    glBindBuffer(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
     glBufferSubData(GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data);
 
 
-    glBindVertexArray(0);
+    gl_bind_vertex_array(0);
 
     return index, ltw_index_we_used, true;
 }
@@ -239,14 +239,14 @@ render :: (using renderer : *Camera_Per_Object_Transforms_Texture_Packed_Rendere
 
     // todo think about if we should be using temporary storage.
 
-    glUseProgram(shader_program_gl_handle);
+    gl_set_active_shader_program(shader_program_gl_handle);
 
-    glBindBuffer(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
+    gl_bind_buffer_to_binding_target(GL_UNIFORM_BUFFER, local_to_world_gl_uniform_buffer_handle);
     glBufferData(GL_UNIFORM_BUFFER, size_of(Matrix4) * local_to_world_matrices.count, local_to_world_matrices.data, GL_DYNAMIC_DRAW);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
+    gl_bind_buffer_to_indexed_binding_point_of_binding_target(GL_UNIFORM_BUFFER, 0, local_to_world_gl_uniform_buffer_handle);
 
 
-    glBindVertexArray(vertex_attribute_array_gl_handle);
+    gl_bind_vertex_array(vertex_attribute_array_gl_handle);
     // todo: reserve so we don't get a ton of reallocations in this for loop
     geom_indices_to_render : [..] u32; 
     // array_reserve(*geom_indices_to_render, ???); // needs some running count whenever we buffer an obj.
@@ -258,7 +258,7 @@ render :: (using renderer : *Camera_Per_Object_Transforms_Texture_Packed_Rendere
     }
 
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
+    gl_bind_buffer_to_binding_target(GL_ELEMENT_ARRAY_BUFFER, index_buffer_gl_handle);
     // here we're just overwriting the buffer on each draw call, if there's less data written than last iteration it's fine
     // as we will only access the smaller portion
     glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, geom_indices_to_render.count * size_of(u32), geom_indices_to_render.data);
@@ -269,6 +269,6 @@ render :: (using renderer : *Camera_Per_Object_Transforms_Texture_Packed_Rendere
 
     array_reset(*object_indices_to_render_this_frame);
 
-    glBindVertexArray(0);
-    glUseProgram(0);
+    gl_bind_vertex_array(0);
+    gl_clear_active_shader_program();
 }
