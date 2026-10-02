@@ -156,14 +156,7 @@ Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer :: struct {
     exposure_uniform_location : GLint = -1;
     lightmap_textures_uniform_location : GLint = -1;
     static_point_light_count_uniform_location : GLint = -1;
-    reflection_probe_cubemap_0_uniform_location : GLint = -1;
-    reflection_probe_cubemap_1_uniform_location : GLint = -1;
-    reflection_probe_cubemap_2_uniform_location : GLint = -1;
-    reflection_probe_cubemap_3_uniform_location : GLint = -1;
-    reflection_probe_cubemap_4_uniform_location : GLint = -1;
-    reflection_probe_cubemap_5_uniform_location : GLint = -1;
-    reflection_probe_cubemap_6_uniform_location : GLint = -1;
-    reflection_probe_cubemap_7_uniform_location : GLint = -1;
+    reflection_probe_cubemaps_uniform_location : GLint = -1;
     reflection_probe_count_uniform_location : GLint = -1;
     reflection_probe_max_mip_uniform_location : GLint = -1;
 
@@ -217,36 +210,8 @@ set_static_point_light_count_uniform :: (renderer : *Camera_Per_Object_Transform
     gl_set_uniform_1i_on_active_shader_program(renderer.static_point_light_count_uniform_location, v);
 }
 
-set_reflection_probe_cubemap_0_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_0_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_1_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_1_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_2_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_2_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_3_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_3_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_4_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_4_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_5_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_5_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_6_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_6_uniform_location, v);
-}
-
-set_reflection_probe_cubemap_7_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemap_7_uniform_location, v);
+set_reflection_probe_cubemaps_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
+    gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemaps_uniform_location, v);
 }
 
 set_reflection_probe_count_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
@@ -274,14 +239,7 @@ init :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Bake
     exposure_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "exposure");
     lightmap_textures_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "lightmap_textures");
     static_point_light_count_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "static_point_light_count");
-    reflection_probe_cubemap_0_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_0");
-    reflection_probe_cubemap_1_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_1");
-    reflection_probe_cubemap_2_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_2");
-    reflection_probe_cubemap_3_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_3");
-    reflection_probe_cubemap_4_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_4");
-    reflection_probe_cubemap_5_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_5");
-    reflection_probe_cubemap_6_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_6");
-    reflection_probe_cubemap_7_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemap_7");
+    reflection_probe_cubemaps_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemaps");
     reflection_probe_count_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_count");
     reflection_probe_max_mip_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_max_mip");
 

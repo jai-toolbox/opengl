@@ -20,6 +20,7 @@ GL_Budgeted_Operation_Kind :: enum {
     ALLOCATE_BUFFER_STORAGE;
     UPDATE_BUFFER_SUBDATA;
     DEFINE_TEXTURE_1D;
+    DEFINE_TEXTURE_2D;
     DEFINE_TEXTURE_3D;
     UPDATE_TEXTURE_3D_SUBIMAGE;
 }
@@ -30,6 +31,7 @@ GL_Budgeted_Operation :: struct {
     binding_target: GLenum;
     captured_object: GLuint;
     captured_texture_unit: GLenum = GL_TEXTURE0;
+    captured_texture_binding_target: GLenum;
     captured_vertex_array: GLuint;
 
     byte_offset: GLintptr;
@@ -324,6 +326,102 @@ gl_define_1d_image_for_texture_bound_to_binding_target_of_active_texture_unit ::
     return true;
 }
 
+gl_budgeted_define_2d_image_for_texture_bound_to_binding_target_of_active_texture_unit :: (
+    budgeter: *GL_Budgeter,
+    texture_binding_target: GLenum,
+    image_target: GLenum,
+    mipmap_level: GLint,
+    internal_format: GLint,
+    width: GLsizei,
+    height: GLsizei,
+    border: GLint,
+    pixel_format: GLenum,
+    pixel_data_type: GLenum,
+    pixels: *void,
+    pixel_byte_count: s64 = 0,
+    data_lifetime: GL_Budgeted_Data_Lifetime = .COPY,
+) -> bool {
+    texture := gl_get_tracked_texture_bound_to_binding_target_of_active_texture_unit(
+        texture_binding_target);
+    if texture == 0 {
+        log_error(
+            "Cannot budget 2D texture definition: no texture is bound to target %",
+            texture_binding_target);
+        return false;
+    }
+
+    budgeted_data, owns_data := gl_budgeted_copy_or_borrow_data(
+        pixels, pixel_byte_count, data_lifetime);
+    operation := GL_Budgeted_Operation.{
+        kind = .DEFINE_TEXTURE_2D,
+        binding_target = image_target,
+        captured_object = texture,
+        captured_texture_unit = gl_state_metadata.active_texture_unit,
+        captured_texture_binding_target = texture_binding_target,
+        mipmap_level = mipmap_level,
+        internal_format = internal_format,
+        width = width,
+        height = height,
+        border = border,
+        pixel_format = pixel_format,
+        pixel_data_type = pixel_data_type,
+        data = budgeted_data,
+        data_byte_count = pixel_byte_count,
+        owns_data = owns_data,
+        total_work = max(cast(s64) 1, pixel_byte_count),
+    };
+    gl_budgeted_capture_unpack_state(*operation);
+    gl_budgeted_append_operation(budgeter, operation);
+    return true;
+}
+
+gl_define_2d_image_for_texture_bound_to_binding_target_of_active_texture_unit :: (
+    budgeter: *GL_Budgeter,
+    texture_binding_target: GLenum,
+    image_target: GLenum,
+    mipmap_level: GLint,
+    internal_format: GLint,
+    width: GLsizei,
+    height: GLsizei,
+    border: GLint,
+    pixel_format: GLenum,
+    pixel_data_type: GLenum,
+    pixels: *void,
+    pixel_byte_count: s64 = 0,
+    data_lifetime: GL_Budgeted_Data_Lifetime = .COPY,
+) -> bool {
+    if budgeter {
+        return gl_budgeted_define_2d_image_for_texture_bound_to_binding_target_of_active_texture_unit(
+            budgeter,
+            texture_binding_target,
+            image_target,
+            mipmap_level,
+            internal_format,
+            width,
+            height,
+            border,
+            pixel_format,
+            pixel_data_type,
+            pixels,
+            pixel_byte_count,
+            data_lifetime,
+        );
+    }
+
+    gl_define_texture_2d_image_for_active_texture_unit(
+        image_target,
+        mipmap_level,
+        internal_format,
+        width,
+        height,
+        border,
+        pixel_format,
+        pixel_data_type,
+        pixels,
+    );
+    return true;
+}
+
 gl_budgeted_define_3d_image_for_texture_bound_to_binding_target_of_active_texture_unit :: (
     budgeter: *GL_Budgeter,
     binding_target: GLenum,
@@ -556,12 +654,15 @@ gl_budgeted_with_captured_buffer_bound :: (
 gl_budgeted_bind_captured_texture :: (
     operation: *GL_Budgeted_Operation,
 ) -> previous_active_unit: GLenum, previous_texture: GLuint {
+    texture_binding_target := ifx operation.captured_texture_binding_target != 0
+        then operation.captured_texture_binding_target
+        else operation.binding_target;
     active_unit := gl_state_metadata.active_texture_unit;
     bound_texture := gl_get_tracked_texture_bound_to_binding_target_of_texture_unit(
-        operation.binding_target, operation.captured_texture_unit);
+        texture_binding_target, operation.captured_texture_unit);
     gl_set_active_texture_unit(operation.captured_texture_unit);
     gl_bind_texture_to_binding_target_of_active_texture_unit(
-        operation.binding_target, operation.captured_object);
+        texture_binding_target, operation.captured_object);
     return active_unit, bound_texture;
 }
 
@@ -570,8 +671,11 @@ gl_budgeted_restore_texture_binding :: (
     previous_active_unit: GLenum,
     previous_texture: GLuint,
 ) {
+    texture_binding_target := ifx operation.captured_texture_binding_target != 0
+        then operation.captured_texture_binding_target
+        else operation.binding_target;
     gl_bind_texture_to_binding_target_of_active_texture_unit(
-        operation.binding_target, previous_texture);
+        texture_binding_target, previous_texture);
     gl_set_active_texture_unit(previous_active_unit);
 }
 
@@ -696,6 +800,25 @@ gl_process_one_budgeted_operation :: (budgeter: *GL_Budgeter) {
             operation.mipmap_level,
             operation.internal_format,
             operation.width,
+            operation.border,
+            operation.pixel_format,
+            operation.pixel_data_type,
+            operation.data,
+        );
+        gl_budgeted_set_unpack_state(previous_unpack_state);
+        gl_budgeted_restore_texture_binding(operation, previous_active_unit, previous_texture);
+        gl_budgeted_finish_operation(budgeter, operation);
+        return;
+    }
+
+    if operation.kind == .DEFINE_TEXTURE_2D {
+        gl_budgeted_set_captured_unpack_state(operation);
+        gl_define_texture_2d_image_for_active_texture_unit(
+            operation.binding_target,
+            operation.mipmap_level,
+            operation.internal_format,
+            operation.width,
+            operation.height,
             operation.border,
             operation.pixel_format,
             operation.pixel_data_type,

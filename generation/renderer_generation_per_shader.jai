@@ -254,6 +254,7 @@ glsl_type_to_jai_type :: (type_name: string) -> Type {
     if type_name == "sampler2DArray" return s32;
     if type_name == "usampler2D" return s32;
     if type_name == "samplerCube" return s32;
+    if type_name == "samplerCubeArray" return s32;
     if type_name == "vec2" return Vector2;
     if type_name == "vec3" return Vector3;
     if type_name == "vec4" return Vector4;
@@ -324,6 +325,7 @@ legacy_shader_uniform_is_allowed :: (name: string) -> bool {
     if name == "static_point_light_count" return true;
     if name == "reflection_probe_count" return true;
     if name == "reflection_probe_max_mip" return true;
+    if name == "reflection_probe_cubemaps" return true;
     if starts_with(name, "reflection_probe_cubemap_") return true;
     if name == "exposure" return true;
     if name == "output_hdr" return true;

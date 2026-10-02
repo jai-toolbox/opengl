@@ -262,7 +262,9 @@ vec3 sample_baked_irradiance() {
 // Begin include: light_baked_pbr.glsl
 #define MAX_STATIC_POINT_LIGHTS 16
 #define MAX_DYNAMIC_POINT_LIGHTS 16
-#define MAX_REFLECTION_PROBES 8
+#define MAX_REFLECTION_PROBES 64
+
+#extension GL_ARB_texture_cube_map_array : require
 
 struct PointLight {
     vec3 position;
@@ -286,14 +288,7 @@ uniform int can_static_point_light_reach_surface_rgba_group_count;
 uniform PointLight dynamic_point_lights[MAX_DYNAMIC_POINT_LIGHTS];
 uniform int dynamic_point_light_count;
 
-uniform samplerCube reflection_probe_cubemap_0;
-uniform samplerCube reflection_probe_cubemap_1;
-uniform samplerCube reflection_probe_cubemap_2;
-uniform samplerCube reflection_probe_cubemap_3;
-uniform samplerCube reflection_probe_cubemap_4;
-uniform samplerCube reflection_probe_cubemap_5;
-uniform samplerCube reflection_probe_cubemap_6;
-uniform samplerCube reflection_probe_cubemap_7;
+uniform samplerCubeArray reflection_probe_cubemaps;
 uniform ReflectionProbe reflection_probes[MAX_REFLECTION_PROBES];
 uniform int reflection_probe_count;
 uniform float reflection_probe_max_mip;
@@ -457,28 +452,11 @@ vec3 dynamic_point_light_direct(
 }
 
 vec3 sample_reflection_probe(int probe_index, vec3 direction, float mip) {
-    if (probe_index == 0) {
-        return textureLod(reflection_probe_cubemap_0, direction, mip).rgb;
-    }
-    if (probe_index == 1) {
-        return textureLod(reflection_probe_cubemap_1, direction, mip).rgb;
-    }
-    if (probe_index == 2) {
-        return textureLod(reflection_probe_cubemap_2, direction, mip).rgb;
-    }
-    if (probe_index == 3) {
-        return textureLod(reflection_probe_cubemap_3, direction, mip).rgb;
-    }
-    if (probe_index == 4) {
-        return textureLod(reflection_probe_cubemap_4, direction, mip).rgb;
-    }
-    if (probe_index == 5) {
-        return textureLod(reflection_probe_cubemap_5, direction, mip).rgb;
-    }
-    if (probe_index == 6) {
-        return textureLod(reflection_probe_cubemap_6, direction, mip).rgb;
-    }
-    return textureLod(reflection_probe_cubemap_7, direction, mip).rgb;
+    return textureLod(
+        reflection_probe_cubemaps,
+        vec4(direction, float(probe_index)),
+        mip
+    ).rgb;
 }
 
 vec3 environment_brdf_approximation(
@@ -520,10 +498,10 @@ vec3 reflection_probe_specular(
         0.0,
         reflection_probe_max_mip
     );
-    vec3 accumulated = vec3(0.0);
-    float remaining_alpha = 1.0;
-    float composited_average_brightness = 0.0;
-    float remaining_brightness_alpha = 1.0;
+    vec3 weighted_reflection_sum = vec3(0.0);
+    float weighted_average_brightness_sum = 0.0;
+    float total_probe_weight = 0.0;
+    float reflection_coverage = 0.0;
     float normal_dot_view = max(dot(normal, view_direction), 0.001);
     float specular_occlusion = clamp(
         pow(normal_dot_view + ambient_occlusion, alpha)
@@ -540,15 +518,23 @@ vec3 reflection_probe_specular(
             / max(probe.influence_radius, 0.0001);
         if (normalized_distance >= 1.0) continue;
 
-        float fade_position = clamp(
-            2.5 * normalized_distance - 1.5,
-            0.0,
-            1.0
-        );
-        float distance_alpha = 1.0 - fade_position * fade_position
-            * (3.0 - 2.0 * fade_position);
+        // distance weighting has no full-weight plateau. Raising proximity
+        // to the fourth power makes the closest probe dominate while keeping
+        // the result continuous as the dominant probe changes.
+        float proximity = max(1.0 - normalized_distance, 0.0);
+        float proximity_squared = proximity * proximity;
+        float distance_weight = proximity_squared * proximity_squared;
 
-        // Intersect the reflected ray with the probe's influence sphere. The
+        // coverage is separate from blending so a small normalized weight does
+        // not darken reflections. It only fades across the outer 10% of a
+        // probe's influence volume when no neighboring probe covers the point.
+        float coverage = 1.0 - smoothstep(
+            0.9,
+            1.0,
+            normalized_distance
+        );
+
+        // intersect the reflected ray with the probe's influence sphere. The
         // vector from the capture position to that hit point is the cubemap
         // lookup direction, which keeps reflected features anchored in space.
         float ray_projection = dot(reflection_direction, local_position);
@@ -560,17 +546,29 @@ vec3 reflection_probe_specular(
         vec3 projected_direction = local_position
             + hit_distance * reflection_direction;
 
-        accumulated += sample_reflection_probe(
+        weighted_reflection_sum += sample_reflection_probe(
             probe_index,
             projected_direction,
             mip
-        ) * distance_alpha * specular_occlusion * remaining_alpha;
-        remaining_alpha *= 1.0 - distance_alpha;
-        composited_average_brightness += probe.average_brightness
-            * distance_alpha * remaining_brightness_alpha;
-        remaining_brightness_alpha *= 1.0 - distance_alpha;
-        if (remaining_alpha <= 0.001) break;
+        ) * distance_weight;
+        weighted_average_brightness_sum += probe.average_brightness
+            * distance_weight;
+        total_probe_weight += distance_weight;
+        reflection_coverage = max(reflection_coverage, coverage);
     }
+
+    if (total_probe_weight <= 0.000000000001) return vec3(0.0);
+
+    // dividing by the shared sum makes the result independent of probe loop
+    // order while retaining the relative distance preference.
+    vec3 accumulated = weighted_reflection_sum
+        / total_probe_weight
+        * reflection_coverage
+        * specular_occlusion;
+    float composited_average_brightness =
+        weighted_average_brightness_sum
+        / total_probe_weight
+        * reflection_coverage;
 
     float indirect_luminance = dot(
         max(indirect_irradiance, vec3(0.0)),
