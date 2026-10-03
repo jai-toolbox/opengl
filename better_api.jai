@@ -462,6 +462,30 @@ disable_wireframe_mode :: () { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
 
 gl_set_depth_writes_enabled :: glDepthMask;
 gl_set_depth_test_pass_condition :: glDepthFunc;
+gl_set_color_writes_enabled :: (
+    red: GLboolean,
+    green: GLboolean,
+    blue: GLboolean,
+    alpha: GLboolean,
+) {
+    glColorMask(red, green, blue, alpha);
+}
+
+gl_set_line_width :: (width: GLfloat) {
+    glLineWidth(width);
+}
+
+gl_get_integer_state_parameter :: (parameter_name: GLenum, value: *GLint) {
+    glGetIntegerv(parameter_name, value);
+}
+
+gl_get_program_integer_parameter :: (
+    shader_program: GLuint,
+    parameter_name: GLenum,
+    value: *GLint,
+) {
+    glGetProgramiv(shader_program, parameter_name, value);
+}
 
 gl_discard_fragments_that_fail_depth_test :: (enabled: bool) {
     if enabled then glEnable(GL_DEPTH_TEST);
@@ -501,6 +525,25 @@ gl_clear_active_shader_program :: () {
     gl_state_metadata.active_shader_program = 0;
 }
 gl_delete_shader_program :: (program: GLuint) { glDeleteProgram(program); }
+
+gl_get_uniform_block_index_in_shader_program :: (
+    shader_program: GLuint,
+    uniform_block_name: *GLchar,
+) -> GLuint {
+    return glGetUniformBlockIndex(shader_program, uniform_block_name);
+}
+
+gl_bind_uniform_block_in_shader_program :: (
+    shader_program: GLuint,
+    uniform_block_index: GLuint,
+    binding_point: GLuint,
+) {
+    glUniformBlockBinding(
+        shader_program,
+        uniform_block_index,
+        binding_point,
+    );
+}
 
 gl_set_active_texture_unit :: (texture_unit: GLenum) {
     glActiveTexture(texture_unit);
@@ -719,6 +762,11 @@ gl_create_buffer :: () -> GLuint {
     return buffer;
 }
 
+gl_create_buffers :: (buffers: [] GLuint) {
+    if buffers.count == 0 return;
+    glGenBuffers(cast(GLsizei) buffers.count, buffers.data);
+}
+
 gl_delete_buffer :: (buffer: GLuint) {
     glDeleteBuffers(1, *buffer);
     for *binding: gl_state_metadata.buffer_bindings {
@@ -756,6 +804,40 @@ gl_delete_buffers :: (buffers: [] GLuint) {
             gl_state_metadata.element_array_buffer = 0;
         }
     }
+}
+
+gl_create_queries :: (queries: [] GLuint) {
+    if queries.count == 0 return;
+    glGenQueries(cast(GLsizei) queries.count, queries.data);
+}
+
+gl_delete_queries :: (queries: [] GLuint) {
+    if queries.count == 0 return;
+    glDeleteQueries(cast(GLsizei) queries.count, queries.data);
+}
+
+gl_begin_query :: (target: GLenum, query: GLuint) {
+    glBeginQuery(target, query);
+}
+
+gl_end_query :: (target: GLenum) {
+    glEndQuery(target);
+}
+
+gl_get_query_integer_parameter :: (
+    query: GLuint,
+    parameter_name: GLenum,
+    value: *GLint,
+) {
+    glGetQueryObjectiv(query, parameter_name, value);
+}
+
+gl_get_query_u64_parameter :: (
+    query: GLuint,
+    parameter_name: GLenum,
+    value: *GLuint64,
+) {
+    glGetQueryObjectui64v(query, parameter_name, value);
 }
 
 gl_allocate_storage_for_buffer_bound_to_binding_target :: (
