@@ -534,7 +534,7 @@ gl_define_1d_image_for_texture_bound_to_binding_target_of_active_texture_unit ::
     mipmap_level: GLint,
     internal_format: GLint,
     width: GLsizei,
-    border: GLint,
+    border: GLint, // legacy texture border; modern OpenGL requires zero.
     pixel_format: GLenum,
     pixel_data_type: GLenum,
     pixels: *void,
@@ -558,7 +558,7 @@ gl_define_3d_image_for_texture_bound_to_binding_target_of_active_texture_unit ::
     width: GLsizei,
     height: GLsizei,
     depth: GLsizei,
-    border: GLint,
+    border: GLint, // legacy texture border; modern OpenGL requires zero.
     pixel_format: GLenum,
     pixel_data_type: GLenum,
     pixels: *void,

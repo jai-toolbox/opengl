@@ -135,6 +135,19 @@ vec3 srgb_to_linear(vec3 value) {
     return mix(upper, lower, lessThanEqual(value, vec3(0.04045)));
 }
 
+float mip_level_gpu_would_normally_request(
+    vec2 normalized_texture_gradient_x,
+    vec2 normalized_texture_gradient_y,
+    vec2 texture_size_pixels
+) {
+    vec2 pixel_gradient_x = normalized_texture_gradient_x * texture_size_pixels;
+    vec2 pixel_gradient_y = normalized_texture_gradient_y * texture_size_pixels;
+    float footprint_squared = max(
+        dot(pixel_gradient_x, pixel_gradient_x),
+        dot(pixel_gradient_y, pixel_gradient_y));
+    return max(0.0, 0.5 * log2(max(footprint_squared, 1.0)));
+}
+
 vec4 sample_material_texture(
     vec2 uv,
     uint texture_index,
@@ -148,18 +161,14 @@ vec4 sample_material_texture(
     vec2 atlas_size = vec2(textureSize(packed_textures, 0).xy);
     vec2 packed_gradient_x = dFdx(uv) * bounds.zw;
     vec2 packed_gradient_y = dFdy(uv) * bounds.zw;
-    vec2 pixel_gradient_x = packed_gradient_x * atlas_size;
-    vec2 pixel_gradient_y = packed_gradient_y * atlas_size;
-    float footprint_squared = max(
-        dot(pixel_gradient_x, pixel_gradient_x),
-        dot(pixel_gradient_y, pixel_gradient_y));
-    float requested_mip = max(
-        0.0,
-        0.5 * log2(max(footprint_squared, 1.0)));
+    float normally_requested_mip = mip_level_gpu_would_normally_request(
+        packed_gradient_x,
+        packed_gradient_y,
+        atlas_size);
     vec2 source_size = max(bounds.zw * atlas_size, vec2(1.0));
     float maximum_region_mip = floor(log2(min(source_size.x, source_size.y)));
     float sampled_mip = min(
-        ceil(requested_mip),
+        ceil(normally_requested_mip),
         min(maximum_region_mip, packed_texture_max_mip_level));
 
     vec2 repeated_uv = fract(uv);
@@ -175,11 +184,18 @@ vec4 sample_material_texture(
         bounds.xy + half_mip_texel,
         bounds.xy + bounds.zw - half_mip_texel
     );
+    // every texture-array mip retains every page layer, even when the packed
+    // regions on one page have already reached 1x1. OpenGL only sees the page
+    // layer and cannot infer that this packed region has no deeper valid mips.
+    // scaling by 2^(sampled-requested) makes textureGrad select the clamped
+    // level; for example, requested 10 and sampled 8 scales by 1/4.
+    float gradient_scale = exp2(
+        min(0.0, sampled_mip - normally_requested_mip));
     return textureGrad(
         packed_textures,
         vec3(packed_uv, float(texture_index)),
-        packed_gradient_x,
-        packed_gradient_y);
+        packed_gradient_x * gradient_scale,
+        packed_gradient_y * gradient_scale);
 }
 
 bool light_baked_surface_passes_alpha_mask() {

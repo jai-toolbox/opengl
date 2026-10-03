@@ -79,6 +79,19 @@ GL_Budgeter :: struct {
     // we could also dynamically choose this based on real timings made, for now this works.
     maximum_buffer_chunk_bytes: s64 = 1024 * 1024;
     maximum_texture_chunk_bytes: s64 = 1024 * 1024;
+
+    #if OPENGL_ENABLE_BUDGETER_PROFILING {
+        last_process_seconds: float64;
+        maximum_process_seconds: float64;
+        maximum_single_operation_seconds: float64;
+        maximum_single_operation_kind: GL_Budgeted_Operation_Kind;
+        maximum_single_operation_index: int = -1;
+        maximum_single_operation_mipmap_level: GLint;
+        maximum_single_operation_width: GLsizei;
+        maximum_single_operation_height: GLsizei;
+        maximum_single_operation_depth: GLsizei;
+        maximum_single_operation_bytes_processed: s64;
+    }
 }
 
 gl_budgeted_copy_or_borrow_data :: (
@@ -922,20 +935,54 @@ gl_process_budgeted_operations :: (
     budgeter: *GL_Budgeter,
     time_budget_seconds: float64 = 0.003,
 ) {
+    #if OPENGL_ENABLE_BUDGETER_PROFILING {
+        budgeter.last_process_seconds = 0;
+    }
     if budgeter.next_operation_index >= budgeter.operations.count return;
 
     start_time := current_time_monotonic();
     did_work := false;
     while budgeter.next_operation_index < budgeter.operations.count {
+        #if OPENGL_ENABLE_BUDGETER_PROFILING {
+            operation_index := budgeter.next_operation_index;
+            operation := *budgeter.operations[operation_index];
+            completed_bytes_before := operation.completed_byte_count;
+            operation_start_time := current_time_monotonic();
+        }
         gl_process_one_budgeted_operation(budgeter);
         did_work = true;
 
-        // Always make forward progress even if the first indivisible call is
+        #if OPENGL_ENABLE_BUDGETER_PROFILING {
+            operation_seconds := to_float64_seconds(
+                current_time_monotonic() - operation_start_time);
+            if operation_seconds > budgeter.maximum_single_operation_seconds {
+                budgeter.maximum_single_operation_seconds = operation_seconds;
+                budgeter.maximum_single_operation_kind = operation.kind;
+                budgeter.maximum_single_operation_index = operation_index;
+                budgeter.maximum_single_operation_mipmap_level = operation.mipmap_level;
+                budgeter.maximum_single_operation_width = operation.width;
+                budgeter.maximum_single_operation_height = operation.height;
+                budgeter.maximum_single_operation_depth = operation.depth;
+                budgeter.maximum_single_operation_bytes_processed = max(
+                    cast(s64) 0,
+                    operation.completed_byte_count - completed_bytes_before);
+            }
+        }
+
+        // always make forward progress even if the first indivisible call is
         // slower than the requested budget.
         if did_work && time_budget_seconds > 0.0 &&
            to_float64_seconds(current_time_monotonic() - start_time) >= time_budget_seconds {
             break;
         }
+    }
+
+    #if OPENGL_ENABLE_BUDGETER_PROFILING {
+        budgeter.last_process_seconds = to_float64_seconds(
+            current_time_monotonic() - start_time);
+        budgeter.maximum_process_seconds = max(
+            budgeter.maximum_process_seconds,
+            budgeter.last_process_seconds);
     }
 }
 

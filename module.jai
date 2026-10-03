@@ -1,3 +1,11 @@
+// opt in from the first import with:
+// #import "tbx/opengl"()(OPENGL_ENABLE_BUDGETER_PROFILING = true);
+#module_parameters()(OPENGL_ENABLE_BUDGETER_PROFILING := false);
+
+// exposes the resolved module setting so dependent modules can compile out
+// diagnostic reporting that reads the optional profiling fields.
+OPENGL_BUDGETER_PROFILING_ENABLED :: OPENGL_ENABLE_BUDGETER_PROFILING;
+
 /*
 
 So I'm starting to see a higher level pattern appear here, which is good. Some visual representations of objects will require multiple shaders, for example a shader which does draws a border/outline on an object, then there might be a wireframe version (say you're in an editor) and then there might be the entirely lit object.
