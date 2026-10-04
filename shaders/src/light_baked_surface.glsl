@@ -83,10 +83,10 @@ vec4 sample_material_texture(
         packed_gradient_x,
         packed_gradient_y,
         atlas_size);
-    
+
     // source size pulls out the original resolution, eg 512x256 or something.
     vec2 source_size = max(bounds.zw * atlas_size, vec2(1.0));
-    // log_2(512) = log_2(2^9) thus that image can be divided in half 8 times 
+    // log_2(512) = log_2(2^9) thus that image can be divided in half 8 times
     // before there is nothing left, flooring in case the side lengths are not powers of 2.
     float maximum_region_mip = floor(log2(min(source_size.x, source_size.y)));
     float sampled_mip = min(

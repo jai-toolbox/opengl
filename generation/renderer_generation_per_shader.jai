@@ -322,7 +322,6 @@ legacy_shader_uniform_is_allowed :: (name: string) -> bool {
     if name == "packed_textures" return true;
     if name == "packed_texture_bounding_boxes" return true;
     if name == "lightmap_textures" return true;
-    if name == "static_point_light_count" return true;
     if name == "reflection_probe_count" return true;
     if name == "reflection_probe_max_mip" return true;
     if name == "reflection_probe_cubemaps" return true;

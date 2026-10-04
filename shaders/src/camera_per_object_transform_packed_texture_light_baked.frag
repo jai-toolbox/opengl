@@ -60,33 +60,6 @@ void main() {
         * diffuse_color
         * surface.ambient_occlusion;
 
-    vec3 direct_specular = vec3(0.0);
-    for (int group_slot = 0; group_slot < MAX_STATIC_POINT_LIGHTS / 4; ++group_slot) {
-        int first_light_index = group_slot * 4;
-        if (first_light_index >= static_point_light_count) break;
-        int source_group_index =
-            can_static_point_light_reach_surface_group_indices[group_slot];
-        vec4 static_lights_reach_surface_factors = use_can_static_point_light_reach_surface_texture
-            ? sample_can_static_point_lights_reach_surface(source_group_index)
-            : vec4(1.0);
-        for (int channel_index = 0; channel_index < 4; ++channel_index) {
-            int light_index = first_light_index + channel_index;
-            if (light_index >= static_point_light_count) break;
-            if (static_lights_reach_surface_factors[channel_index] <= 0.0) continue;
-            direct_specular += point_light_specular(
-                static_point_lights[light_index],
-                static_lights_reach_surface_factors[channel_index],
-                normal,
-                view_direction,
-                f0,
-                normal_dot_view,
-                alpha_squared,
-                geometry_k,
-                geometry_view
-            );
-        }
-    }
-
     vec3 dynamic_direct = vec3(0.0);
     for (int light_index = 0; light_index < MAX_DYNAMIC_POINT_LIGHTS; ++light_index) {
         if (light_index >= dynamic_point_light_count) break;
@@ -113,8 +86,8 @@ void main() {
         baked_irradiance
     );
     vec3 hdr_lighting = max(
-        baked_diffuse + direct_specular + dynamic_direct
-            + indirect_specular + surface.emissive,
+        baked_diffuse + dynamic_direct + indirect_specular
+            + surface.emissive,
         vec3(0.0)
     );
 

@@ -130,6 +130,8 @@ vec3 srgb_to_linear(vec3 value) {
     return mix(upper, lower, lessThanEqual(value, vec3(0.04045)));
 }
 
+// this returns a float because we can return a value like 3.6
+// and then we can interpolate the texture between two mip levels
 float mip_level_gpu_would_normally_request(
     vec2 normalized_texture_gradient_x,
     vec2 normalized_texture_gradient_y,
@@ -160,7 +162,11 @@ vec4 sample_material_texture(
         packed_gradient_x,
         packed_gradient_y,
         atlas_size);
+
+    // source size pulls out the original resolution, eg 512x256 or something.
     vec2 source_size = max(bounds.zw * atlas_size, vec2(1.0));
+    // log_2(512) = log_2(2^9) thus that image can be divided in half 8 times
+    // before there is nothing left, flooring in case the side lengths are not powers of 2.
     float maximum_region_mip = floor(log2(min(source_size.x, source_size.y)));
     float sampled_mip = min(
         ceil(normally_requested_mip),
@@ -184,8 +190,7 @@ vec4 sample_material_texture(
     // layer and cannot infer that this packed region has no deeper valid mips.
     // scaling by 2^(sampled-requested) makes textureGrad select the clamped
     // level; for example, requested 10 and sampled 8 scales by 1/4.
-    float gradient_scale = exp2(
-        min(0.0, sampled_mip - normally_requested_mip));
+    float gradient_scale = exp2(min(0.0, sampled_mip - normally_requested_mip));
     return textureGrad(
         packed_textures,
         vec3(packed_uv, float(texture_index)),

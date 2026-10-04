@@ -155,7 +155,6 @@ Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer :: struct {
     packed_texture_bounding_boxes_uniform_location : GLint = -1;
     exposure_uniform_location : GLint = -1;
     lightmap_textures_uniform_location : GLint = -1;
-    static_point_light_count_uniform_location : GLint = -1;
     reflection_probe_cubemaps_uniform_location : GLint = -1;
     reflection_probe_count_uniform_location : GLint = -1;
     reflection_probe_max_mip_uniform_location : GLint = -1;
@@ -206,10 +205,6 @@ set_lightmap_textures_uniform :: (renderer : *Camera_Per_Object_Transform_Packed
     gl_set_uniform_1i_on_active_shader_program(renderer.lightmap_textures_uniform_location, v);
 }
 
-set_static_point_light_count_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.static_point_light_count_uniform_location, v);
-}
-
 set_reflection_probe_cubemaps_uniform :: (renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Baked_Renderer, v: s32) {
     gl_set_uniform_1i_on_active_shader_program(renderer.reflection_probe_cubemaps_uniform_location, v);
 }
@@ -238,7 +233,6 @@ init :: (using renderer : *Camera_Per_Object_Transform_Packed_Texture_Light_Bake
     packed_texture_bounding_boxes_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "packed_texture_bounding_boxes");
     exposure_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "exposure");
     lightmap_textures_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "lightmap_textures");
-    static_point_light_count_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "static_point_light_count");
     reflection_probe_cubemaps_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_cubemaps");
     reflection_probe_count_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_count");
     reflection_probe_max_mip_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_probe_max_mip");
