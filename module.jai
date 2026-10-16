@@ -233,6 +233,21 @@ set_vsync :: (value : bool) {
     }
 }
 
+set_opengl_swaps_in_flight :: (count: s32) {
+    #if OS == .MACOS {
+        AppKit :: #import "Objective_C/AppKit";
+        gl_context := AppKit.NSOpenGLContext.currentContext();
+        if gl_context != null {
+            count = max(count, 1);
+            AppKit.NSOpenGLContext.setValues(
+                gl_context,
+                *count,
+                AppKit.NSOpenGLContextParameterMPSwapsInFlight,
+            );
+        }
+    }
+}
+
 // The shared tbx/ui module produces backend-neutral draw buffers. This file
 // owns the OpenGL implementation that uploads and renders those buffers.
 #load "utilities/ui.jai";
