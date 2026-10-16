@@ -219,6 +219,17 @@ set_vsync :: (value : bool) {
             glXSwapIntervalSGI(interval);
             return;
         }
+    } else #if OS == .MACOS {
+        AppKit :: #import "Objective_C/AppKit";
+        gl_context := AppKit.NSOpenGLContext.currentContext();
+        if gl_context != null {
+            interval := cast(s32) ifx value then 1 else 0;
+            AppKit.NSOpenGLContext.setValues(
+                gl_context,
+                *interval,
+                AppKit.NSOpenGLContextParameterSwapInterval,
+            );
+        }
     }
 }
 
