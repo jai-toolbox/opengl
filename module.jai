@@ -219,6 +219,32 @@ set_vsync :: (value : bool) {
             glXSwapIntervalSGI(interval);
             return;
         }
+    } else #if OS == .MACOS {
+        AppKit :: #import "Objective_C/AppKit";
+        gl_context := AppKit.NSOpenGLContext.currentContext();
+        if gl_context != null {
+            interval := cast(s32) ifx value then 1 else 0;
+            AppKit.NSOpenGLContext.setValues(
+                gl_context,
+                *interval,
+                AppKit.NSOpenGLContextParameterSwapInterval,
+            );
+        }
+    }
+}
+
+set_opengl_swaps_in_flight :: (count: s32) {
+    #if OS == .MACOS {
+        AppKit :: #import "Objective_C/AppKit";
+        gl_context := AppKit.NSOpenGLContext.currentContext();
+        if gl_context != null {
+            count = max(count, 1);
+            AppKit.NSOpenGLContext.setValues(
+                gl_context,
+                *count,
+                AppKit.NSOpenGLContextParameterMPSwapsInFlight,
+            );
+        }
     }
 }
 
