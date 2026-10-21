@@ -648,6 +648,24 @@ gl_update_3d_subimage_of_texture_bound_to_binding_target_of_active_texture_unit 
     );
 }
 
+// data must already be encoded in compression_format; this uploads the encoded blocks.
+gl_update_compressed_3d_subimage_of_texture_bound_to_binding_target_of_active_texture_unit :: (
+    binding_target: GLenum,
+    mipmap_level: GLint,
+    x_offset: GLint,
+    y_offset: GLint,
+    z_offset: GLint,
+    width: GLsizei,
+    height: GLsizei,
+    depth: GLsizei,
+    compression_format: GLenum,
+    compressed_byte_count: GLsizei,
+    compressed_pixels: *void,
+) {
+    glCompressedTexSubImage3D(binding_target, mipmap_level, x_offset, y_offset, z_offset,
+        width, height, depth, compression_format, compressed_byte_count, compressed_pixels);
+}
+
 gl_set_float_parameter_for_texture_bound_to_binding_target_of_active_texture_unit :: (
     binding_target: GLenum,
     parameter_name: GLenum,

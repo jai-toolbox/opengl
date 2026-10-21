@@ -23,6 +23,7 @@ GL_Budgeted_Operation_Kind :: enum {
     DEFINE_TEXTURE_2D;
     DEFINE_TEXTURE_3D;
     UPDATE_TEXTURE_3D_SUBIMAGE;
+    UPDATE_COMPRESSED_TEXTURE_3D_SUBIMAGE;
 }
 
 GL_Budgeted_Operation :: struct {
@@ -59,6 +60,7 @@ GL_Budgeted_Operation :: struct {
     owns_data: bool;
 
     bytes_per_row: s64;
+    compressed_block_height: GLsizei;
     completed_byte_count: s64;
     completed_rows: s64;
     allocation_complete: bool;
@@ -634,6 +636,61 @@ gl_update_3d_subimage_of_texture_bound_to_binding_target_of_active_texture_unit 
     return true;
 }
 
+gl_update_compressed_3d_subimage_of_texture_bound_to_binding_target_of_active_texture_unit :: (
+    budgeter: *GL_Budgeter,
+    binding_target: GLenum,
+    mipmap_level: GLint,
+    x_offset: GLint,
+    y_offset: GLint,
+    z_offset: GLint,
+    width: GLsizei,
+    height: GLsizei,
+    depth: GLsizei,
+    compression_format: GLenum,
+    compressed_pixels: *void,
+    compressed_byte_count: s64,
+    block_width: GLsizei,
+    block_height: GLsizei,
+    bytes_per_block: s64,
+    data_lifetime: GL_Budgeted_Data_Lifetime = .COPY,
+) -> bool {
+    if compressed_byte_count <= 0 || compressed_pixels == null return true;
+    assert(block_width > 0 && block_height > 0 && bytes_per_block > 0);
+    block_columns := (cast(s64) width + block_width - 1) / block_width;
+    block_rows := (cast(s64) height + block_height - 1) / block_height;
+    bytes_per_block_row := block_columns * bytes_per_block;
+    assert(compressed_byte_count == bytes_per_block_row * block_rows * depth);
+    if !budgeter {
+        gl_update_compressed_3d_subimage_of_texture_bound_to_binding_target_of_active_texture_unit(
+            binding_target, mipmap_level, x_offset, y_offset, z_offset,
+            width, height, depth, compression_format, cast(GLsizei) compressed_byte_count, compressed_pixels);
+        return true;
+    }
+    texture := gl_get_tracked_texture_bound_to_binding_target_of_active_texture_unit(binding_target);
+    if texture == 0 {
+        log_error("Cannot budget compressed 3D texture update: no texture is bound to target %", binding_target);
+        return false;
+    }
+    data, owns_data := gl_budgeted_copy_or_borrow_data(compressed_pixels, compressed_byte_count, data_lifetime);
+    operation := GL_Budgeted_Operation.{
+        kind = .UPDATE_COMPRESSED_TEXTURE_3D_SUBIMAGE,
+        binding_target = binding_target,
+        captured_object = texture,
+        captured_texture_unit = gl_state_metadata.active_texture_unit,
+        mipmap_level = mipmap_level,
+        x_offset = x_offset, y_offset = y_offset, z_offset = z_offset,
+        width = width, height = height, depth = depth,
+        pixel_format = compression_format,
+        data = data, data_byte_count = compressed_byte_count, owns_data = owns_data,
+        bytes_per_row = bytes_per_block_row,
+        compressed_block_height = block_height,
+        total_work = compressed_byte_count,
+    };
+    gl_budgeted_capture_unpack_state(*operation);
+    gl_budgeted_append_operation(budgeter, operation);
+    return true;
+}
+
 gl_budgeted_release_operation_data :: (operation: *GL_Budgeted_Operation) {
     if operation.owns_data && operation.data != null free(operation.data);
     operation.data = null;
@@ -860,6 +917,35 @@ gl_process_one_budgeted_operation :: (budgeter: *GL_Budgeter) {
         gl_budgeted_set_unpack_state(previous_unpack_state);
         gl_budgeted_restore_texture_binding(operation, previous_active_unit, previous_texture);
         gl_budgeted_finish_operation(budgeter, operation);
+        return;
+    }
+
+    if operation.kind == .UPDATE_COMPRESSED_TEXTURE_3D_SUBIMAGE {
+        // compressed chunks must contain complete block rows and stay inside one page.
+        block_height := cast(s64) operation.compressed_block_height;
+        block_rows_per_page := (cast(s64) operation.height + block_height - 1) / block_height;
+        block_rows_per_chunk := max(cast(s64) 1, budgeter.maximum_texture_chunk_bytes / operation.bytes_per_row);
+        page := operation.completed_rows / block_rows_per_page;
+        row_in_page := operation.completed_rows % block_rows_per_page;
+        row_count := min(block_rows_per_chunk, block_rows_per_page - row_in_page);
+        chunk_byte_count := row_count * operation.bytes_per_row;
+        chunk_height := min(row_count * block_height, cast(s64) operation.height - row_in_page * block_height);
+        gl_update_compressed_3d_subimage_of_texture_bound_to_binding_target_of_active_texture_unit(
+            operation.binding_target, operation.mipmap_level,
+            operation.x_offset, operation.y_offset + cast(GLint) (row_in_page * block_height),
+            operation.z_offset + cast(GLint) page,
+            operation.width, cast(GLsizei) chunk_height, 1,
+            operation.pixel_format, cast(GLsizei) chunk_byte_count,
+            operation.data + operation.completed_byte_count);
+        operation.completed_rows += row_count;
+        operation.completed_byte_count += chunk_byte_count;
+        operation.completed_work += chunk_byte_count;
+        budgeter.completed_work += chunk_byte_count;
+        gl_budgeted_set_unpack_state(previous_unpack_state);
+        gl_budgeted_restore_texture_binding(operation, previous_active_unit, previous_texture);
+        if operation.completed_rows >= block_rows_per_page * operation.depth {
+            gl_budgeted_finish_operation(budgeter, operation);
+        }
         return;
     }
 
