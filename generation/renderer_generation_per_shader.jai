@@ -301,8 +301,8 @@ glsl_component_type :: (type_name: string) -> GLenum {
 }
 
 legacy_shader_program_path :: (program: Shader_Program_Metadata) -> bool {
-    return starts_with(program.vertex_shader_path, "src/tbx/opengl/shaders/out/")
-        || starts_with(program.fragment_shader_path, "src/tbx/opengl/shaders/out/");
+    return starts_with(program.vertex_shader_path, "modules/tbx/opengl/shaders/out/")
+        || starts_with(program.fragment_shader_path, "modules/tbx/opengl/shaders/out/");
 }
 
 legacy_shader_uniform_is_allowed :: (name: string) -> bool {
@@ -1249,7 +1249,7 @@ generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> stri
 }
 
 generated_renderer_compile_time_shader_read_expression :: (shader_path: string) -> string {
-    module_shader_prefix :: "src/tbx/opengl/shaders/";
+    module_shader_prefix :: "modules/tbx/opengl/shaders/";
     legacy_shader_prefix :: "data/shaders/";
 
     relative_path := shader_path;

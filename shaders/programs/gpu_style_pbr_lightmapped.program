@@ -1,4 +1,4 @@
 Shader_Program_Metadata.{
-    vertex_shader_path = "src/tbx/opengl/shaders/generated/gpu_style_pbr_lightmapped.vert",
-    fragment_shader_path = "src/tbx/opengl/shaders/generated/gpu_style_pbr_lightmapped.frag"
+    vertex_shader_path = "modules/tbx/opengl/shaders/generated/gpu_style_pbr_lightmapped.vert",
+    fragment_shader_path = "modules/tbx/opengl/shaders/generated/gpu_style_pbr_lightmapped.frag"
 }

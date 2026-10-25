@@ -18,10 +18,10 @@ additional `data/shaders` tree beside their executable.
 
 ## Regeneration
 
-From a project root containing `src/tbx`, run:
+From a project root containing `modules/tbx`, run:
 
 ```sh
-/path/to/jai/bin/jai-linux src/tbx/opengl/regenerate_shaders.jai
+/path/to/jai/bin/jai-linux modules/tbx/opengl/regenerate_shaders.jai
 ```
 
 That command performs the complete sequence:

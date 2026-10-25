@@ -153,8 +153,8 @@ generate_gpu_style_shader_request :: (
 }
 
 main :: () {
-    shader_output_directory :: "src/tbx/opengl/shaders/generated";
-    program_directory :: "src/tbx/opengl/shaders/programs";
+    shader_output_directory :: "modules/tbx/opengl/shaders/generated";
+    program_directory :: "modules/tbx/opengl/shaders/programs";
 
     pbr_variants := GPU_Style_Shader_Variant.[
         .Directional_Shadows,
@@ -164,20 +164,20 @@ main :: () {
 
     requests := GPU_Style_Shader_Generation_Request.[
         .{
-            source_path = "src/tbx/software_rasterizer/gpu_style_shaders/vertex_color.jai",
+            source_path = "modules/tbx/software_rasterizer/gpu_style_shaders/vertex_color.jai",
             shader_prefix = "gpu_style_vertex_color"
         },
         .{
-            source_path = "src/tbx/software_rasterizer/gpu_style_shaders/blinn_phong.jai",
+            source_path = "modules/tbx/software_rasterizer/gpu_style_shaders/blinn_phong.jai",
             shader_prefix = "gpu_style_blinn_phong"
         },
         .{
-            source_path = "src/tbx/software_rasterizer/gpu_style_shaders/pbr.jai",
+            source_path = "modules/tbx/software_rasterizer/gpu_style_shaders/pbr.jai",
             shader_prefix = "gpu_style_pbr",
             variants = pbr_variants
         },
         .{
-            source_path = "src/tbx/software_rasterizer/gpu_style_shaders/pbr_lightmapped.jai",
+            source_path = "modules/tbx/software_rasterizer/gpu_style_shaders/pbr_lightmapped.jai",
             shader_prefix = "gpu_style_pbr_lightmapped"
         }
     ];
