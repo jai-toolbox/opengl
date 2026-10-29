@@ -85,11 +85,9 @@ void main() {
         surface.ambient_occlusion,
         baked_irradiance
     );
-    vec3 hdr_lighting = max(
-        baked_diffuse + dynamic_direct + indirect_specular
-            + surface.emissive,
-        vec3(0.0)
-    );
+    vec3 hdr_lighting = baked_diffuse + dynamic_direct + indirect_specular
+        + surface.emissive;
+    hdr_lighting = max(hdr_lighting, vec3(0.0));
 
     vec3 display_lighting = vec3(1.0) - exp(-hdr_lighting * exposure);
     frag_color = vec4(linear_to_srgb(display_lighting), surface.alpha);
