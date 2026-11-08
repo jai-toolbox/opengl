@@ -1,0 +1,22 @@
+Shader_Program_Metadata.{
+    name = "Vertex_Color",
+    vertex_shader_path = "modules/tbx/opengl/shaders/generated/vertex_color.vert",
+    fragment_shader_path = "modules/tbx/opengl/shaders/generated/vertex_color.frag",
+    embed_shader_sources = true,
+    jai_bindings = .{
+        vertex_type = "Mesh_Vertex_Color_Input",
+        attributes = .[
+            .{shader_name = "position", field = "vertex.position"},
+            .{shader_name = "color", field = "vertex.color"},
+            .{shader_name = "local_to_world_index", field = "local_to_world_index"},
+        ],
+        uniform_groups = .[
+            .{shader_name = "vertex_uniforms", jai_type_name = "Mesh_Vertex_Uniforms", host_type_name = "Vertex_Color_Mesh_Vertex_Uniforms_Bindings", declarations = "Vertex_Color_Mesh_Vertex_Uniforms_Bindings :: struct {\n    object_transforms: GLuint;\n    world_to_camera: Matrix4;\n    camera_to_clip: Matrix4;\n}\n\n"},
+        ],
+        uniforms = .[
+            .{type_name = "sampler2D", shader_name = "object_transforms", value_expression = "ctx.object_transforms", group_index = 0},
+            .{type_name = "mat4", shader_name = "world_to_camera", value_expression = "ctx.world_to_camera", group_index = 0},
+            .{type_name = "mat4", shader_name = "camera_to_clip", value_expression = "ctx.camera_to_clip", group_index = 0},
+        ],
+    },
+}

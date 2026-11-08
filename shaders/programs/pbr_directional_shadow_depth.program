@@ -1,0 +1,24 @@
+Shader_Program_Metadata.{
+    name = "Pbr_Directional_Shadow_Depth",
+    vertex_shader_path = "modules/tbx/opengl/shaders/generated/pbr_directional_shadow_depth.vert",
+    fragment_shader_path = "modules/tbx/opengl/shaders/generated/pbr_directional_shadow_depth.frag",
+    embed_shader_sources = true,
+    jai_bindings = .{
+        vertex_type = "Mesh_Vertex",
+        attributes = .[
+            .{shader_name = "position", field = "position"},
+            .{shader_name = "normal", field = "normal"},
+            .{shader_name = "tangent", field = "tangent"},
+            .{shader_name = "uv", field = "uv"},
+            .{shader_name = "material_index", field = "material_index"},
+            .{shader_name = "local_to_world_index", field = "local_to_world_index"},
+        ],
+        uniform_groups = .[
+            .{shader_name = "vertex_uniforms", jai_type_name = "Shadow_Vertex_Uniforms", host_type_name = "Pbr_Directional_Shadow_Depth_Shadow_Vertex_Uniforms_Bindings", declarations = "Pbr_Directional_Shadow_Depth_Shadow_Vertex_Uniforms_Bindings :: struct {\n    object_transforms: GLuint;\n    world_to_light_clip: Matrix4;\n}\n\n"},
+        ],
+        uniforms = .[
+            .{type_name = "sampler2D", shader_name = "object_transforms", value_expression = "ctx.object_transforms", group_index = 0},
+            .{type_name = "mat4", shader_name = "world_to_light_clip", value_expression = "ctx.world_to_light_clip", group_index = 0},
+        ],
+    },
+}

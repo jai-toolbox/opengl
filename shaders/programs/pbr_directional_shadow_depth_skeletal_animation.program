@@ -1,0 +1,27 @@
+Shader_Program_Metadata.{
+    name = "Pbr_Directional_Shadow_Depth_Skeletal_Animation",
+    vertex_shader_path = "modules/tbx/opengl/shaders/generated/pbr_directional_shadow_depth_skeletal_animation.vert",
+    fragment_shader_path = "modules/tbx/opengl/shaders/generated/pbr_directional_shadow_depth_skeletal_animation.frag",
+    embed_shader_sources = true,
+    jai_bindings = .{
+        vertex_type = "Skinned_Mesh_Vertex",
+        attributes = .[
+            .{shader_name = "position", field = "mesh.position"},
+            .{shader_name = "normal", field = "mesh.normal"},
+            .{shader_name = "tangent", field = "mesh.tangent"},
+            .{shader_name = "uv", field = "mesh.uv"},
+            .{shader_name = "material_index", field = "mesh.material_index"},
+            .{shader_name = "local_to_world_index", field = "mesh.local_to_world_index"},
+            .{shader_name = "bone_indices", field = "bone_indices"},
+            .{shader_name = "bone_weights", field = "bone_weights"},
+        ],
+        uniform_groups = .[
+            .{shader_name = "vertex_uniforms", jai_type_name = "Skinned_Shadow_Vertex_Uniforms", host_type_name = "Pbr_Directional_Shadow_Depth_Skeletal_Animation_Skinned_Shadow_Vertex_Uniforms_Bindings", declarations = "Pbr_Directional_Shadow_Depth_Skeletal_Animation_Shadow_Vertex_Uniforms_Bindings :: struct {\n    object_transforms: GLuint;\n    world_to_light_clip: Matrix4;\n}\n\nPbr_Directional_Shadow_Depth_Skeletal_Animation_Skinned_Shadow_Vertex_Uniforms_Bindings :: struct {\n    shadow: Pbr_Directional_Shadow_Depth_Skeletal_Animation_Shadow_Vertex_Uniforms_Bindings;\n    bone_transforms: GLuint;\n}\n\n"},
+        ],
+        uniforms = .[
+            .{type_name = "sampler2D", shader_name = "shadow.object_transforms", value_expression = "ctx.shadow.object_transforms", group_index = 0},
+            .{type_name = "mat4", shader_name = "shadow.world_to_light_clip", value_expression = "ctx.shadow.world_to_light_clip", group_index = 0},
+            .{type_name = "sampler2D", shader_name = "bone_transforms", value_expression = "ctx.bone_transforms", group_index = 0},
+        ],
+    },
+}
