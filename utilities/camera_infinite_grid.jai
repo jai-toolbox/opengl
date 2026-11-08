@@ -1,6 +1,5 @@
 Camera_Infinite_Grid :: struct {
     renderer: Camera_Infinite_Grid_Renderer;
-    empty_vao: GLuint;
 }
 
 Grid_Plane :: enum s32 {
@@ -19,14 +18,9 @@ GRID_CLIP_DEPTH_OFFSET_FRONT :: -0.00020;
 init :: (using grid: *Camera_Infinite_Grid) {
     init(*renderer); // we literally just use the renderer to auto compile the shader program, we don't touch anything else.
 
-    // we need an empty vao because the vertex shader generates
-    // all geometry internally using gl_vertexid. opengl still
-    // requires a vao to be bound for draw calls.
-    empty_vao = gl_create_vertex_array();
 }
 
 deinit :: (using grid: *Camera_Infinite_Grid) {
-    gl_delete_vertex_array(empty_vao);
     deinit(*renderer);
 }
 
@@ -59,7 +53,7 @@ render :: (using grid: *Camera_Infinite_Grid,
     // bind the empty vao and draw 6 vertices (two triangles).
     // the vertex shader uses gl_vertexid to index into hardcoded
     // positions and indices, no vertex buffers needed.
-    gl_bind_vertex_array(empty_vao);
+    gl_bind_vertex_array(renderer.vertex_attribute_array_gl_handle);
 
     if place_at_far_depth {
         set_grid_clip_depth_offset_uniform(*renderer, 0.0);

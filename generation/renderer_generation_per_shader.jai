@@ -23,7 +23,7 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
 
     per_object_transforms : bool;
 
-    num_elements_in_each_buffer : u32;
+    num_elements_in_each_buffer : u32 = 100000;
 
 
     /*
@@ -50,6 +50,13 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
 
     primitive_mode : GLenum = GL_TRIANGLES;
 
+    // No attribute/index buffers or object queue; emit a non-indexed vertex_count draw.
+    vertex_shader_supplies_geometry : bool;
+    vertex_count : u32;
+    native_vertex_type_name : string;
+    vertex_source_expression, fragment_source_expression: string;
+    uniform_groups: [..] GL_Uniform_Group;
+
 }
 
 Shader_Program_Metadata :: struct {
@@ -64,6 +71,14 @@ Shader_Program_Metadata :: struct {
     fragment_shader_path : string;
 
     primitive_mode : GLenum = GL_TRIANGLES;
+    // The shader computes vertices from built-ins such as gl_VertexID.
+    vertex_shader_supplies_geometry : bool;
+    vertex_count : u32;
+
+    renderer_path : string;
+    paths_relative_to_program : bool;
+    embed_shader_sources : bool;
+    jai_bindings : Shader_Program_Jai_Bindings;
 }
 
 gl_primitive_mode_to_string :: (mode: GLenum) -> string {
@@ -251,6 +266,7 @@ glsl_type_to_jai_type :: (type_name: string) -> Type {
     if type_name == "bool" return bool;
     if type_name == "sampler1D" return s32;
     if type_name == "sampler2D" return s32;
+    if type_name == "sampler3D" return s32;
     if type_name == "sampler2DArray" return s32;
     if type_name == "usampler2D" return s32;
     if type_name == "samplerCube" return s32;
@@ -302,7 +318,9 @@ glsl_component_type :: (type_name: string) -> GLenum {
 
 legacy_shader_program_path :: (program: Shader_Program_Metadata) -> bool {
     return starts_with(program.vertex_shader_path, "modules/tbx/opengl/shaders/out/")
-        || starts_with(program.fragment_shader_path, "modules/tbx/opengl/shaders/out/");
+        || starts_with(program.fragment_shader_path, "modules/tbx/opengl/shaders/out/")
+        || starts_with(program.vertex_shader_path, "src/tbx/opengl/shaders/out/")
+        || starts_with(program.fragment_shader_path, "src/tbx/opengl/shaders/out/");
 }
 
 legacy_shader_uniform_is_allowed :: (name: string) -> bool {
@@ -432,6 +450,7 @@ glsl_variable_to_vertex_attribute_configuration :: (variable: GLSL_Shader_Variab
 glsl_variable_to_uniform_configuration :: (variable: GLSL_Shader_Variable) -> GL_Vertex_Uniform_Configuration {
     return .{
         type_in_jai = glsl_type_to_jai_type(variable.type_name),
+        glsl_type_name = variable.type_name,
         var_name_in_shader = variable.name,
     };
 }
@@ -616,14 +635,6 @@ shader_program_path_to_file_stem :: (path: string) -> string {
     return filename;
 }
 
-shader_program_identifier_char :: (c: u8) -> bool {
-    if c >= #char "a" && c <= #char "z" return true;
-    if c >= #char "A" && c <= #char "Z" return true;
-    if c >= #char "0" && c <= #char "9" return true;
-    if c == #char "_" return true;
-    return false;
-}
-
 shader_program_append_pascal_word :: (builder: *String_Builder, word: string) {
     if word.count == 0 return;
 
@@ -677,56 +688,12 @@ shader_program_parse_u32 :: (value: string) -> (parsed: u32, ok: bool) {
     for i: 0..trimmed.count-1 {
         c := trimmed[i];
         if c < #char "0" || c > #char "9" return 0, false;
-        result = result * 10 + cast(u32) (c - #char "0");
+        digit := cast(u32) (c - #char "0");
+        if result > (0xffffffff - digit) / 10 return 0, false;
+        result = result * 10 + digit;
     }
 
     return result, true;
-}
-
-shader_program_metadata_field_value :: (source: string, field_name: string) -> (value: string, found: bool) {
-    remainder := source;
-    while remainder.count > 0 {
-        field_index := find_index_from_left(remainder, field_name);
-        if field_index < 0 return "", false;
-
-        before_ok := field_index == 0 || !shader_program_identifier_char(remainder[field_index - 1]);
-        after_index := field_index + field_name.count;
-        after_ok := after_index >= remainder.count || !shader_program_identifier_char(remainder[after_index]);
-        if !before_ok || !after_ok {
-            remainder = advance(remainder, after_index);
-            continue;
-        }
-
-        working := trim(advance(remainder, after_index));
-        if working.count == 0 || working[0] != #char "=" {
-            remainder = advance(remainder, after_index);
-            continue;
-        }
-
-        working = trim(advance(working, 1));
-        if working.count == 0 return "", false;
-
-        if working[0] == #char "\"" {
-            for i: 1..working.count-1 {
-                if working[i] == #char "\"" return slice(working, 1, i - 1), true;
-            }
-
-            return "", false;
-        }
-
-        end := working.count;
-        for i: 0..working.count-1 {
-            c := working[i];
-            if c == #char "," || c == #char "\n" || c == #char "\r" || c == #char "}" {
-                end = i;
-                break;
-            }
-        }
-
-        return trim(slice(working, 0, end)), true;
-    }
-
-    return "", false;
 }
 
 read_shader_program_metadata_file :: (program_path: string) -> (program: Shader_Program_Metadata, ok: bool) {
@@ -736,28 +703,42 @@ read_shader_program_metadata_file :: (program_path: string) -> (program: Shader_
         return .{}, false;
     }
 
+    parsed := Shader_Parser.parse(tprint("program :: %;", source));
+    if !parsed.success || parsed.root.declarations.count != 1 {
+        log_error("Invalid shader program %: %", program_path, parsed.error.message);
+        return .{}, false;
+    }
+    root := parsed.root.declarations[0].rhs;
+    if root == null || root.kind != .STRUCT_LITERAL_EXPR {
+        log_error("Shader program % must contain a Shader_Program_Metadata literal.", program_path);
+        return .{}, false;
+    }
+
     result := Shader_Program_Metadata.{
         name = shader_program_name_from_path(program_path),
     };
 
     value: string;
-    found: bool;
+    found, ok: bool;
 
-    value, found = shader_program_metadata_field_value(source, "vertex_shader_path");
+    value, found = shader_program_metadata_field_value(root, "name");
+    if found && value.count > 0 result.name = value;
+
+    value, found = shader_program_metadata_field_value(root, "vertex_shader_path");
     if !found {
         log_error("Shader program % is missing vertex_shader_path.", program_path);
         return .{}, false;
     }
     result.vertex_shader_path = value;
 
-    value, found = shader_program_metadata_field_value(source, "fragment_shader_path");
+    value, found = shader_program_metadata_field_value(root, "fragment_shader_path");
     if !found {
         log_error("Shader program % is missing fragment_shader_path.", program_path);
         return .{}, false;
     }
     result.fragment_shader_path = value;
 
-    value, found = shader_program_metadata_field_value(source, "per_object_transforms");
+    value, found = shader_program_metadata_field_value(root, "per_object_transforms");
     if found {
         parsed, parse_ok := shader_program_parse_bool(value);
         if !parse_ok {
@@ -767,7 +748,7 @@ read_shader_program_metadata_file :: (program_path: string) -> (program: Shader_
         result.per_object_transforms = parsed;
     }
 
-    value, found = shader_program_metadata_field_value(source, "immediate_mode_support");
+    value, found = shader_program_metadata_field_value(root, "immediate_mode_support");
     if found {
         parsed, parse_ok := shader_program_parse_bool(value);
         if !parse_ok {
@@ -777,7 +758,7 @@ read_shader_program_metadata_file :: (program_path: string) -> (program: Shader_
         result.immediate_mode_support = parsed;
     }
 
-    value, found = shader_program_metadata_field_value(source, "num_elements_in_each_buffer");
+    value, found = shader_program_metadata_field_value(root, "num_elements_in_each_buffer");
     if found {
         parsed, parse_ok := shader_program_parse_u32(value);
         if !parse_ok {
@@ -787,7 +768,7 @@ read_shader_program_metadata_file :: (program_path: string) -> (program: Shader_
         result.num_elements_in_each_buffer = parsed;
     }
 
-    value, found = shader_program_metadata_field_value(source, "num_elements_in_each_immediate_buffer");
+    value, found = shader_program_metadata_field_value(root, "num_elements_in_each_immediate_buffer");
     if found {
         parsed, parse_ok := shader_program_parse_u32(value);
         if !parse_ok {
@@ -797,9 +778,53 @@ read_shader_program_metadata_file :: (program_path: string) -> (program: Shader_
         result.num_elements_in_each_immediate_buffer = parsed;
     }
 
-    value, found = shader_program_metadata_field_value(source, "primitive_mode");
+    value, found = shader_program_metadata_field_value(root, "primitive_mode");
     if found result.primitive_mode = gl_primitive_mode_from_string(value);
 
+    value, found = shader_program_metadata_field_value(root, "vertex_shader_supplies_geometry");
+    if found {
+        parsed, parse_ok := shader_program_parse_bool(value);
+        if !parse_ok {
+            log_error("Shader program % has invalid vertex_shader_supplies_geometry value: %", program_path, value);
+            return .{}, false;
+        }
+        result.vertex_shader_supplies_geometry = parsed;
+    }
+    value, found = shader_program_metadata_field_value(root, "vertex_count");
+    if found {
+        parsed, parse_ok := shader_program_parse_u32(value);
+        if !parse_ok {
+            log_error("Shader program % has invalid vertex_count value: %", program_path, value);
+            return .{}, false;
+        }
+        result.vertex_count = parsed;
+    }
+    if result.vertex_shader_supplies_geometry {
+        if result.vertex_count == 0 || result.vertex_count > 0x7fffffff {
+            log_error("Shader program % requires vertex_count between 1 and 2147483647.", program_path);
+            return .{}, false;
+        }
+    } else if result.vertex_count != 0 {
+        log_error("Shader program % requires vertex_shader_supplies_geometry for vertex_count.", program_path);
+        return .{}, false;
+    }
+
+    result.renderer_path = shader_program_metadata_field_value(root, "renderer_path");
+    value, found = shader_program_metadata_field_value(root, "paths_relative_to_program");
+    if found {
+        result.paths_relative_to_program, ok = shader_program_parse_bool(value);
+        if !ok return .{}, false;
+    }
+    value, found = shader_program_metadata_field_value(root, "embed_shader_sources");
+    if found {
+        result.embed_shader_sources, ok = shader_program_parse_bool(value);
+        if !ok return .{}, false;
+    }
+    result.jai_bindings, ok = read_shader_program_jai_bindings(root);
+    if !ok {
+        log_error("Invalid Jai bindings in shader program %.", program_path);
+        return .{}, false;
+    }
     return result, true;
 }
 
@@ -811,7 +836,8 @@ shader_program_generation_visitor :: (info: *File_Visit_Info, _: *void) {
     program, ok := read_shader_program_metadata_file(program_path);
     if !ok return;
 
-    create_code_to_render_stuff_with_shader_from_program(program_path, program);
+    generated := create_code_to_render_stuff_with_shader_from_program(program_path, program);
+    if !generated.success log_error("%", generated.error);
 }
 
 create_code_to_render_stuff_with_shader_program_files :: (program_directory: string = "") {
@@ -820,17 +846,29 @@ create_code_to_render_stuff_with_shader_program_files :: (program_directory: str
     visit_files(directory, recursive = false, null, shader_program_generation_visitor, visit_directories = false);
 }
 
-create_code_to_render_stuff_with_shader_from_program :: (program_path: string, program: Shader_Program_Metadata) {
-    vertex_source, vertex_ok := read_entire_file(program.vertex_shader_path);
+create_code_to_render_stuff_with_shader_from_program :: (program_path: string) -> Generated_Shader_Renderer {
+    program, ok := read_shader_program_metadata_file(program_path);
+    if !ok return .{error = tprint("Could not read shader program %", program_path)};
+    return create_code_to_render_stuff_with_shader_from_program(program_path, program);
+}
+
+create_code_to_render_stuff_with_shader_from_program :: (program_path: string, program: Shader_Program_Metadata) -> Generated_Shader_Renderer {
+    generated := generate_shader_renderer_from_program(program_path, program);
+    if !generated.success return generated;
+    return write_shader_program_renderer(generated.source, generated.path);
+}
+
+generate_shader_renderer_from_program :: (program_path: string, program: Shader_Program_Metadata) -> Generated_Shader_Renderer {
+    vertex_path := shader_program_resolve_path(program_path, program, program.vertex_shader_path);
+    fragment_path := shader_program_resolve_path(program_path, program, program.fragment_shader_path);
+    vertex_source, vertex_ok := read_entire_file(vertex_path);
     if !vertex_ok {
-        log_error("Failed to read vertex shader for program %: %", program_path, program.vertex_shader_path);
-        return;
+        return .{error = tprint("Failed to read vertex shader for program %: %", program_path, vertex_path)};
     }
 
-    fragment_source, fragment_ok := read_entire_file(program.fragment_shader_path);
+    fragment_source, fragment_ok := read_entire_file(fragment_path);
     if !fragment_ok {
-        log_error("Failed to read fragment shader for program %: %", program_path, program.fragment_shader_path);
-        return;
+        return .{error = tprint("Failed to read fragment shader for program %: %", program_path, fragment_path)};
     }
 
     attributes: [..] GL_Vertex_Attribute_Configuration;
@@ -879,9 +917,21 @@ create_code_to_render_stuff_with_shader_from_program :: (program_path: string, p
         vertex_shader_path = program.vertex_shader_path,
         fragment_shader_path = program.fragment_shader_path,
         primitive_mode = program.primitive_mode,
+        vertex_shader_supplies_geometry = program.vertex_shader_supplies_geometry,
+        vertex_count = program.vertex_count,
     };
 
-    create_code_to_render_stuff_with_shader(shader);
+    valid, error := apply_shader_program_jai_bindings(*shader, program.jai_bindings);
+    if !valid return .{error = tprint("Invalid shader program %: %", program_path, error)};
+    valid, error = shader_renderer_metadata_valid(shader);
+    if !valid {
+        return .{error = tprint("Invalid shader program %: %", program_path, error)};
+    }
+
+    source := shader_program_renderer_source(shader, program_path, program, vertex_source, fragment_source);
+    output_path := shader_program_resolve_path(program_path, program, program.renderer_path);
+    if program.renderer_path.count == 0 output_path = tprint("%../renderers/%_renderer.jai", #filepath, to_lower_copy(program.name));
+    return .{success = true, source = source, path = output_path};
 }
 
 shader_attribute_configurations :: (shader: Shader_Metadata) -> [..] GL_Vertex_Attribute_Configuration {
@@ -905,6 +955,7 @@ is_disabled_generated_vertex_attribute :: (attr: GL_Vertex_Attribute_Configurati
         || attr.var_name_in_shader == "passthrough_packed_texture_bounding_box_index_for_ambient_occlusion";
 }
 
+// this should just be a generic clean up thing if used elsewhere.
 normalize_generated_jai_source :: (source: string) -> string {
     lines := split(source, cast(u8) #char "\n");
 
@@ -927,8 +978,11 @@ normalize_generated_jai_source :: (source: string) -> string {
     return builder_to_string(*builder);
 }
 
-create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
+generate_shader_renderer_code :: (shader: Shader_Metadata) -> string {
     push_allocator(temp);
+
+    valid, error := shader_renderer_metadata_valid(shader);
+    assert(valid, "%", error);
 
     builder: String_Builder;
     init_string_builder(*builder);
@@ -939,21 +993,27 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
     attribute_configs := shader_attribute_configurations(shader);
     has_attributes := attribute_configs.count > 0;
 
+    append(*builder, generate_uniform_group_declarations(shader));
+
     if has_attributes {
         append(*builder, generate_renderable_struct_for_given_shader(shader));
         append(*builder, generate_code_for_constructing_renderable_from_generic_geometry_type(shader));
         append(*builder, generate_code_for_deinit_renderable(shader));
         append(*builder, generate_code_for_unbuffer_renderable(shader));
         append(*builder, generate_code_for_queue_render_from_renderable(shader));
+        append(*builder, generate_code_for_object_index_operations(shader));
+        append(*builder, generate_native_vertex_buffer_object(shader));
         if shader.per_object_transforms append(*builder, generate_code_for_set_local_to_world_matrix(shader));
     }
 
     append(*builder, generate_renderer_struct_for_given_shader(shader));
-    append(*builder, generate_code_for_uniform_setter_functions(shader));
+    append(*builder, generate_code_for_uniform_setter_procedures(shader));
     append(*builder, generate_code_for_init(shader));
     append(*builder, generate_code_for_deinit_renderer(shader));
 
-    if has_attributes {
+    if shader.vertex_shader_supplies_geometry {
+        append(*builder, generate_render(shader));
+    } else if has_attributes {
         append(*builder, generate_init_buffers_no_data(shader));
         append(*builder, generate_init_immediate_buffers(shader));       
         append(*builder, generate_code_for_buffer_object_from_renderable(shader));
@@ -963,8 +1023,15 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
         append(*builder, generate_immediate_render(shader));            
     }
 
-    output := normalize_generated_jai_source(builder_to_string(*builder));
+    return normalize_generated_jai_source(builder_to_string(*builder));
+}
 
+create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata, output_path: string = "") {
+    output := generate_shader_renderer_code(shader);
+    if output_path.count > 0 {
+        assert(write_entire_file(output_path,output),"Could not write renderer %",output_path);
+        return;
+    }
     renderers_dir := tprint("%../renderers", #filepath);
     make_directory_if_it_does_not_exist(renderers_dir);
 
@@ -977,7 +1044,7 @@ create_code_to_render_stuff_with_shader :: (shader: Shader_Metadata) {
 }
 
 jai_struct_attributes_for_gl_vertex_attribute_handles :: (attributes: [] GL_Vertex_Attribute_Configuration) -> string {
-    push_allocator(temp); // everything in this function is temp storage, yay!
+    push_allocator(temp); // everything in this procedure is temp storage, yay!
 
     builder: String_Builder;
     init_string_builder(*builder); 
@@ -1009,7 +1076,7 @@ generate_code_for_cached_uniform_location_attributes :: (shader: Shader_Metadata
     uniforms := shader_uniform_configurations(shader);
     for uniforms {
         print_to_builder(*builder, "    %_uniform_location : GLint = -1;\n", 
-            it.var_name_in_shader);
+            generated_uniform_identifier(it));
     }
 
     return builder_to_string(*builder);
@@ -1038,10 +1105,11 @@ generate_code_for_immediate_mode_attributes :: (s : Shader_Metadata) -> string {
 }
 
 generate_renderer_struct_for_given_shader :: (s : Shader_Metadata) -> string {
+    if s.vertex_shader_supplies_geometry return generate_shader_supplied_geometry_renderer_struct(s);
     return tprint(#string END
 
 %1 :: struct {
-    using #as psr : Per_Shader_Renderer;
+    using #as psr : Per_Shader_Renderer = .{max_num_elements_in_each_buffer = %6};
 
 %2
 %3
@@ -1053,7 +1121,7 @@ generate_renderer_struct_for_given_shader :: (s : Shader_Metadata) -> string {
          generate_code_for_per_object_transform_attributes(s), 
          generate_code_for_cached_uniform_location_attributes(s),    
          jai_struct_attributes_for_gl_vertex_attribute_handles(shader_attribute_configurations(s)),
-         generate_code_for_immediate_mode_attributes(s));
+         generate_code_for_immediate_mode_attributes(s), s.num_elements_in_each_buffer);
 }
 
 generate_renderable_struct_attributes :: (shader : Shader_Metadata) -> string {
@@ -1242,7 +1310,7 @@ generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> stri
     for uniforms {
         print_to_builder(*builder, 
             "    %_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, \"%\");\n",
-            it.var_name_in_shader, it.var_name_in_shader);
+            generated_uniform_identifier(it), it.var_name_in_shader);
     }
 
     return builder_to_string(*builder);
@@ -1250,11 +1318,14 @@ generate_code_for_caching_uniform_locations :: (shader: Shader_Metadata) -> stri
 
 generated_renderer_compile_time_shader_read_expression :: (shader_path: string) -> string {
     module_shader_prefix :: "modules/tbx/opengl/shaders/";
+    previous_module_shader_prefix :: "src/tbx/opengl/shaders/";
     legacy_shader_prefix :: "data/shaders/";
 
     relative_path := shader_path;
     if starts_with(shader_path, module_shader_prefix) {
         relative_path = advance(shader_path, module_shader_prefix.count);
+    } else if starts_with(shader_path, previous_module_shader_prefix) {
+        relative_path = advance(shader_path, previous_module_shader_prefix.count);
     } else if starts_with(shader_path, legacy_shader_prefix) {
         relative_path = advance(shader_path, legacy_shader_prefix.count);
     } else {
@@ -1271,25 +1342,27 @@ generated_renderer_compile_time_shader_read_expression :: (shader_path: string) 
 }
 
 generate_code_for_init :: (shader : Shader_Metadata) -> string {
+    if shader.vertex_shader_supplies_geometry return generate_shader_supplied_geometry_renderer_init(shader);
 
     immediate_init_call := ifx shader.immediate_mode_support then "    init_immediate_buffers(renderer);\n" else "";
     init_buffers_call := ifx shader_attribute_configurations(shader).count > 0 then "    init_buffers_no_data(renderer);\n" else "";
 
     return tprint(#string END
 
-init :: (using renderer : *%1) { 
+init :: (using renderer : *%1) -> bool {
     vertex_shader_source := %2;
     fragment_shader_source := %3;
 
-    init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
+    if !init(*renderer.psr, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer) return false;
 %6%7
 %4
 %5
+    return true;
 }
 
     END, get_renderer_struct_name(shader), 
-         generated_renderer_compile_time_shader_read_expression(shader.vertex_shader_path),
-         generated_renderer_compile_time_shader_read_expression(shader.fragment_shader_path),
+         renderer_shader_source_expression(shader, true),
+         renderer_shader_source_expression(shader, false),
          generate_code_for_initting_matrices(shader),
          generate_code_for_caching_uniform_locations(shader),
          init_buffers_call,
@@ -1297,6 +1370,7 @@ init :: (using renderer : *%1) {
 }
 
 generate_code_for_deinit_renderer :: (shader: Shader_Metadata) -> string {
+    if shader.vertex_shader_supplies_geometry return tprint("deinit :: (renderer : *%) {\n    gl_delete_vertex_array(renderer.vertex_attribute_array_gl_handle);\n    gl_delete_shader_program(renderer.shader_program_gl_handle);\n    renderer.* = .{};\n}\n", get_renderer_struct_name(shader));
     push_allocator(temp);
 
     builder: String_Builder;
@@ -1506,7 +1580,7 @@ generate_code_for_early_local_to_world_allocation :: (shader: Shader_Metadata) -
     return #string END
     ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
     if !ltw_success {
-        virtual_free(*first_fit_virtual_allocator, index);
+        unbuffer_object(*renderer.psr, index);
         return 0, 0, false;
     }
 
@@ -1535,12 +1609,12 @@ generate_parameter_list_for_buffer_object :: (shader : Shader_Metadata) -> strin
 
     attributes := shader_attribute_configurations(shader);
     for attributes {
-        print_to_builder(*builder, "        % : [..] %,\n", it.argument_name_in_buffer_object, it.type_in_jai);
+        print_to_builder(*builder, "        % : [] %,\n", it.argument_name_in_buffer_object, it.type_in_jai);
     }
 
     return tprint(#string END
         using renderer: *%1,
-        indices : [..] u32,
+        indices : [] u32,
 %2
         budgeter: *GL_Budgeter = null
     END, get_renderer_struct_name(shader), builder_to_string(*builder));
@@ -1576,21 +1650,15 @@ buffer_object :: (
     note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
     the indices use duplicates sometimes to refer to the same vertex multiple times.
     */
-    length := positions.count; // todo: need to metaprogram this out, but it's pretty safe for now.
-    index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
+    length := %7.count;
+    if length == 0 { %3 }
+    index, success := allocate_buffered_object(*renderer.psr, cast(u32) length, indices);
     if !success {
         log("ran out of virtual memory");
         %3
     }
 
 %4
-
-    global_indices_for_object : [..] u32;
-    for indices 
-        array_add(*global_indices_for_object, xx index + it);
-
-    table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
-    invalidate_cached_index_buffer(*renderer.psr);
 
     gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
@@ -1606,7 +1674,8 @@ buffer_object :: (
     generate_code_for_return_in_failure_case(shader),
     generate_code_for_early_local_to_world_allocation(shader),
     generate_buffer_vertex_attributes_code(shader),
-    generate_code_for_final_return(shader)
+    generate_code_for_final_return(shader),
+    shader.attribute_configs[0].argument_name_in_buffer_object
     );
 
 }
@@ -1724,6 +1793,7 @@ generate_code_for_uploading_local_to_world_matrices :: (s: Shader_Metadata) -> s
 }
 
 generate_render :: (shader : Shader_Metadata) -> string {
+    if shader.vertex_shader_supplies_geometry return generate_shader_supplied_geometry_render(shader);
 
     return tprint(#string END
 render :: (using renderer : *%1, primitive_mode: GLenum = %3) {
@@ -1856,6 +1926,7 @@ GL_Vertex_Attribute_Configuration :: struct { // gl_vac
     plural_name : string;
 
     argument_name_in_buffer_object : string;
+    native_field_path : string;
 
     // when a value is constant across an object, then you only have to pass in a single value into buffer object rather than an array of them
     constant_across_object : bool;  
@@ -1895,72 +1966,51 @@ GL_Vertex_Uniform_Configuration :: struct { // (i don't give a) gl_vuc
 
     var_name_in_shader : string;
 
-    // plural_name : string; don't think I need this for uniforms??
+    // Typed interfaces distinguish the shader path from valid host identifiers.
+    identifier: string;
+    value_expression: string;
+    group_index: int = -1;
+    texture_target: GLenum;
+    texture_unit: s32;
+    glsl_type_name: string;
 }
-generate_code_for_uniform_setter_function :: (shader : Shader_Metadata, unif_conf : GL_Vertex_Uniform_Configuration) -> string {
-    lower_name := unif_conf.var_name_in_shader;
-    
-    // determine the right glUniform call based on type
-    gl_call: string;
-    args: string;
-    if unif_conf.type_in_jai == {
-        case Matrix4;
-            gl_call = "gl_set_uniform_matrix_4fv_on_active_shader_program";
-            args = "renderer.%1_uniform_location, 1, GL_TRUE, *v.coef[0][0]";
-        case Matrix3;
-            gl_call = "gl_set_uniform_matrix_3fv_on_active_shader_program";
-            args = "renderer.%1_uniform_location, 1, GL_TRUE, *v.coef[0][0]";
-        case Vector4;
-            gl_call = "gl_set_uniform_4f_on_active_shader_program";
-            args = "renderer.%1_uniform_location, v.x, v.y, v.z, v.w";
-        case Vector3;
-            gl_call = "gl_set_uniform_3f_on_active_shader_program";
-            args = "renderer.%1_uniform_location, v.x, v.y, v.z";
-        case Vector2;
-            gl_call = "gl_set_uniform_2f_on_active_shader_program";
-            args = "renderer.%1_uniform_location, v.x, v.y";
-        case float32;
-            gl_call = "gl_set_uniform_1f_on_active_shader_program";
-            args = "renderer.%1_uniform_location, v";
-        case s32;
-            gl_call = "gl_set_uniform_1i_on_active_shader_program";
-            args = "renderer.%1_uniform_location, v";
-        case u32;
-            gl_call = "gl_set_uniform_1ui_on_active_shader_program";
-            args = "renderer.%1_uniform_location, v";
-        case bool;
-            gl_call = "gl_set_uniform_1i_on_active_shader_program";
-            args = "renderer.%1_uniform_location, xx v";
-        case;
-            gl_call = "gl_set_uniform_1i_on_active_shader_program";
-            args = "renderer.%1_uniform_location, v";
-    }
-    
-    // replace %1 in args with the actual lower_name
-    resolved_args := tprint(args, lower_name);
-    
+// Both individual legacy setters and typed context setters share this mapping.
+generate_uniform_upload_call :: (uniform: GL_Vertex_Uniform_Configuration, location: string, value: string) -> string {
+    type := uniform.type_in_jai;
+    if type == Matrix4 return tprint("gl_set_uniform_matrix_4fv_on_active_shader_program(%, 1, GL_TRUE, *%.coef[0][0]);",location,value);
+    if type == Matrix3 return tprint("gl_set_uniform_matrix_3fv_on_active_shader_program(%, 1, GL_TRUE, *%.coef[0][0]);",location,value);
+    if type == Vector4 return tprint("gl_set_uniform_4f_on_active_shader_program(%, %.x, %.y, %.z, %.w);",location,value,value,value,value);
+    if type == Vector3 return tprint("gl_set_uniform_3f_on_active_shader_program(%, %.x, %.y, %.z);",location,value,value,value);
+    if type == Vector2 return tprint("gl_set_uniform_2f_on_active_shader_program(%, %.x, %.y);",location,value,value);
+    if type == float32 return tprint("gl_set_uniform_1f_on_active_shader_program(%, %);",location,value);
+    if type == u32 return tprint("gl_set_uniform_1ui_on_active_shader_program(%, %);",location,value);
+    if type == bool return tprint("gl_set_uniform_1i_on_active_shader_program(%, xx %);",location,value);
+    if type == s32 return tprint("gl_set_uniform_1i_on_active_shader_program(%, %);",location,value);
+    assert(false,"Unsupported uniform type %",type);
+    return "";
+}
+
+generate_code_for_uniform_setter_procedure :: (shader: Shader_Metadata, uniform: GL_Vertex_Uniform_Configuration) -> string {
+    name := generated_uniform_identifier(uniform);
+    call := generate_uniform_upload_call(uniform,tprint("renderer.%_uniform_location",name),"v");
     return tprint(#string END
 
 set_%1_uniform :: (renderer : *%2, v: %3) {
-    %4(%5);
+    %4
 }
-    END, 
-    lower_name,
-    get_renderer_struct_name(shader), 
-    unif_conf.type_in_jai, 
-    gl_call,
-    resolved_args
-    );
+    END,name,get_renderer_struct_name(shader),uniform.type_in_jai,call);
 }
 
-generate_code_for_uniform_setter_functions :: (shader : Shader_Metadata) -> string {
+generate_code_for_uniform_setter_procedures :: (shader : Shader_Metadata) -> string {
     push_allocator(temp);
     builder : String_Builder;
 
     uniforms := shader_uniform_configurations(shader);
     for uniforms {
-        print_to_builder(*builder, generate_code_for_uniform_setter_function(shader, it));
+        if it.group_index >= 0 continue;
+        print_to_builder(*builder, generate_code_for_uniform_setter_procedure(shader, it));
     }
+    append(*builder,generate_uniform_group_setters(shader));
     return builder_to_string(*builder); 
 }
 
@@ -1999,3 +2049,6 @@ init_vertex_attribute :: (
 }
 
 #load "per_shader_renderer.jai";
+
+#load "shader_program_jai_bindings.jai";
+#load "shader_program.jai";

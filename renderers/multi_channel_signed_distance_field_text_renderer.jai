@@ -66,9 +66,27 @@ queue_render :: (using renderer: *Multi_Channel_Signed_Distance_Field_Text_Rende
     queue_render(*renderer.psr, renderable.object_index);
 }
 
+// Indices are relative to this buffered object's first vertex.
+update_object_indices :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, object_index : u32, indices : [] u32) -> bool {
+    return update_object_indices(*renderer.psr, object_index, indices);
+}
+
+update_object_indices :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, renderable : $T/interface Multi_Channel_Signed_Distance_Field_Text_Renderable, indices : [] u32) -> bool {
+    return update_object_indices(renderer, renderable.object_index, indices);
+}
+
+queue_render :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, object_index : u32) {
+    queue_render(*renderer.psr, object_index);
+}
+
+
+unbuffer_object :: (renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer, object_index : u32) {
+    unbuffer_object(*renderer.psr, object_index);
+}
+
 
 Multi_Channel_Signed_Distance_Field_Text_Renderer :: struct {
-    using #as psr : Per_Shader_Renderer;
+    using #as psr : Per_Shader_Renderer = .{max_num_elements_in_each_buffer = 100000};
 
 
     aspect_ratio_uniform_location : GLint = -1;
@@ -97,11 +115,11 @@ set_texture_sampler_uniform :: (renderer : *Multi_Channel_Signed_Distance_Field_
     gl_set_uniform_1i_on_active_shader_program(renderer.texture_sampler_uniform_location, v);
 }
 
-init :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) {
+init :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) -> bool {
     vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/absolute_position_textured.vert", #filepath));
     fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/multi_channel_signed_distance_field_text.frag", #filepath));
 
-    init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
+    if !init(*renderer.psr, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer) return false;
     init_buffers_no_data(renderer);
     init_immediate_buffers(renderer);
 
@@ -109,6 +127,7 @@ init :: (using renderer : *Multi_Channel_Signed_Distance_Field_Text_Renderer) {
     aspect_ratio_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "aspect_ratio");
     texture_sampler_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "texture_sampler");
 
+    return true;
 }
 
 
@@ -211,10 +230,10 @@ buffer_object :: (
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
         using renderer: *Multi_Channel_Signed_Distance_Field_Text_Renderer,
-        indices : [..] u32,
-        positions : [..] Vector3,
-        rgba_colors : [..] Vector4,
-        texture_coordinates : [..] Vector2,
+        indices : [] u32,
+        positions : [] Vector3,
+        rgba_colors : [] Vector4,
+        texture_coordinates : [] Vector2,
 
         budgeter: *GL_Budgeter = null
 
@@ -224,21 +243,15 @@ buffer_object :: (
     note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
     the indices use duplicates sometimes to refer to the same vertex multiple times.
     */
-    length := positions.count; // todo: need to metaprogram this out, but it's pretty safe for now.
-    index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
+    length := positions.count;
+    if length == 0 { return 0, false; }
+    index, success := allocate_buffered_object(*renderer.psr, cast(u32) length, indices);
     if !success {
         log("ran out of virtual memory");
         return 0, false;
     }
 
 
-
-    global_indices_for_object : [..] u32;
-    for indices
-        array_add(*global_indices_for_object, xx index + it);
-
-    table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
-    invalidate_cached_index_buffer(*renderer.psr);
 
     gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 

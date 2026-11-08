@@ -3,7 +3,7 @@
 
 
 Object_Id_Selection_Outline_Renderer :: struct {
-    using #as psr : Per_Shader_Renderer;
+    using #as psr : Per_Shader_Renderer = .{max_num_elements_in_each_buffer = 100000};
 
 
     using #as ltw_pool : Local_To_World_Matrix_Pool;
@@ -52,11 +52,11 @@ set_viewport_origin_uniform :: (renderer : *Object_Id_Selection_Outline_Renderer
     gl_set_uniform_2f_on_active_shader_program(renderer.viewport_origin_uniform_location, v.x, v.y);
 }
 
-init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
+init :: (using renderer : *Object_Id_Selection_Outline_Renderer) -> bool {
     vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/fullscreen_quad.vert", #filepath));
     fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/object_id_selection_outline.frag", #filepath));
 
-    init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
+    if !init(*renderer.psr, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer) return false;
 
     init(*renderer.ltw_pool);
 
@@ -68,6 +68,7 @@ init :: (using renderer : *Object_Id_Selection_Outline_Renderer) {
     thickness_px_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "thickness_px");
     viewport_origin_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "viewport_origin");
 
+    return true;
 }
 
 

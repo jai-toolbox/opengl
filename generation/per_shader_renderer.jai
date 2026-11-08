@@ -68,20 +68,19 @@ Per_Shader_Renderer :: struct { // this should be called a per object shader ren
     buffered_object_index_to_global_indices: Table(u32, [..] u32);
 }
 
-init :: (psr : *Per_Shader_Renderer, vertex_shader_source : string, fragment_shader_source : string, max_num_elements_in_each_buffer : u32) {
+init :: (psr : *Per_Shader_Renderer, vertex_shader_source : string, fragment_shader_source : string, max_num_elements_in_each_buffer : u32) -> bool {
 
     shader_program_handle, success := create_shader_program(vertex_shader_source, fragment_shader_source);
-    max_num_elements_in_each_buffer = max_num_elements_in_each_buffer;
+    psr.max_num_elements_in_each_buffer = max_num_elements_in_each_buffer;
 
-	if !success
-        log("shader compilation failed");
-		// return false;
+    if !success return false;
     if success 
         log("shader compilation succeeded");
 
     psr.shader_program_gl_handle = shader_program_handle;
 
     psr.first_fit_virtual_allocator.size = max_num_elements_in_each_buffer;
+    return true;
 }
 
 deinit :: (using psr : *Per_Shader_Renderer) {
@@ -146,6 +145,47 @@ invalidate_cached_index_buffer :: (using psr: *Per_Shader_Renderer) {
     cached_index_buffer_is_valid = false;
     num_indices_in_cached_index_buffer = 0;
     array_reset(*object_indices_in_cached_index_buffer);
+}
+
+// Replace this object's triangle order without uploading its vertex attributes.
+// Indices are local to the object; the stored copy uses its GPU allocation offset.
+// The next render rebuilds the combined element buffer, even for an unchanged queue.
+update_object_indices :: (psr : *Per_Shader_Renderer, object_index : u32, indices : [] u32) -> bool {
+    stored := table_find_pointer(*psr.buffered_object_index_to_global_indices, object_index);
+    if stored == null return false;
+    previous := stored.*;
+    vertex_count, allocated := get_size_of_previous_alloc(*psr.first_fit_virtual_allocator, object_index);
+    if !allocated return false;
+    for index : indices if index >= vertex_count return false;
+
+    changed := previous.count != indices.count;
+    if !changed {
+        for index, i : indices {
+            if previous[i] != object_index + index { changed = true; break; }
+        }
+    }
+    if !changed return true;
+
+    replacement : [..] u32;
+    for index : indices array_add(*replacement, object_index + index);
+    stored.* = replacement;
+    array_free(previous);
+    invalidate_cached_index_buffer(psr);
+    return true;
+}
+
+// Reserve one object's vertex range and retain its initial local index list.
+// Attribute uploads remain in the generated renderer, which knows their types.
+allocate_buffered_object :: (psr : *Per_Shader_Renderer, vertex_count : u32, indices : [] u32) -> (u32, bool) {
+    if vertex_count == 0 return 0, false;
+    for index : indices if index >= vertex_count return 0, false;
+    object_index, ok := virtual_alloc(*psr.first_fit_virtual_allocator, vertex_count);
+    if !ok return 0, false;
+    global_indices : [..] u32;
+    for index : indices array_add(*global_indices, object_index + index);
+    table_add(*psr.buffered_object_index_to_global_indices, object_index, global_indices);
+    invalidate_cached_index_buffer(psr);
+    return object_index, true;
 }
 
 // rebuild the renderer's combined element buffer only when the queued object

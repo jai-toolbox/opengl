@@ -1,5 +1,7 @@
 Shader_Program_Metadata.{
     immediate_mode_support = false,
+    vertex_shader_supplies_geometry = true,
+    vertex_count = 6,
     vertex_shader_path = "modules/tbx/opengl/shaders/out/infinite_grid.vert",
     fragment_shader_path = "modules/tbx/opengl/shaders/out/infinite_grid.frag"
 }

@@ -1,11 +1,9 @@
 // auto-generated renderer for shader: Camera_Infinite_Grid
 // do not edit manually.
 
-
 Camera_Infinite_Grid_Renderer :: struct {
-    using #as psr : Per_Shader_Renderer;
-
-
+    shader_program_gl_handle : GLuint;
+    vertex_attribute_array_gl_handle : GLuint;
     camera_to_clip_uniform_location : GLint = -1;
     world_to_camera_uniform_location : GLint = -1;
     camera_position_uniform_location : GLint = -1;
@@ -14,9 +12,6 @@ Camera_Infinite_Grid_Renderer :: struct {
     grid_clip_depth_offset_uniform_location : GLint = -1;
     grid_at_far_depth_uniform_location : GLint = -1;
     grid_pass_alpha_uniform_location : GLint = -1;
-
-
-
 }
 
 
@@ -51,14 +46,13 @@ set_grid_at_far_depth_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: 
 set_grid_pass_alpha_uniform :: (renderer : *Camera_Infinite_Grid_Renderer, v: float32) {
     gl_set_uniform_1f_on_active_shader_program(renderer.grid_pass_alpha_uniform_location, v);
 }
-
-init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
-    vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/infinite_grid.vert", #filepath));
-    fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/infinite_grid.frag", #filepath));
-
-    init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
-
-
+init :: (using renderer : *Camera_Infinite_Grid_Renderer) -> bool {
+    success : bool;
+    shader_program_gl_handle, success = create_shader_program(#run read_entire_file(tprint("%../shaders/out/infinite_grid.vert", #filepath)), #run read_entire_file(tprint("%../shaders/out/infinite_grid.frag", #filepath)));
+    if !success return false;
+    // OpenGL core profile requires a bound VAO even when the vertex shader uses
+    // gl_VertexID and supplies every vertex itself. This VAO has no buffers.
+    vertex_attribute_array_gl_handle = gl_create_vertex_array();
     camera_to_clip_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "camera_to_clip");
     world_to_camera_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "world_to_camera");
     camera_position_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "camera_position");
@@ -68,10 +62,19 @@ init :: (using renderer : *Camera_Infinite_Grid_Renderer) {
     grid_at_far_depth_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "grid_at_far_depth");
     grid_pass_alpha_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "grid_pass_alpha");
 
+    return true;
 }
 
-
-deinit :: (using renderer : *Camera_Infinite_Grid_Renderer) {
-    deinit(*psr);
-
+deinit :: (renderer : *Camera_Infinite_Grid_Renderer) {
+    gl_delete_vertex_array(renderer.vertex_attribute_array_gl_handle);
+    gl_delete_shader_program(renderer.shader_program_gl_handle);
+    renderer.* = .{};
+}
+render :: (renderer : *Camera_Infinite_Grid_Renderer, vertex_count : GLsizei = 6) {
+    assert(vertex_count >= 0);
+    gl_set_active_shader_program(renderer.shader_program_gl_handle);
+    gl_bind_vertex_array(renderer.vertex_attribute_array_gl_handle);
+    gl_draw_vertices_from_bound_vertex_array(GL_TRIANGLES, 0, vertex_count);
+    gl_bind_vertex_array(0);
+    gl_clear_active_shader_program();
 }

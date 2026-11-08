@@ -139,6 +139,19 @@ queue_render :: (using renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture
     queue_render(*renderer.psr, renderable.object_index);
 }
 
+// Indices are relative to this buffered object's first vertex.
+update_object_indices :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, object_index : u32, indices : [] u32) -> bool {
+    return update_object_indices(*renderer.psr, object_index, indices);
+}
+
+update_object_indices :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, renderable : $T/interface Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, indices : [] u32) -> bool {
+    return update_object_indices(renderer, renderable.object_index, indices);
+}
+
+queue_render :: (renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, object_index : u32) {
+    queue_render(*renderer.psr, object_index);
+}
+
 
 set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer, renderable: Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderable, matrix: Matrix4) {
     set_matrix(*renderer.ltw_pool, renderable.local_to_world_index, matrix);
@@ -146,7 +159,7 @@ set_local_to_world_matrix :: (renderer: *Camera_Per_Object_Transform_Pbr_Packed_
 
 
 Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer :: struct {
-    using #as psr : Per_Shader_Renderer;
+    using #as psr : Per_Shader_Renderer = .{max_num_elements_in_each_buffer = 100000};
 
 
     using #as ltw_pool : Local_To_World_Matrix_Pool;
@@ -239,11 +252,11 @@ set_reflection_strength_uniform :: (renderer : *Camera_Per_Object_Transform_Pbr_
     gl_set_uniform_1f_on_active_shader_program(renderer.reflection_strength_uniform_location, v);
 }
 
-init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) {
+init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer) -> bool {
     vertex_shader_source := #run read_entire_file(tprint("%../shaders/out/camera_per_object_transform_pbr_packed_texture.vert", #filepath));
     fragment_shader_source := #run read_entire_file(tprint("%../shaders/out/pbr_packed_texture.frag", #filepath));
 
-    init(renderer, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer);
+    if !init(*renderer.psr, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer) return false;
     init_buffers_no_data(renderer);
 
     init(*renderer.ltw_pool);
@@ -262,6 +275,7 @@ init :: (using renderer : *Camera_Per_Object_Transform_Pbr_Packed_Texture_Render
     use_reflection_cubemap_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "use_reflection_cubemap");
     reflection_strength_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "reflection_strength");
 
+    return true;
 }
 
 
@@ -394,21 +408,21 @@ buffer_object :: (
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
         using renderer: *Camera_Per_Object_Transform_Pbr_Packed_Texture_Renderer,
-        indices : [..] u32,
-        positions : [..] Vector3,
-        normals : [..] Vector3,
-        tangents : [..] Vector4,
-        texture_coordinates_0 : [..] Vector4,
-        texture_coordinates_1 : [..] Vector4,
-        base_color_factors : [..] Vector4,
-        material_parameters : [..] Vector4,
-        glass_parameters : [..] Vector4,
-        volume_parameters : [..] Vector4,
-        alpha_parameters : [..] Vector2,
-        base_color_texture_bindings : [..] [2] s32,
-        normal_texture_bindings : [..] [2] s32,
-        metallic_roughness_texture_bindings : [..] [2] s32,
-        ambient_occlusion_texture_bindings : [..] [2] s32,
+        indices : [] u32,
+        positions : [] Vector3,
+        normals : [] Vector3,
+        tangents : [] Vector4,
+        texture_coordinates_0 : [] Vector4,
+        texture_coordinates_1 : [] Vector4,
+        base_color_factors : [] Vector4,
+        material_parameters : [] Vector4,
+        glass_parameters : [] Vector4,
+        volume_parameters : [] Vector4,
+        alpha_parameters : [] Vector2,
+        base_color_texture_bindings : [] [2] s32,
+        normal_texture_bindings : [] [2] s32,
+        metallic_roughness_texture_bindings : [] [2] s32,
+        ambient_occlusion_texture_bindings : [] [2] s32,
 
         budgeter: *GL_Budgeter = null
 
@@ -418,8 +432,9 @@ buffer_object :: (
     note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
     the indices use duplicates sometimes to refer to the same vertex multiple times.
     */
-    length := positions.count; // todo: need to metaprogram this out, but it's pretty safe for now.
-    index, success := virtual_alloc(*first_fit_virtual_allocator, xx length);
+    length := positions.count;
+    if length == 0 { return 0, 0, false; }
+    index, success := allocate_buffered_object(*renderer.psr, cast(u32) length, indices);
     if !success {
         log("ran out of virtual memory");
         return 0, 0, false;
@@ -427,18 +442,11 @@ buffer_object :: (
 
     ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
     if !ltw_success {
-        virtual_free(*first_fit_virtual_allocator, index);
+        unbuffer_object(*renderer.psr, index);
         return 0, 0, false;
     }
 
 
-
-    global_indices_for_object : [..] u32;
-    for indices
-        array_add(*global_indices_for_object, xx index + it);
-
-    table_add(*buffered_object_index_to_global_indices, xx index, global_indices_for_object);
-    invalidate_cached_index_buffer(*renderer.psr);
 
     gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
