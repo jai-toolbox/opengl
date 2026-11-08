@@ -59,41 +59,10 @@ Shader_Metadata :: struct { // call this Shader_Metadata?
 
 }
 
-Shader_Program_Metadata :: struct {
-    name : string;
 
-    per_object_transforms : bool;
-    immediate_mode_support : bool = false;
-    num_elements_in_each_buffer : u32 = 100000;
-    num_elements_in_each_immediate_buffer: u32 = 65536;
+Shader_Program_Metadata :: VGR.Shader_Programs.Shader_Program_Metadata;
 
-    vertex_shader_path   : string;
-    fragment_shader_path : string;
-
-    primitive_mode : GLenum = GL_TRIANGLES;
-    // The shader computes vertices from built-ins such as gl_VertexID.
-    vertex_shader_supplies_geometry : bool;
-    vertex_count : u32;
-
-    renderer_path : string;
-    paths_relative_to_program : bool;
-    embed_shader_sources : bool;
-    jai_bindings : Shader_Program_Jai_Bindings;
-}
-
-gl_primitive_mode_to_string :: (mode: GLenum) -> string {
-    if mode == {
-        case GL_TRIANGLES;      return "GL_TRIANGLES";
-        case GL_LINES;          return "GL_LINES";
-        case GL_LINE_STRIP;     return "GL_LINE_STRIP";
-        case GL_LINE_LOOP;      return "GL_LINE_LOOP";
-        case GL_POINTS;         return "GL_POINTS";
-        case GL_TRIANGLE_STRIP; return "GL_TRIANGLE_STRIP";
-        case GL_TRIANGLE_FAN;   return "GL_TRIANGLE_FAN";
-        case GL_PATCHES;        return "GL_PATCHES";
-        case;                   return "GL_TRIANGLES"; // fallback
-    }
-}
+gl_primitive_mode_to_string :: VGR.Shader_Programs.shader_program_primitive_mode_token;
 
 gl_primitive_mode_from_string :: (value: string) -> GLenum {
     trimmed := trim(value);

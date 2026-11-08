@@ -2,23 +2,11 @@
 Tbx_File :: #import "tbx/file";
 #scope_export
 
-// Optional host bindings supplement GLSL reflection with information that GLSL
-// cannot retain: native Jai types, using-field paths and CPU sampler replacements.
-Shader_Program_Jai_Bindings :: struct {
-    vertex_type: string;
-    attributes: [..] Shader_Program_Attribute_Binding;
-    uniform_groups: [..] GL_Uniform_Group;
-    uniforms: [..] Shader_Program_Uniform_Binding;
-}
-
-Shader_Program_Attribute_Binding :: struct {
-    shader_name, field: string;
-}
-
-Shader_Program_Uniform_Binding :: struct {
-    type_name, shader_name, value_expression: string;
-    group_index: u32;
-}
+Shader_Program_Jai_Bindings :: VGR.Shader_Programs.Shader_Program_Jai_Bindings;
+Shader_Program_Attribute_Binding :: VGR.Shader_Programs.Shader_Program_Attribute_Binding;
+Shader_Program_Uniform_Binding :: VGR.Shader_Programs.Shader_Program_Uniform_Binding;
+shader_program_from_typed_metadata :: VGR.Shader_Programs.shader_program_from_typed_metadata;
+shader_program_metadata_source :: VGR.Shader_Programs.shader_program_metadata_source;
 
 Generated_Shader_Renderer :: struct {
     success: bool;
@@ -70,75 +58,6 @@ pipeline_shader_source_constant :: (name: string, source: string) -> string {
     delimiter := tprint("END_%", name);
     while contains(source, delimiter) delimiter = tprint("%_", delimiter);
     return tprint("% :: #string %\n%\n%\n", name, delimiter, source, delimiter);
-}
-
-shader_program_from_typed_metadata :: (shader: Shader_Metadata, options: Shader_Program_Metadata) -> Shader_Program_Metadata {
-    program := options;
-    program.name = shader.name;
-    program.jai_bindings = .{};
-    program.jai_bindings.vertex_type = shader.native_vertex_type_name;
-    for attribute: shader.attribute_configs
-        array_add(*program.jai_bindings.attributes, .{attribute.var_name_in_shader, attribute.native_field_path});
-    for group: shader.uniform_groups array_add(*program.jai_bindings.uniform_groups, group);
-    for uniform: shader.uniform_configs {
-        assert(uniform.group_index >= 0);
-        array_add(*program.jai_bindings.uniforms, .{uniform.glsl_type_name, uniform.var_name_in_shader,
-            uniform.value_expression, cast(u32) uniform.group_index});
-    }
-    return program;
-}
-
-shader_program_metadata_source :: (program: Shader_Program_Metadata) -> string {
-    builder: String_Builder;
-    init_string_builder(*builder);
-    append(*builder, "Shader_Program_Metadata.{\n");
-    print_to_builder(*builder, "    name = \"%\",\n", Tbx_File.escape_string(program.name));
-    print_to_builder(*builder, "    vertex_shader_path = \"%\",\n", Tbx_File.escape_string(program.vertex_shader_path));
-    print_to_builder(*builder, "    fragment_shader_path = \"%\",\n", Tbx_File.escape_string(program.fragment_shader_path));
-    if program.renderer_path.count > 0
-        print_to_builder(*builder, "    renderer_path = \"%\",\n", Tbx_File.escape_string(program.renderer_path));
-    if program.paths_relative_to_program append(*builder, "    paths_relative_to_program = true,\n");
-    if program.embed_shader_sources append(*builder, "    embed_shader_sources = true,\n");
-    if program.per_object_transforms append(*builder, "    per_object_transforms = true,\n");
-    if program.immediate_mode_support append(*builder, "    immediate_mode_support = true,\n");
-    if program.num_elements_in_each_buffer != 100000
-        print_to_builder(*builder, "    num_elements_in_each_buffer = %,\n", program.num_elements_in_each_buffer);
-    if program.num_elements_in_each_immediate_buffer != 65536
-        print_to_builder(*builder, "    num_elements_in_each_immediate_buffer = %,\n", program.num_elements_in_each_immediate_buffer);
-    if program.primitive_mode != GL_TRIANGLES
-        print_to_builder(*builder, "    primitive_mode = %,\n", gl_primitive_mode_to_string(program.primitive_mode));
-    if program.vertex_shader_supplies_geometry append(*builder, "    vertex_shader_supplies_geometry = true,\n");
-    if program.vertex_count != 0 print_to_builder(*builder, "    vertex_count = %,\n", program.vertex_count);
-    bindings := program.jai_bindings;
-    if bindings.vertex_type.count > 0 || bindings.uniform_groups.count > 0 {
-        append(*builder, "    jai_bindings = .{\n");
-        if bindings.vertex_type.count > 0
-            print_to_builder(*builder, "        vertex_type = \"%\",\n", Tbx_File.escape_string(bindings.vertex_type));
-        if bindings.attributes.count > 0 {
-            append(*builder, "        attributes = .[\n");
-            for attribute: bindings.attributes print_to_builder(*builder, "            .{shader_name = \"%\", field = \"%\"},\n",
-                Tbx_File.escape_string(attribute.shader_name), Tbx_File.escape_string(attribute.field));
-            append(*builder, "        ],\n");
-        }
-        if bindings.uniform_groups.count > 0 {
-            append(*builder, "        uniform_groups = .[\n");
-            for group: bindings.uniform_groups {
-                print_to_builder(*builder, "            .{shader_name = \"%\", jai_type_name = \"%\", host_type_name = \"%\"",
-                    Tbx_File.escape_string(group.shader_name), Tbx_File.escape_string(group.jai_type_name), Tbx_File.escape_string(group.host_type_name));
-                if group.declarations.count > 0 print_to_builder(*builder, ", declarations = \"%\"", Tbx_File.escape_string(group.declarations));
-                append(*builder, "},\n");
-            }
-            append(*builder, "        ],\n        uniforms = .[\n");
-            for uniform: bindings.uniforms print_to_builder(*builder,
-                "            .{type_name = \"%\", shader_name = \"%\", value_expression = \"%\", group_index = %},\n",
-                Tbx_File.escape_string(uniform.type_name), Tbx_File.escape_string(uniform.shader_name),
-                Tbx_File.escape_string(uniform.value_expression), uniform.group_index);
-            append(*builder, "        ],\n");
-        }
-        append(*builder, "    },\n");
-    }
-    append(*builder, "}\n");
-    return builder_to_string(*builder);
 }
 
 shader_program_field :: (node: *Shader_Parser.Node, name: string) -> *Shader_Parser.Node {
@@ -238,6 +157,9 @@ apply_shader_program_jai_bindings :: (shader: *Shader_Metadata, bindings: Shader
             for binding: bindings.attributes if binding.shader_name == attribute.var_name_in_shader {
                 if found return false, tprint("Duplicate Jai binding for attribute %", binding.shader_name);
                 attribute.native_field_path = binding.field;
+                // Native bindings retain vector structs instead of legacy bone arrays.
+                if attribute.data_type_of_component == GL_UNSIGNED_INT && attribute.components_per_vertex == 4 attribute.type_in_jai = Shader_UInt4;
+                if attribute.data_type_of_component == GL_FLOAT && attribute.components_per_vertex == 4 attribute.type_in_jai = Vector4;
                 found = true;
             }
             if !found return false, tprint("Missing Jai binding for attribute %", attribute.var_name_in_shader);
@@ -255,8 +177,10 @@ apply_shader_program_jai_bindings :: (shader: *Shader_Metadata, bindings: Shader
         uniform.identifier = tprint("typed_%", shader.uniform_configs.count);
         uniform.value_expression = binding.value_expression;
         uniform.group_index = binding.group_index;
-        if binding.type_name == "sampler2D" || binding.type_name == "sampler3D" {
+        if binding.type_name == "sampler1D" || binding.type_name == "sampler2D" || binding.type_name == "sampler3D" || binding.type_name == "sampler2DArray" {
             uniform.texture_target = cast(GLenum) (ifx binding.type_name == "sampler3D" then GL_TEXTURE_3D else GL_TEXTURE_2D);
+            if binding.type_name == "sampler1D" uniform.texture_target = GL_TEXTURE_1D;
+            if binding.type_name == "sampler2DArray" uniform.texture_target = GL_TEXTURE_2D_ARRAY;
             uniform.texture_unit = texture_unit;
             texture_unit += 1;
         }

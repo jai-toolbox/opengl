@@ -1,0 +1,33 @@
+Shader_Program_Metadata.{
+    name = "Animated_Mesh",
+    vertex_shader_path = "animated_mesh.vert",
+    fragment_shader_path = "animated_mesh.frag",
+    renderer_path = "animated_mesh_renderer.jai",
+    paths_relative_to_program = true,
+    embed_shader_sources = true,
+    jai_bindings = .{
+        vertex_type = "Animated_Mesh_Vertex",
+        attributes = .[
+            .{shader_name = "position", field = "position"},
+            .{shader_name = "normal", field = "normal"},
+            .{shader_name = "uv", field = "uv"},
+            .{shader_name = "spacing", field = "spacing"},
+        ],
+        uniform_groups = .[
+            .{shader_name = "ctx", jai_type_name = "Animated_Mesh_Uniforms", host_type_name = "Animated_Mesh_Animated_Mesh_Uniforms_Bindings", declarations = "Animated_Mesh_Animated_Mesh_Uniforms_Bindings :: struct {\n    world_to_clip: Matrix4;\n    image: GLuint;\n    first_offset: Vector2;\n    second_offset: Vector2;\n    frame_mix: float32;\n    eye: Vector3;\n    direction: Vector3;\n    orthographic: bool;\n    volume: bool;\n    blend_axis_stacks: bool;\n    emission: float32;\n}\n\n"},
+        ],
+        uniforms = .[
+            .{type_name = "mat4", shader_name = "world_to_clip", value_expression = "ctx.world_to_clip", group_index = 0},
+            .{type_name = "sampler2D", shader_name = "image", value_expression = "ctx.image", group_index = 0},
+            .{type_name = "vec2", shader_name = "first_offset", value_expression = "ctx.first_offset", group_index = 0},
+            .{type_name = "vec2", shader_name = "second_offset", value_expression = "ctx.second_offset", group_index = 0},
+            .{type_name = "float", shader_name = "frame_mix", value_expression = "ctx.frame_mix", group_index = 0},
+            .{type_name = "vec3", shader_name = "eye", value_expression = "ctx.eye", group_index = 0},
+            .{type_name = "vec3", shader_name = "direction", value_expression = "ctx.direction", group_index = 0},
+            .{type_name = "bool", shader_name = "orthographic", value_expression = "ctx.orthographic", group_index = 0},
+            .{type_name = "bool", shader_name = "volume", value_expression = "ctx.volume", group_index = 0},
+            .{type_name = "bool", shader_name = "blend_axis_stacks", value_expression = "ctx.blend_axis_stacks", group_index = 0},
+            .{type_name = "float", shader_name = "emission", value_expression = "ctx.emission", group_index = 0},
+        ],
+    },
+}

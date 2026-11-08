@@ -1,18 +1,20 @@
 // Typed Jai bindings for the Jai -> GLSL + .program -> OpenGL renderer flow.
 // Before writing .program, extract native vertex types, uniform types and field
-// paths from Jai GPU rendering pipeline stage interfaces. shader_program.jai
-// serializes this information in the descriptor's jai_bindings field.
+// paths from Jai GPU rendering pipeline stage interfaces. virtual_gpu_rendering
+// builds and serializes the descriptor's jai_bindings field.
 // After reading .program, the renderer generator uses the helpers here to emit
 // typed uniform setters and adapters from native vertex structs to attribute
 // arrays. Renderer generation reads the saved descriptor and GLSL; it does not
 // generate a renderer directly from the original Jai shader procedures.
-SR :: #import "tbx/software_rasterizer";
+VGR :: #import "tbx/virtual_gpu_rendering";
 Shader_Parser :: #import "tbx/parser";
+#scope_module
+using #import "tbx/virtual_gpu_rendering/shaders";
+using #import "tbx/virtual_gpu_rendering/shaders/vertex_color";
+#import "tbx/virtual_gpu_rendering/shaders/glsl_builtins";
+#scope_export
 
-GL_Uniform_Group :: struct {
-    shader_name, jai_type_name, host_type_name: string;
-    declarations: string;
-}
+GL_Uniform_Group :: VGR.Shader_Programs.Shader_Program_Uniform_Group;
 
 generated_uniform_identifier :: (uniform: GL_Vertex_Uniform_Configuration) -> string {
     if uniform.identifier.count > 0 return uniform.identifier;
@@ -20,7 +22,7 @@ generated_uniform_identifier :: (uniform: GL_Vertex_Uniform_Configuration) -> st
 }
 
 shader_metadata_from_typed_gpu_rendering_pipeline_stages :: (
-    name: string, vertex: SR.GLSL_GPU_Rendering_Pipeline_Stage_Result, fragment: SR.GLSL_GPU_Rendering_Pipeline_Stage_Result,
+    name: string, vertex: VGR.GLSL_GPU_Rendering_Pipeline_Stage_Result, fragment: VGR.GLSL_GPU_Rendering_Pipeline_Stage_Result,
     vertex_source_expression: string, fragment_source_expression: string,
     vertex_type: Type = void, program : Shader_Program_Metadata = .{}
 ) -> Shader_Metadata {
@@ -31,7 +33,7 @@ shader_metadata_from_typed_gpu_rendering_pipeline_stages :: (
 }
 
 shader_metadata_from_gpu_rendering_pipeline_stage_type_info :: (
-    name: string, vertex: SR.GLSL_GPU_Rendering_Pipeline_Stage_Result, fragment: SR.GLSL_GPU_Rendering_Pipeline_Stage_Result,
+    name: string, vertex: VGR.GLSL_GPU_Rendering_Pipeline_Stage_Result, fragment: VGR.GLSL_GPU_Rendering_Pipeline_Stage_Result,
     vertex_source_expression: string, fragment_source_expression: string,
     vertex_info: *Type_Info, program : Shader_Program_Metadata = .{}
 ) -> Shader_Metadata {
@@ -55,10 +57,11 @@ shader_metadata_from_gpu_rendering_pipeline_stage_type_info :: (
         assert(info.type == .STRUCT,"Renderer % needs a native vertex struct",name);
         for attribute: vertex.gpu_rendering_pipeline_stage_interface.attributes {
             if program.per_object_transforms && attribute.shader_name == "local_to_world_index" continue;
-            gl_type, ok := SR.glsl_type_name(attribute.value_type);
+            gl_type, ok := VGR.glsl_type_name(attribute.value_type);
             assert(ok && gl_type != "mat4" && attribute.value_type.kind == .NAMED,
                 "Unsupported native vertex attribute %.%",name,attribute.field);
             native_type := glsl_type_to_jai_type(gl_type);
+            if gl_type == "uvec4" native_type = Shader_UInt4;
             assert(native_type != void,"Unknown attribute type %",gl_type);
             member_type, offset, found := native_gpu_rendering_pipeline_stage_attribute_member_info(vertex_info,attribute.field);
             assert(found,"Vertex field %.% is missing",name,attribute.field);
@@ -66,11 +69,13 @@ shader_metadata_from_gpu_rendering_pipeline_stage_type_info :: (
                 "Vertex field %.% disagrees with the shader's %",name,attribute.field,gl_type);
             config := glsl_variable_to_vertex_attribute_configuration(.{type_name=gl_type,name=attribute.shader_name});
             config.native_field_path = attribute.field;
+            config.type_in_jai = native_type;
             array_add(*shader.attribute_configs,config);
         }
     } else assert(vertex_info == null,"Builtin-only GPU rendering pipeline stage must not have a vertex buffer");
-    add_typed_uniform_group(*shader,vertex.gpu_rendering_pipeline_stage_interface);
-    add_typed_uniform_group(*shader,fragment.gpu_rendering_pipeline_stage_interface);
+    bindings := VGR.shader_program_from_gpu_rendering_pipeline_stages(name,.{success=true,vertex=vertex,fragment=fragment},vertex_info,program);
+    ok,error := apply_shader_program_jai_bindings(*shader,bindings.jai_bindings);
+    assert(ok,"%",error);
     return shader;
 }
 
@@ -104,114 +109,6 @@ native_gpu_rendering_pipeline_stage_attribute_member_info :: (vertex_info: *Type
     return current,offset,true;
 }
 
-typed_uniform_struct :: (host: SR.GLSL_GPU_Rendering_Pipeline_Stage_Interface, name: string) -> *Shader_Parser.Semantic_Struct {
-    // Sampler CPU storage can be present in imported declarations. It remains
-    // opaque to the GPU interface and must never generate a GLuint struct.
-    if name == "Shader_Sampler_2D" || name == "Shader_Sampler_3D" return null;
-    for *structure: host.structs if structure.name == name return structure;
-    return null;
-}
-
-typed_uniform_has_sampler :: (host: SR.GLSL_GPU_Rendering_Pipeline_Stage_Interface, type: Shader_Parser.Resolved_Type) -> bool {
-    if type.kind == .ARRAY return typed_uniform_has_sampler(host,type.pointee.*);
-    if type.name == "Shader_Sampler_2D" || type.name == "Shader_Sampler_3D" return true;
-    structure := typed_uniform_struct(host,type.name);
-    if structure != null for field: structure.fields if typed_uniform_has_sampler(host,field.value_type) return true;
-    return false;
-}
-
-// Preserve native uniform structs when possible. CPU sampler views become GL
-// texture handles in generated binding structs, recursively through arrays and
-// nested structs. Texture units are assigned by uniform declaration order.
-typed_uniform_host_type :: (host: SR.GLSL_GPU_Rendering_Pipeline_Stage_Interface, type: Shader_Parser.Resolved_Type, prefix: string) -> string {
-    if type.kind == .ARRAY return tprint("[%] %",type.array_count,typed_uniform_host_type(host,type.pointee.*,prefix));
-    if type.name == "Shader_Sampler_2D" || type.name == "Shader_Sampler_3D" return "GLuint";
-    if typed_uniform_has_sampler(host,type) return tprint("%_%_Bindings",prefix,type.name);
-    return type.name;
-}
-
-add_typed_uniform_group :: (shader: *Shader_Metadata, host: SR.GLSL_GPU_Rendering_Pipeline_Stage_Interface) {
-    if host.uniform_type.count == 0 return;
-    group_index := -1;
-    for group, index : shader.uniform_groups {
-        if group.shader_name != host.uniform_name continue;
-        assert(group.jai_type_name == host.uniform_type, "Uniform '%' has different GPU rendering pipeline stage types", host.uniform_name);
-        group_index = index;
-        break;
-    }
-    if group_index < 0 {
-        root : Shader_Parser.Resolved_Type = .{kind = .NAMED, name = host.uniform_type};
-        group : GL_Uniform_Group;
-        group.shader_name = host.uniform_name;
-        group.jai_type_name = host.uniform_type;
-        group.host_type_name = typed_uniform_host_type(host, root, shader.name);
-        builder : String_Builder;
-        init_string_builder(*builder);
-        emitted : [..] string;
-        emit_uniform_binding_structs(*builder, host, root, shader.name, *emitted);
-        array_free(emitted);
-        group.declarations = builder_to_string(*builder);
-        group_index = shader.uniform_groups.count;
-        array_add(*shader.uniform_groups, group);
-    }
-    for uniform : host.uniforms {
-        jai_path := "ctx";
-        if uniform.field.count > 0 jai_path = tprint("ctx.%", uniform.field);
-        flatten_typed_uniforms(shader, host, uniform.value_type, uniform.shader_name,
-            jai_path, group_index);
-    }
-}
-
-emit_uniform_binding_structs :: (builder: *String_Builder, host: SR.GLSL_GPU_Rendering_Pipeline_Stage_Interface,
-                               type: Shader_Parser.Resolved_Type, prefix: string, emitted: *[..] string) {
-    if type.kind == .ARRAY { emit_uniform_binding_structs(builder,host,type.pointee.*,prefix,emitted); return; }
-    structure := typed_uniform_struct(host,type.name);
-    if structure == null || !typed_uniform_has_sampler(host,type) return;
-    for emitted.* if it == type.name return;
-    array_add(emitted,type.name);
-    for field: structure.fields emit_uniform_binding_structs(builder,host,field.value_type,prefix,emitted);
-    print_to_builder(builder,"% :: struct {\n",typed_uniform_host_type(host,type,prefix));
-    for field: structure.fields print_to_builder(builder,"    %: %;\n",field.name,typed_uniform_host_type(host,field.value_type,prefix));
-    append(builder,"}\n\n");
-}
-
-flatten_typed_uniforms :: (shader: *Shader_Metadata, host: SR.GLSL_GPU_Rendering_Pipeline_Stage_Interface,
-                          type: Shader_Parser.Resolved_Type, shader_path: string, jai_path: string, group_index: int) {
-    if type.kind == .ARRAY {
-        assert(type.array_count > 0 && type.pointee != null,"Uniform arrays must have a fixed positive length");
-        for i: 0..type.array_count-1 flatten_typed_uniforms(shader,host,type.pointee.*,
-            tprint("%[%]",shader_path,i),tprint("%[%]",jai_path,i),group_index);
-        return;
-    }
-    structure := typed_uniform_struct(host,type.name);
-    if structure != null && type.name != "Shader_Sampler_2D" && type.name != "Shader_Sampler_3D" {
-        for field: structure.fields flatten_typed_uniforms(shader,host,field.value_type,
-            tprint("%.%",shader_path,SR.glsl_field_name(field.name)),tprint("%.%",jai_path,field.name),group_index);
-        return;
-    }
-    gl_type, ok := SR.glsl_type_name(type);
-    native_type := glsl_type_to_jai_type(gl_type);
-    assert(ok && native_type != void,"Unsupported uniform %: %",shader_path,type.name);
-    for existing : shader.uniform_configs {
-        if existing.var_name_in_shader != shader_path continue;
-        assert(existing.group_index == group_index && existing.value_expression == jai_path && existing.type_in_jai == native_type,
-            "Uniform '%' has conflicting GPU rendering pipeline stage bindings", shader_path);
-        return;
-    }
-    uniform: GL_Vertex_Uniform_Configuration;
-    uniform.type_in_jai = native_type;
-    uniform.glsl_type_name = gl_type;
-    uniform.var_name_in_shader = shader_path;
-    uniform.identifier = tprint("typed_%",shader.uniform_configs.count);
-    uniform.value_expression = jai_path;
-    uniform.group_index = group_index;
-    if gl_type == "sampler2D" || gl_type == "sampler3D" {
-        uniform.texture_target = cast(GLenum) (ifx gl_type == "sampler3D" then GL_TEXTURE_3D else GL_TEXTURE_2D);
-        for existing: shader.uniform_configs if existing.texture_target != 0 uniform.texture_unit += 1;
-    }
-    array_add(*shader.uniform_configs,uniform);
-}
-
 generate_uniform_group_declarations :: (shader: Shader_Metadata) -> string {
     builder: String_Builder;
     init_string_builder(*builder);
@@ -230,7 +127,10 @@ generate_uniform_group_setters :: (shader: Shader_Metadata) -> string {
             location := tprint("renderer.%_uniform_location",generated_uniform_identifier(uniform));
             if uniform.texture_target != 0 {
                 print_to_builder(*builder,"    gl_set_active_texture_unit(GL_TEXTURE0 + %);\n",uniform.texture_unit);
-                target := ifx uniform.texture_target == GL_TEXTURE_3D then "GL_TEXTURE_3D" else "GL_TEXTURE_2D";
+                target := "GL_TEXTURE_2D";
+                if uniform.texture_target == GL_TEXTURE_3D target = "GL_TEXTURE_3D";
+                if uniform.texture_target == GL_TEXTURE_1D target = "GL_TEXTURE_1D";
+                if uniform.texture_target == GL_TEXTURE_2D_ARRAY target = "GL_TEXTURE_2D_ARRAY";
                 print_to_builder(*builder,"    gl_bind_texture_to_binding_target_of_active_texture_unit(%,%);\n",target,uniform.value_expression);
                 print_to_builder(*builder,"    gl_set_uniform_1i_on_active_shader_program(%,%);\n",location,uniform.texture_unit);
             } else {

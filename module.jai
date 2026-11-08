@@ -27,8 +27,12 @@ Then for the multi-shader renderable there is also a buffer object / queue rende
 #import "tbx/assets";
 
 #load "better_api.jai";
+#load "utilities/framebuffer_capture.jai";
+#load "utilities/gpu_benchmark.jai";
+#load "utilities/render_throughput_model.jai";
 #load "frame_budgeted.jai";
 #load "generation/renderer_generation_per_shader.jai";
+#load "generation/pipeline_generation.jai";
 #load "utilities/reflection_probe_resources.jai";
 
 // opengl's coordinate system is only NDC space, everything else is something that you make up
@@ -90,21 +94,22 @@ This means that the local_to_world index can just be the number of objects you'v
 #load "renderers/camera_per_object_transform_pbr_packed_texture_renderer.jai";
 #load "renderers/camera_per_object_transform_texture_renderer.jai";
 #load "renderers/camera_absolute_position_color_renderer.jai";
-#load "renderers/gpu_style_vertex_color_renderer.jai";
-#load "renderers/gpu_style_blinn_phong_renderer.jai";
-#load "renderers/gpu_style_pbr_renderer.jai";
-#load "renderers/gpu_style_pbr_lightmapped_renderer.jai";
-#load "renderers/gpu_style_pbr_directional_shadows_renderer.jai";
-#load "renderers/gpu_style_pbr_directional_shadow_depth_renderer.jai";
-#load "renderers/gpu_style_pbr_skeletal_animation_renderer.jai";
-#load "renderers/gpu_style_pbr_directional_shadows_skeletal_animation_renderer.jai";
-#load "renderers/gpu_style_pbr_directional_shadow_depth_skeletal_animation_renderer.jai";
+#load "renderers/vertex_color_renderer.jai";
+#load "renderers/blinn_phong_renderer.jai";
+#load "renderers/pbr_renderer.jai";
+#load "renderers/pbr_lightmapped_renderer.jai";
+#load "renderers/pbr_directional_shadows_renderer.jai";
+#load "renderers/pbr_directional_shadow_depth_renderer.jai";
+#load "renderers/pbr_skeletal_animation_renderer.jai";
+#load "renderers/pbr_directional_shadows_skeletal_animation_renderer.jai";
+#load "renderers/pbr_directional_shadow_depth_skeletal_animation_renderer.jai";
 
 // #load "deferred_lighting.jai";
 #load "utilities/camera_infinite_grid.jai";
 #load "generation/local_to_world_matrix_pool.jai";
 #load "utilities/skybox.jai";
 #load "utilities/hdr_post_process.jai";
+#load "utilities/render_target.jai";
 
 #if OS == .LINUX {
     X11 :: #import "X11";

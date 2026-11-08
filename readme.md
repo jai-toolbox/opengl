@@ -160,3 +160,118 @@ Also for some reason in modules/GL/GL.jai we had this:
 ```
 
 which requests a 0 bit in the stencil which makes it not work, you have to change it to 8 bits to make this shader work.
+
+
+## Generating concrete renderers from a native pipeline
+
+Buffered objects can change their local index list without uploading vertex
+attributes again:
+
+```jai
+assert(update_object_indices(*renderer, renderable, sorted_indices));
+queue_render(*renderer, renderable);
+render(*renderer);
+```
+
+The procedure also accepts an `object_index` in place of the renderable. Indices
+are relative to that object's first vertex. Invalid handles or out-of-range
+indices return `false` without changing the object. A changed list invalidates
+the combined index-buffer cache; supplying the same indices preserves the cache.
+
+For shaders that compute their vertices from `gl_VertexID`, a `.program` file
+can request a non-indexed draw without geometry buffers or an object queue:
+
+```jai
+Shader_Program_Metadata.{
+    vertex_shader_supplies_geometry = true,
+    vertex_count = 6,
+    vertex_shader_path = "modules/tbx/opengl/shaders/out/infinite_grid.vert",
+    fragment_shader_path = "modules/tbx/opengl/shaders/out/infinite_grid.frag"
+}
+```
+
+`vertex_count` is required and must fit a positive `GLsizei`. The shader must
+have no vertex attributes. The generated renderer owns its program, uniform
+locations and an empty VAO. A comment above VAO creation explains OpenGL core
+profile's requirement for a bound VAO even when all vertices come from the shader.
+The infinite grid uses six vertices; a fullscreen triangle uses three.
+The generated `render` procedure defaults to this count and accepts an explicit
+`vertex_count` override for shaders that support a variable number of vertices.
+
+```jai
+pipeline :: Virtual_GPU_Rendering_Pipeline(vertex_proc, fragment_proc).{};
+// In the generation step, before compiling the application:
+generated := generate_rendering_pipeline(pipeline, "generated/my_pipeline",
+    .{generated_file_name_prefix = "My_Pipeline", library = .{precise_math = true}});
+assert(generated.success, "%", generated.error);
+```
+
+Import `tbx/virtual_gpu_rendering` for the pipeline type. The
+pipeline value holds only the procedure pair. Shared signature analysis, GLSL
+and descriptor serialization live in `virtual_gpu_rendering`. The OpenGL
+orchestrator writes `my_pipeline.vert`, `my_pipeline.frag` and
+`my_pipeline.program`. It reads that descriptor through the same
+`create_code_to_render_stuff_with_shader_from_program` path as other OpenGL
+programs to write `my_pipeline_renderer.jai`. CPU adapter generation is a
+separate software_rasterizer operation, using the same pipeline value.
+
+The generated descriptor includes the renderer options and optional
+`jai_bindings`: native vertex field paths, typed uniform groups, flattened
+uniform paths, and sampler binding structs. This preserves host type information
+that GLSL cannot express. Vertex attributes still come from GLSL reflection.
+The descriptor and GLSL are sufficient to regenerate the OpenGL renderer,
+without the original Jai pipeline value:
+
+```jai
+renderer := create_code_to_render_stuff_with_shader_from_program(
+    "generated/my_pipeline/my_pipeline.program");
+assert(renderer.success, "%", renderer.error);
+```
+
+The ordinary `create_code_to_render_stuff_with_shader_program_files(directory)`
+visitor processes these descriptors too. Generated descriptors specify an
+explicit `name`, `renderer_path`, `paths_relative_to_program = true` and
+`embed_shader_sources = true`, so the output folder can be moved as a unit.
+Existing descriptors keep their default renderer directory and naming behavior.
+
+Load the written Jai files in the application, in modules where the native
+input/uniform types and rendering support are visible:
+
+```jai
+#load "generated/my_pipeline/my_pipeline_renderer.jai";
+```
+
+To also generate a CPU reference renderer, import `tbx/software_rasterizer`:
+
+```jai
+software := write_software_pipeline(pipeline, "generated/my_pipeline", "My_Pipeline");
+assert(software.success, "%", software.error);
+```
+
+This writes `my_pipeline_software_renderer.jai`, with concrete typed procedure fields. Initialize them from
+`pipeline.vertex_shader` and `pipeline.fragment_shader`. Generated evaluation
+and render procedures have explicit types and ordinary calls. The OpenGL source
+uses readable multiline shader constants.
+
+Native pipelines accept the same `.program` controls through `options.renderer`:
+
+```jai
+.{generated_file_name_prefix = "Display",
+  renderer = .{vertex_shader_supplies_geometry = true, vertex_count = 3}}
+```
+
+GPU rendering pipeline stages with vertex attributes use the retained renderer. A generated
+`buffer_object(renderer, vertices, indices)` overload converts native vertex
+structs into its attribute arrays when geometry is uploaded. Subsequent index
+updates and queued draws reuse those GPU buffers.
+
+For tools with source analysis already available, use
+`generate_rendering_pipeline(pipeline, prepared, directory, options)`.
+`Generated_Rendering_Pipeline` contains success/error, four sources and four
+output paths, including `program_source` and `program_path`. Signature and
+GPU rendering pipeline stage analysis succeeds before files are written; descriptor processing reports
+renderer-generation and file errors through the result. The source strings
+remain available for inspection. Choose a target directory per pipeline to
+keep its four OpenGL files together. File boundaries
+and procedure naming conventions are not part of the
+pipeline API.

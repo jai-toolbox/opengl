@@ -1,0 +1,20 @@
+Shader_Program_Metadata.{
+    name = "Animated_Mesh_Display",
+    vertex_shader_path = "animated_mesh_display.vert",
+    fragment_shader_path = "animated_mesh_display.frag",
+    renderer_path = "animated_mesh_display_renderer.jai",
+    paths_relative_to_program = true,
+    embed_shader_sources = true,
+    vertex_shader_supplies_geometry = true,
+    vertex_count = 3,
+    jai_bindings = .{
+        uniform_groups = .[
+            .{shader_name = "ctx", jai_type_name = "Animated_Mesh_Display_Uniforms", host_type_name = "Animated_Mesh_Display_Animated_Mesh_Display_Uniforms_Bindings", declarations = "Animated_Mesh_Display_Animated_Mesh_Display_Uniforms_Bindings :: struct {\n    image: GLuint;\n    exposure: float32;\n    tone_map: bool;\n}\n\n"},
+        ],
+        uniforms = .[
+            .{type_name = "sampler2D", shader_name = "image", value_expression = "ctx.image", group_index = 0},
+            .{type_name = "float", shader_name = "exposure", value_expression = "ctx.exposure", group_index = 0},
+            .{type_name = "bool", shader_name = "tone_map", value_expression = "ctx.tone_map", group_index = 0},
+        ],
+    },
+}

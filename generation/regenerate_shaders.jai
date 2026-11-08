@@ -6,7 +6,7 @@
 // Loading this file runs the legacy GLSL include preprocessor first.
 #load "../shaders/compile_shaders.jai";
 
-run_opengl_shader_generation_tool :: (source_path: string, output_name: string) {
+run_opengl_shader_generation_tool :: (source_path: string, output_name: string, arguments: [] string = .[]) {
     output_directory := tprint("%../../../../.build/opengl_shader_tools/", #filepath);
     make_directory_if_it_does_not_exist(output_directory, recursive = true);
 
@@ -39,7 +39,11 @@ run_opengl_shader_generation_tool :: (source_path: string, output_name: string) 
     executable_path := tprint("%%", output_directory, output_name);
     #if OS == .WINDOWS executable_path = tprint("%.exe", executable_path);
     project_root := tprint("%../../../../", #filepath);
-    result := run_command(executable_path, working_directory = project_root);
+    command: [..] string;
+    defer array_free(command);
+    array_add(*command, executable_path);
+    array_add(*command, ..arguments);
+    result := run_command(..command, working_directory = project_root);
     if result.exit_code != 0 {
         log_error("% failed with exit code %", output_name, result.exit_code);
         exit(1);
@@ -49,11 +53,12 @@ run_opengl_shader_generation_tool :: (source_path: string, output_name: string) 
 #run {
     set_build_options_dc(.{do_output = false});
     run_opengl_shader_generation_tool(
-        tprint("%../tools/generate_gpu_style_shaders.jai", #filepath),
-        "generate_gpu_style_shaders"
+        tprint("%../../virtual_gpu_rendering/tools/generate_shaders.jai", #filepath),
+        "generate_virtual_gpu_shaders",
+        string.["modules/tbx/opengl/shaders/generated", "modules/tbx/opengl/shaders/programs"]
     );
     run_opengl_shader_generation_tool(
-        tprint("%../tools/generate_shader_renderers.jai", #filepath),
+        tprint("%../generate_shader_renderers.jai", #filepath),
         "generate_shader_renderers"
     );
 }
