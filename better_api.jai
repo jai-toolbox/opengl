@@ -479,6 +479,8 @@ gl_get_integer_state_parameter :: (parameter_name: GLenum, value: *GLint) {
     glGetIntegerv(parameter_name, value);
 }
 
+gl_get_context_string :: glGetString;
+
 gl_get_program_integer_parameter :: (
     shader_program: GLuint,
     parameter_name: GLenum,
@@ -494,6 +496,21 @@ gl_discard_fragments_that_fail_depth_test :: (enabled: bool) {
 
 gl_enable_blending :: () { glEnable(GL_BLEND); }
 gl_disable_blending :: () { glDisable(GL_BLEND); }
+
+gl_set_framebuffer_srgb :: (enabled: bool) {
+    if enabled then glEnable(GL_FRAMEBUFFER_SRGB);
+    else glDisable(GL_FRAMEBUFFER_SRGB);
+}
+
+gl_set_face_culling_enabled :: (enabled: bool) {
+    if enabled then glEnable(GL_CULL_FACE);
+    else glDisable(GL_CULL_FACE);
+}
+
+gl_set_blend_equation :: (equation: GLenum) { glBlendEquation(equation); }
+gl_set_separate_blend_equation :: (rgb: GLenum, alpha: GLenum) { glBlendEquationSeparate(rgb,alpha); }
+
+gl_clear_color_buffer :: () { glClear(GL_COLOR_BUFFER_BIT); }
 
 gl_set_blend_function :: (source_factor: GLenum, destination_factor: GLenum) {
     glBlendFunc(source_factor, destination_factor);
@@ -664,6 +681,13 @@ gl_update_compressed_3d_subimage_of_texture_bound_to_binding_target_of_active_te
 ) {
     glCompressedTexSubImage3D(binding_target, mipmap_level, x_offset, y_offset, z_offset,
         width, height, depth, compression_format, compressed_byte_count, compressed_pixels);
+}
+
+gl_update_2d_subimage_of_texture_bound_to_binding_target_of_active_texture_unit :: (
+    binding_target: GLenum, mipmap_level: GLint, x_offset: GLint, y_offset: GLint,
+    width: GLsizei, height: GLsizei, pixel_format: GLenum, pixel_data_type: GLenum, pixels: *void,
+) {
+    glTexSubImage2D(binding_target,mipmap_level,x_offset,y_offset,width,height,pixel_format,pixel_data_type,pixels);
 }
 
 gl_set_float_parameter_for_texture_bound_to_binding_target_of_active_texture_unit :: (
@@ -848,6 +872,10 @@ gl_get_query_integer_parameter :: (
     value: *GLint,
 ) {
     glGetQueryObjectiv(query, parameter_name, value);
+}
+
+gl_get_query_target_integer_parameter :: (target: GLenum, parameter_name: GLenum, value: *GLint) {
+    glGetQueryiv(target,parameter_name,value);
 }
 
 gl_get_query_u64_parameter :: (
