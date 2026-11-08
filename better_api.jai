@@ -45,7 +45,7 @@ terminology used by this OpenGL wrapper file
 
 graphics pipeline input and output
 
-- graphics pipeline: the ordered processing stages that turn submitted geometry
+- graphics pipeline: the ordered processing GPU rendering pipeline stages that turn submitted geometry
   into output values for covered locations.
 - vertex: one geometric input record, such as a mesh position together with
   values associated with that position.
@@ -60,12 +60,12 @@ graphics pipeline input and output
 
 shaders and uniforms
 
-- shader: code compiled for one programmable graphics pipeline stage.
+- shader: code compiled for one programmable GPU rendering pipeline stage.
 - vertex shader: a shader that processes one submitted vertex and produces a
-  transformed vertex plus values for later stages.
+  transformed vertex plus values for later GPU rendering pipeline stages.
 - fragment shader: a shader that processes one fragment and produces output
   values such as color.
-- shader program: one or more linked shader stages that can execute together.
+- shader program: one or more linked GPU rendering pipeline stages that can execute together.
 - active shader program: the shader program selected by
   gl_set_active_shader_program. Draws and uniform setter calls use this program.
 - uniform: shader input state shared by many shader invocations instead of
