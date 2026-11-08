@@ -1,57 +1,65 @@
-// auto-generated renderer for shader: Gpu_Style_Pbr
+// auto-generated renderer for shader: Pbr_Directional_Shadow_Depth
 // do not edit manually.
 
+Pbr_Directional_Shadow_Depth_Shadow_Vertex_Uniforms_Bindings :: struct {
+    object_transforms: GLuint;
+    world_to_light_clip: Matrix4;
+}
 
-Gpu_Style_Pbr_Renderable :: struct {
+
+Pbr_Directional_Shadow_Depth_Renderable :: struct {
     indices : [..] u32;
     object_index : u32;
 
-    local_to_world_index : u32;
-
     positions: [..] Vector3;
     normals: [..] Vector3;
     tangents: [..] Vector3;
     uvs: [..] Vector2;
-    material_indices: [..] u32;
+    material_indices: [..] s32;
+    local_to_world_indices: [..] s32;
 
 }
 
 
-Gpu_Style_Pbr_Geometry :: struct {
+Pbr_Directional_Shadow_Depth_Geometry :: struct {
     indices : [..] u32;
     positions: [..] Vector3;
     normals: [..] Vector3;
     tangents: [..] Vector3;
     uvs: [..] Vector2;
-    material_indices: [..] u32;
+    material_indices: [..] s32;
+    local_to_world_indices: [..] s32;
 }
 
-assign_geometry_copy :: (renderable: *Gpu_Style_Pbr_Renderable, geometry: $T/interface Gpu_Style_Pbr_Geometry) {
+assign_geometry_copy :: (renderable: *Pbr_Directional_Shadow_Depth_Renderable, geometry: $T/interface Pbr_Directional_Shadow_Depth_Geometry) {
     array_copy(*renderable.indices, geometry.indices);
     array_copy(*renderable.positions, geometry.positions);
     array_copy(*renderable.normals, geometry.normals);
     array_copy(*renderable.tangents, geometry.tangents);
     array_copy(*renderable.uvs, geometry.uvs);
     array_copy(*renderable.material_indices, geometry.material_indices);
+    array_copy(*renderable.local_to_world_indices, geometry.local_to_world_indices);
 }
 
-assign_geometry :: (renderable: *Gpu_Style_Pbr_Renderable, geometry: $T/interface Gpu_Style_Pbr_Geometry) {
+assign_geometry :: (renderable: *Pbr_Directional_Shadow_Depth_Renderable, geometry: $T/interface Pbr_Directional_Shadow_Depth_Geometry) {
     renderable.indices = geometry.indices;
     renderable.positions = geometry.positions;
     renderable.normals = geometry.normals;
     renderable.tangents = geometry.tangents;
     renderable.uvs = geometry.uvs;
     renderable.material_indices = geometry.material_indices;
+    renderable.local_to_world_indices = geometry.local_to_world_indices;
 }
 
 
-deinit :: (renderable: *Gpu_Style_Pbr_Renderable) {
+deinit :: (renderable: *Pbr_Directional_Shadow_Depth_Renderable) {
     array_free(renderable.indices);
     array_free(renderable.positions);
     array_free(renderable.normals);
     array_free(renderable.tangents);
     array_free(renderable.uvs);
     array_free(renderable.material_indices);
+    array_free(renderable.local_to_world_indices);
 }
 
 /*
@@ -59,154 +67,116 @@ deinit :: (renderable: *Gpu_Style_Pbr_Renderable) {
 so deinit exists but also unbuffer object exists, the difference is that deinit takes in a renderable and frees its CPU-side arrays and resets its transform slot, whereas unbuffer_object only frees the GPU-side virtual allocation, leaving the CPU data intact for potential re-buffering later.
 
 */
-deinit :: (renderable: *Gpu_Style_Pbr_Renderable, renderer: *Gpu_Style_Pbr_Renderer) {
+deinit :: (renderable: *Pbr_Directional_Shadow_Depth_Renderable, renderer: *Pbr_Directional_Shadow_Depth_Renderer) {
     unbuffer_object(*renderer.psr, renderable.object_index);
-    free_index(*renderer.ltw_pool, renderable.local_to_world_index);
-    renderable.local_to_world_index = 0;
-    renderable.object_index = 0;
     array_free(renderable.indices);
     array_free(renderable.positions);
     array_free(renderable.normals);
     array_free(renderable.tangents);
     array_free(renderable.uvs);
     array_free(renderable.material_indices);
+    array_free(renderable.local_to_world_indices);
 }
 
 
-unbuffer_object :: (renderer: *Gpu_Style_Pbr_Renderer, renderable: *Gpu_Style_Pbr_Renderable) {
+unbuffer_object :: (renderer: *Pbr_Directional_Shadow_Depth_Renderer, renderable: *Pbr_Directional_Shadow_Depth_Renderable) {
     unbuffer_object(*renderer.psr, renderable.object_index);
-    free_index(*renderer.ltw_pool, renderable.local_to_world_index);
-    renderable.local_to_world_index = 0;
     renderable.object_index = 0;
 }
 
 
-queue_render :: (using renderer: *Gpu_Style_Pbr_Renderer, renderable: Gpu_Style_Pbr_Renderable) {
+queue_render :: (using renderer: *Pbr_Directional_Shadow_Depth_Renderer, renderable: Pbr_Directional_Shadow_Depth_Renderable) {
     queue_render(*renderer.psr, renderable.object_index);
 }
 
 // Indices are relative to this buffered object's first vertex.
-update_object_indices :: (renderer : *Gpu_Style_Pbr_Renderer, object_index : u32, indices : [] u32) -> bool {
+update_object_indices :: (renderer : *Pbr_Directional_Shadow_Depth_Renderer, object_index : u32, indices : [] u32) -> bool {
     return update_object_indices(*renderer.psr, object_index, indices);
 }
 
-update_object_indices :: (renderer : *Gpu_Style_Pbr_Renderer, renderable : $T/interface Gpu_Style_Pbr_Renderable, indices : [] u32) -> bool {
+update_object_indices :: (renderer : *Pbr_Directional_Shadow_Depth_Renderer, renderable : $T/interface Pbr_Directional_Shadow_Depth_Renderable, indices : [] u32) -> bool {
     return update_object_indices(renderer, renderable.object_index, indices);
 }
 
-queue_render :: (renderer : *Gpu_Style_Pbr_Renderer, object_index : u32) {
+queue_render :: (renderer : *Pbr_Directional_Shadow_Depth_Renderer, object_index : u32) {
     queue_render(*renderer.psr, object_index);
 }
 
 
-set_local_to_world_matrix :: (renderer: *Gpu_Style_Pbr_Renderer, renderable: Gpu_Style_Pbr_Renderable, matrix: Matrix4) {
-    set_matrix(*renderer.ltw_pool, renderable.local_to_world_index, matrix);
+unbuffer_object :: (renderer : *Pbr_Directional_Shadow_Depth_Renderer, object_index : u32) {
+    unbuffer_object(*renderer.psr, object_index);
+}
+
+buffer_object :: (renderer : *Pbr_Directional_Shadow_Depth_Renderer, vertices : [] Mesh_Vertex, indices : [] u32) -> (object_index : u32, success : bool) {
+    positions : [..] Vector3;
+    defer array_free(positions);
+    normals : [..] Vector3;
+    defer array_free(normals);
+    tangents : [..] Vector3;
+    defer array_free(tangents);
+    uvs : [..] Vector2;
+    defer array_free(uvs);
+    material_indices : [..] s32;
+    defer array_free(material_indices);
+    local_to_world_indices : [..] s32;
+    defer array_free(local_to_world_indices);
+    for vertex : vertices {
+        array_add(*positions, vertex.position);
+        array_add(*normals, vertex.normal);
+        array_add(*tangents, vertex.tangent);
+        array_add(*uvs, vertex.uv);
+        array_add(*material_indices, vertex.material_index);
+        array_add(*local_to_world_indices, vertex.local_to_world_index);
+    }
+    buffered_index, buffered := buffer_object(renderer, indices, positions, normals, tangents, uvs, material_indices, local_to_world_indices);
+    return buffered_index, buffered;
 }
 
 
-Gpu_Style_Pbr_Renderer :: struct {
+Pbr_Directional_Shadow_Depth_Renderer :: struct {
     using #as psr : Per_Shader_Renderer = .{max_num_elements_in_each_buffer = 100000};
 
 
-    using #as ltw_pool : Local_To_World_Matrix_Pool;
-
-    local_to_world_index_buffer_gl_handle : GLuint;
-
-
-    world_to_camera_uniform_location : GLint = -1;
-    camera_to_clip_uniform_location : GLint = -1;
-    camera_position_uniform_location : GLint = -1;
-    ambient_strength_uniform_location : GLint = -1;
-    directional_light_count_uniform_location : GLint = -1;
-    directional_light_0_direction_uniform_location : GLint = -1;
-    directional_light_0_color_uniform_location : GLint = -1;
-    directional_light_0_intensity_uniform_location : GLint = -1;
-    packed_textures_uniform_location : GLint = -1;
-    packed_texture_bounding_boxes_uniform_location : GLint = -1;
-    pbr_material_table_uniform_location : GLint = -1;
+    typed_0_uniform_location : GLint = -1;
+    typed_1_uniform_location : GLint = -1;
 
     positions_buffer_gl_handle: GLuint;
     normals_buffer_gl_handle: GLuint;
     tangents_buffer_gl_handle: GLuint;
     uvs_buffer_gl_handle: GLuint;
     material_indices_buffer_gl_handle: GLuint;
+    local_to_world_indices_buffer_gl_handle: GLuint;
 
 
 }
 
-
-set_world_to_camera_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: Matrix4) {
-    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.world_to_camera_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
+set_uniforms :: (renderer: *Pbr_Directional_Shadow_Depth_Renderer, ctx: Pbr_Directional_Shadow_Depth_Shadow_Vertex_Uniforms_Bindings) {
+    gl_set_active_shader_program(renderer.shader_program_gl_handle);
+    gl_set_active_texture_unit(GL_TEXTURE0 + 0);
+    gl_bind_texture_to_binding_target_of_active_texture_unit(GL_TEXTURE_2D,ctx.object_transforms);
+    gl_set_uniform_1i_on_active_shader_program(renderer.typed_0_uniform_location,0);
+    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.typed_1_uniform_location, 1, GL_TRUE, *ctx.world_to_light_clip.coef[0][0]);
+    gl_set_active_texture_unit(GL_TEXTURE0);
+    gl_clear_active_shader_program();
 }
 
-set_camera_to_clip_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: Matrix4) {
-    gl_set_uniform_matrix_4fv_on_active_shader_program(renderer.camera_to_clip_uniform_location, 1, GL_TRUE, *v.coef[0][0]);
-}
 
-set_camera_position_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: Vector3) {
-    gl_set_uniform_3f_on_active_shader_program(renderer.camera_position_uniform_location, v.x, v.y, v.z);
-}
-
-set_ambient_strength_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: float32) {
-    gl_set_uniform_1f_on_active_shader_program(renderer.ambient_strength_uniform_location, v);
-}
-
-set_directional_light_count_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.directional_light_count_uniform_location, v);
-}
-
-set_directional_light_0_direction_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: Vector3) {
-    gl_set_uniform_3f_on_active_shader_program(renderer.directional_light_0_direction_uniform_location, v.x, v.y, v.z);
-}
-
-set_directional_light_0_color_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: Vector3) {
-    gl_set_uniform_3f_on_active_shader_program(renderer.directional_light_0_color_uniform_location, v.x, v.y, v.z);
-}
-
-set_directional_light_0_intensity_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: float32) {
-    gl_set_uniform_1f_on_active_shader_program(renderer.directional_light_0_intensity_uniform_location, v);
-}
-
-set_packed_textures_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.packed_textures_uniform_location, v);
-}
-
-set_packed_texture_bounding_boxes_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.packed_texture_bounding_boxes_uniform_location, v);
-}
-
-set_pbr_material_table_uniform :: (renderer : *Gpu_Style_Pbr_Renderer, v: s32) {
-    gl_set_uniform_1i_on_active_shader_program(renderer.pbr_material_table_uniform_location, v);
-}
-
-init :: (using renderer : *Gpu_Style_Pbr_Renderer) -> bool {
-    vertex_shader_source := #run read_entire_file(tprint("%../shaders/generated/gpu_style_pbr.vert", #filepath));
-    fragment_shader_source := #run read_entire_file(tprint("%../shaders/generated/gpu_style_pbr.frag", #filepath));
+init :: (using renderer : *Pbr_Directional_Shadow_Depth_Renderer) -> bool {
+    vertex_shader_source := Pbr_Directional_Shadow_Depth_Vertex_Source;
+    fragment_shader_source := Pbr_Directional_Shadow_Depth_Fragment_Source;
 
     if !init(*renderer.psr, vertex_shader_source, fragment_shader_source, max_num_elements_in_each_buffer) return false;
     init_buffers_no_data(renderer);
 
-    init(*renderer.ltw_pool);
 
-    world_to_camera_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "world_to_camera");
-    camera_to_clip_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "camera_to_clip");
-    camera_position_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "camera_position");
-    ambient_strength_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "ambient_strength");
-    directional_light_count_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "directional_light_count");
-    directional_light_0_direction_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "directional_light_0_direction");
-    directional_light_0_color_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "directional_light_0_color");
-    directional_light_0_intensity_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "directional_light_0_intensity");
-    packed_textures_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "packed_textures");
-    packed_texture_bounding_boxes_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "packed_texture_bounding_boxes");
-    pbr_material_table_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "pbr_material_table");
+    typed_0_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "object_transforms");
+    typed_1_uniform_location = gl_get_uniform_location_in_shader_program(shader_program_gl_handle, "world_to_light_clip");
 
     return true;
 }
 
 
-deinit :: (using renderer : *Gpu_Style_Pbr_Renderer) {
-    deinit(*ltw_pool);
-
+deinit :: (using renderer : *Pbr_Directional_Shadow_Depth_Renderer) {
     deinit(*psr);
 
     gl_delete_buffer(positions_buffer_gl_handle);
@@ -214,19 +184,15 @@ deinit :: (using renderer : *Gpu_Style_Pbr_Renderer) {
     gl_delete_buffer(tangents_buffer_gl_handle);
     gl_delete_buffer(uvs_buffer_gl_handle);
     gl_delete_buffer(material_indices_buffer_gl_handle);
-    gl_delete_buffer(local_to_world_index_buffer_gl_handle);
+    gl_delete_buffer(local_to_world_indices_buffer_gl_handle);
 }
 
 
 
-init_buffers_no_data :: (using apcr : *Gpu_Style_Pbr_Renderer) { // todo change renderer name
+init_buffers_no_data :: (using apcr : *Pbr_Directional_Shadow_Depth_Renderer) { // todo change renderer name
 
     vertex_attribute_array_gl_handle = gl_create_vertex_array();
     gl_bind_vertex_array(vertex_attribute_array_gl_handle);
-
-
-    generate_buffer_for_vertex_attribute(*local_to_world_index_buffer_gl_handle, u32, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_index_buffer_gl_handle, "local_to_world_index", 1, GL_UNSIGNED_INT, GL_FALSE, 0, null);
 
 
 
@@ -250,8 +216,11 @@ init_buffers_no_data :: (using apcr : *Gpu_Style_Pbr_Renderer) { // todo change 
     generate_buffer_for_vertex_attribute(*uvs_buffer_gl_handle, Vector2, max_num_elements_in_each_buffer);
     init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, uvs_buffer_gl_handle, "uv", 2, GL_FLOAT, GL_FALSE, 0, null);
 
-    generate_buffer_for_vertex_attribute(*material_indices_buffer_gl_handle, u32, max_num_elements_in_each_buffer);
-    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, material_indices_buffer_gl_handle, "material_index", 1, GL_UNSIGNED_INT, GL_FALSE, 0, null);
+    generate_buffer_for_vertex_attribute(*material_indices_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, material_indices_buffer_gl_handle, "material_index", 1, GL_INT, GL_FALSE, 0, null);
+
+    generate_buffer_for_vertex_attribute(*local_to_world_indices_buffer_gl_handle, s32, max_num_elements_in_each_buffer);
+    init_vertex_attribute(shader_program_gl_handle, vertex_attribute_array_gl_handle, local_to_world_indices_buffer_gl_handle, "local_to_world_index", 1, GL_INT, GL_FALSE, 0, null);
 
 
 
@@ -260,13 +229,13 @@ init_buffers_no_data :: (using apcr : *Gpu_Style_Pbr_Renderer) { // todo change 
 
 
 buffer_object :: (
-    using renderer : *Gpu_Style_Pbr_Renderer,
-    renderable : *$T/interface Gpu_Style_Pbr_Renderable,
+    using renderer : *Pbr_Directional_Shadow_Depth_Renderer,
+    renderable : *$T/interface Pbr_Directional_Shadow_Depth_Renderable,
     budgeter: *GL_Budgeter = null,
 ) -> success: bool {
 
 
-    object_index, local_to_world_index, success := buffer_object(renderer,
+    object_index, success := buffer_object(renderer,
             renderable.indices,
 
             renderable.positions,
@@ -274,12 +243,12 @@ buffer_object :: (
             renderable.tangents,
             renderable.uvs,
             renderable.material_indices,
+            renderable.local_to_world_indices,
             budgeter
     );
 
     if success {
         renderable.object_index = object_index;
-        renderable.local_to_world_index = local_to_world_index;
 
     };
     return success;
@@ -287,34 +256,29 @@ buffer_object :: (
 
 // todo ability to specify the transform matrix upon buffering?
 buffer_object :: (
-        using renderer: *Gpu_Style_Pbr_Renderer,
+        using renderer: *Pbr_Directional_Shadow_Depth_Renderer,
         indices : [] u32,
         positions : [] Vector3,
         normals : [] Vector3,
         tangents : [] Vector3,
         uvs : [] Vector2,
-        material_indices : [] u32,
+        material_indices : [] s32,
+        local_to_world_indices : [] s32,
 
         budgeter: *GL_Budgeter = null
 
-        ) -> object_index: u32, local_to_world_index: u32, success: bool {
+        ) -> object_index: u32, success: bool {
 
     /*
     note: we use the positions as count, becaues that is the actual data that needs to be in the buffer
     the indices use duplicates sometimes to refer to the same vertex multiple times.
     */
     length := positions.count;
-    if length == 0 { return 0, 0, false; }
+    if length == 0 { return 0, false; }
     index, success := allocate_buffered_object(*renderer.psr, cast(u32) length, indices);
     if !success {
         log("ran out of virtual memory");
-        return 0, 0, false;
-    }
-
-    ltw_index_we_used, ltw_success := alloc_index(*ltw_pool);
-    if !ltw_success {
-        unbuffer_object(*renderer.psr, index);
-        return 0, 0, false;
+        return 0, false;
     }
 
 
@@ -343,21 +307,19 @@ buffer_object :: (
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, material_indices_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(u32), material_indices.count * size_of(u32), material_indices.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(s32), material_indices.count * size_of(s32), material_indices.data);
 
 
-    local_to_world_indices: [..] u32;
-    for 0..positions.count-1 array_add(*local_to_world_indices, ltw_index_we_used);
 
-    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_index_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(u32), local_to_world_indices.count * size_of(u32), local_to_world_indices.data, .COPY);
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_indices_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(budgeter, GL_ARRAY_BUFFER, index * size_of(s32), local_to_world_indices.count * size_of(s32), local_to_world_indices.data);
 
-    array_free(local_to_world_indices);
+
 
 
     gl_bind_vertex_array(0);
 
-    return index, ltw_index_we_used, true;
+    return index, true;
 }
 
 /*
@@ -367,7 +329,7 @@ if you're rebuffering things and using up more space then you did before you'll 
 will go off the rails.
 
 */
-rebuffer_object :: (using renderer : *Gpu_Style_Pbr_Renderer, renderable : $T/interface Gpu_Style_Pbr_Renderable) {
+rebuffer_object :: (using renderer : *Pbr_Directional_Shadow_Depth_Renderer, renderable : $T/interface Pbr_Directional_Shadow_Depth_Renderable) {
 
     gl_bind_vertex_array(vertex_attribute_array_gl_handle);
 
@@ -384,21 +346,21 @@ rebuffer_object :: (using renderer : *Gpu_Style_Pbr_Renderer, renderable : $T/in
     gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, renderable.object_index * size_of(Vector2), renderable.uvs.count * size_of(Vector2), renderable.uvs.data);
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, material_indices_buffer_gl_handle);
-    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, renderable.object_index * size_of(u32), renderable.material_indices.count * size_of(u32), renderable.material_indices.data);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, renderable.object_index * size_of(s32), renderable.material_indices.count * size_of(s32), renderable.material_indices.data);
+
+    gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, local_to_world_indices_buffer_gl_handle);
+    gl_update_subdata_in_buffer_bound_to_binding_target(GL_ARRAY_BUFFER, renderable.object_index * size_of(s32), renderable.local_to_world_indices.count * size_of(s32), renderable.local_to_world_indices.data);
 
 
     gl_bind_buffer_to_binding_target(GL_ARRAY_BUFFER, 0);
     gl_bind_vertex_array(0);
 }
 
-render :: (using renderer : *Gpu_Style_Pbr_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
+render :: (using renderer : *Pbr_Directional_Shadow_Depth_Renderer, primitive_mode: GLenum = GL_TRIANGLES) {
 
     // todo think about if we should be using temporary storage.
 
     gl_set_active_shader_program(shader_program_gl_handle);
-
-
-    upload_to_gpu(*ltw_pool);
 
 
 
@@ -414,3 +376,37 @@ render :: (using renderer : *Gpu_Style_Pbr_Renderer, primitive_mode: GLenum = GL
     gl_bind_vertex_array(0);
     gl_clear_active_shader_program();
 }
+
+Pbr_Directional_Shadow_Depth_Vertex_Source :: #string END_Pbr_Directional_Shadow_Depth_Vertex_Source
+#version 330 core
+// Generated from Jai procedure shadow_depth_vertex_shader.
+in vec3 position;
+in vec3 normal;
+in vec3 tangent;
+in vec2 uv;
+in int material_index;
+in int local_to_world_index;
+uniform sampler2D object_transforms;
+uniform mat4 world_to_light_clip;
+
+vec4 jai_mesh_transform(sampler2D table, int index, vec4 value) {
+    return vec4(dot(texelFetch(table, ivec2(0, index), 0), value), dot(texelFetch(table, ivec2(1, index), 0), value), dot(texelFetch(table, ivec2(2, index), 0), value), dot(texelFetch(table, ivec2(3, index), 0), value));
+}
+
+void main() {
+    vec4 world = jai_mesh_transform(object_transforms, local_to_world_index, vec4(position.x, position.y, position.z, 1.0));
+    gl_Position = (world_to_light_clip * world);
+}
+
+END_Pbr_Directional_Shadow_Depth_Vertex_Source
+
+Pbr_Directional_Shadow_Depth_Fragment_Source :: #string END_Pbr_Directional_Shadow_Depth_Fragment_Source
+#version 330 core
+// Generated from Jai procedure shadow_depth_fragment_shader.
+layout(location=0) out vec4 gpu_rendering_pipeline_stage_attachment_color;
+
+void main() {
+    gpu_rendering_pipeline_stage_attachment_color = vec4(0.0, 0.0, 0.0, 1.0);
+}
+
+END_Pbr_Directional_Shadow_Depth_Fragment_Source
