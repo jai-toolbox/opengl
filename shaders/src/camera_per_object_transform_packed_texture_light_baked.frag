@@ -1,4 +1,5 @@
 #version 330 core
+#extension GL_ARB_texture_cube_map_array : require
 
 #include "light_baked_surface.glsl"
 #include "light_baked_pbr.glsl"

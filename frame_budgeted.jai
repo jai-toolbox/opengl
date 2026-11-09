@@ -24,6 +24,7 @@ GL_Budgeted_Operation_Kind :: enum {
     DEFINE_TEXTURE_3D;
     UPDATE_TEXTURE_3D_SUBIMAGE;
     UPDATE_COMPRESSED_TEXTURE_3D_SUBIMAGE;
+    COPY_TEXTURE_ARRAY_PAGE;
 }
 
 GL_Budgeted_Operation :: struct {
@@ -34,6 +35,7 @@ GL_Budgeted_Operation :: struct {
     captured_texture_unit: GLenum = GL_TEXTURE0;
     captured_texture_binding_target: GLenum;
     captured_vertex_array: GLuint;
+    source_texture: GLuint;
 
     byte_offset: GLintptr;
     storage_byte_count: GLsizeiptr;
@@ -94,6 +96,24 @@ GL_Budgeter :: struct {
         maximum_single_operation_depth: GLsizei;
         maximum_single_operation_bytes_processed: s64;
     }
+}
+
+// Copy an already resident layer when growing an array. The caller owns both
+// texture objects until all queued operations have completed.
+gl_copy_texture_array_page :: (budgeter: *GL_Budgeter, source: GLuint, destination: GLuint,
+    mip: GLint, page: GLint, side: GLsizei) {
+    if !budgeter {
+        gl.glCopyImageSubData(source, GL_TEXTURE_2D_ARRAY, mip, 0, 0, page,
+            destination, GL_TEXTURE_2D_ARRAY, mip, 0, 0, page, side, side, 1);
+        return;
+    }
+    operation := GL_Budgeted_Operation.{
+        kind = .COPY_TEXTURE_ARRAY_PAGE, source_texture = source, captured_object = destination,
+        mipmap_level = mip, z_offset = page, width = side, height = side,
+        total_work = cast(s64) side * side,
+    };
+    array_add(*budgeter.operations, operation);
+    budgeter.total_work += operation.total_work;
 }
 
 gl_budgeted_copy_or_borrow_data :: (
@@ -857,6 +877,16 @@ gl_process_one_budgeted_operation :: (budgeter: *GL_Budgeter) {
            operation.completed_byte_count >= operation.data_byte_count {
             gl_budgeted_finish_operation(budgeter, operation);
         }
+        return;
+    }
+
+    if operation.kind == .COPY_TEXTURE_ARRAY_PAGE {
+        gl.glCopyImageSubData(operation.source_texture, GL_TEXTURE_2D_ARRAY,
+            operation.mipmap_level, 0, 0, operation.z_offset,
+            operation.captured_object, GL_TEXTURE_2D_ARRAY,
+            operation.mipmap_level, 0, 0, operation.z_offset,
+            operation.width, operation.height, 1);
+        gl_budgeted_finish_operation(budgeter, operation);
         return;
     }
 

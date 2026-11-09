@@ -1,4 +1,5 @@
 #version 330 core
+#extension GL_ARB_texture_cube_map_array : require
 
 // Begin include: light_baked_surface.glsl
 // Begin include: packed_texture_sampling.glsl
@@ -283,8 +284,6 @@ vec3 sample_baked_irradiance() {
 // Begin include: light_baked_pbr.glsl
 #define MAX_DYNAMIC_POINT_LIGHTS 16
 #define MAX_REFLECTION_PROBES 64
-
-#extension GL_ARB_texture_cube_map_array : require
 
 struct PointLight {
     vec3 position;

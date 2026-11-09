@@ -1,8 +1,6 @@
 #define MAX_DYNAMIC_POINT_LIGHTS 16
 #define MAX_REFLECTION_PROBES 64
 
-#extension GL_ARB_texture_cube_map_array : require
-
 struct PointLight {
     vec3 position;
     vec3 color;
