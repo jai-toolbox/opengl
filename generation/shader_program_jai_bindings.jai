@@ -8,11 +8,14 @@
 // generate a renderer directly from the original Jai shader procedures.
 VGR :: #import "tbx/virtual_gpu_rendering";
 Shader_Parser :: #import "tbx/parser";
-#scope_module
-using #import "tbx/virtual_gpu_rendering/shaders";
-using #import "tbx/virtual_gpu_rendering/shaders/vertex_color";
+#import "tbx/virtual_gpu_rendering/shaders/mesh";
+#import "tbx/virtual_gpu_rendering/shaders/blinn_phong";
+#import "tbx/virtual_gpu_rendering/shaders/pbr";
+#import "tbx/virtual_gpu_rendering/shaders/pbr_lightmapped";
+#import "tbx/virtual_gpu_rendering/shaders/pbr_shadows";
+#import "tbx/virtual_gpu_rendering/shaders/mesh_vertex_color";
+#import "tbx/virtual_gpu_rendering/shaders/vertex_color";
 #import "tbx/virtual_gpu_rendering/shaders/glsl_builtins";
-#scope_export
 
 GL_Uniform_Group :: VGR.Shader_Programs.Shader_Program_Uniform_Group;
 

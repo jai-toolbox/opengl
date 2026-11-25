@@ -1,3 +1,4 @@
+#import "tbx/virtual_gpu_rendering/pipelines/virtual_gpu_rendering_pipeline";
 #scope_file
 Tbx_File :: #import "tbx/file";
 #scope_export
@@ -21,7 +22,7 @@ Rendering_Pipeline_Generation_Options :: struct {
 // descriptor to generate the OpenGL renderer. Descriptor data and serialization
 // belong to virtual_gpu_rendering; CPU adapters belong to software_rasterizer.
 generate_rendering_pipeline :: (
-    pipeline: $Pipeline/VGR.Virtual_GPU_Rendering_Pipeline,
+    pipeline: $Pipeline/Virtual_GPU_Rendering_Pipeline,
     target_directory: string,
     options: Rendering_Pipeline_Generation_Options
 ) -> Generated_Rendering_Pipeline {
@@ -38,7 +39,7 @@ generate_rendering_pipeline :: (
 }
 
 generate_rendering_pipeline :: (
-    pipeline: $Pipeline/VGR.Virtual_GPU_Rendering_Pipeline,
+    pipeline: $Pipeline/Virtual_GPU_Rendering_Pipeline,
     prepared: VGR.Analyzed_Jai_Source_For_GLSL,
     target_directory: string, 
     options: Rendering_Pipeline_Generation_Options
